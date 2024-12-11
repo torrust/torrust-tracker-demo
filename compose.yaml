@@ -91,6 +91,24 @@ services:
     depends_on:
       - tracker
 
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: prometheus
+    tty: true
+    restart: unless-stopped
+    networks:
+      - backend_network
+    ports:
+      - "9090:9090" # This port should not be exposed to the internet
+    volumes:
+      - ./storage/prometheus/etc:/etc/prometheus:Z
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "10"
+    depends_on:
+      - tracker
+
   tracker:
     image: torrust/tracker:develop
     container_name: tracker

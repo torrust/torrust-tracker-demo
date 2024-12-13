@@ -39,6 +39,7 @@ services:
       - index-gui
       - index
       - tracker
+      - grafana
 
   index-gui:
     image: torrust/index-gui:develop

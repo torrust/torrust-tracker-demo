@@ -17,7 +17,7 @@ The application is located in the directory: `/home/torrust/github/torrust/torru
 To run docker compose commands you need to cd to the app dir:
 
 ```console
-cd github/torrust/torrust-demo/
+cd /home/torrust/github/torrust/torrust-demo
 ```
 
 Sample commands:

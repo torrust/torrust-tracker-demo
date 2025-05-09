@@ -8,6 +8,7 @@ mailcatcher
 nosniff
 NUXT
 privkey
+publickey
 SAMEORIGIN
 secp
 webroot

@@ -12,7 +12,7 @@ DATABASE_FILE="/home/torrust/github/torrust/torrust-demo/storage/index/lib/datab
 BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y-%m-%d_%H-%M-%S).db"
 
 # Copy the SQLite database file to create a backup
-cp $DATABASE_FILE $BACKUP_FILE
+cp $DATABASE_FILE "$BACKUP_FILE"
 
 # Find and remove backups older than 7 days
 find $BACKUP_DIR -type f -name "backup_*.db" -mtime +7 -exec rm {} \;

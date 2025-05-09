@@ -15,4 +15,4 @@ BACKUP_FILE="$BACKUP_DIR/tracker_backup_$(date +%Y-%m-%d_%H-%M-%S).db"
 cp $DATABASE_FILE "$BACKUP_FILE"
 
 # Find and remove backups older than 7 days
-find $BACKUP_DIR -type f -name "tracker_backup_*.db" -mtime +7 -exec rm {} \;
+find $BACKUP_DIR -type f -name "tracker_backup_*.db" -mtime +7 -exec rm -f {} \;

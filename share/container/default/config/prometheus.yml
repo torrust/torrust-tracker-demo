@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s # How often to scrape metrics
 
 scrape_configs:
-  - job_name: "tracker_metrics"
+  - job_name: "tracker_stats"
     metrics_path: "/api/v1/stats"
     params:
       token: ["MyAccessToken"]
@@ -10,3 +10,10 @@ scrape_configs:
     static_configs:
       - targets: ["tracker:1212"]
 
+  - job_name: "tracker_metrics"
+    metrics_path: "/api/v1/metrics"
+    params:
+      token: ["MyAccessToken"]
+      format: ["prometheus"]
+    static_configs:
+      - targets: ["tracker:1212"]

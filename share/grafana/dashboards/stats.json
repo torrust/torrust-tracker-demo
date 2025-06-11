@@ -15,6 +15,7 @@
       }
     ]
   },
+  "description": "Using stats endpoint:\n\nhttps://tracker.torrust-demo.com/api/v1/stats?token=MyAccessToken&format=prometheus",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -75,11 +76,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "completed",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "completed{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "Completed",
@@ -143,11 +148,15 @@
             "type": "prometheus",
             "uid": "ce6lwx047kutca"
           },
-          "editorMode": "code",
-          "expr": "torrents",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "torrents{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "Torrents",
@@ -207,11 +216,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "seeders",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "seeders{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "Seeders",
@@ -271,11 +284,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "leechers",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "leechers{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "Leechers",
@@ -340,32 +357,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "{instance=\"tracker:1212\", job=\"tracker_metrics\"}"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
@@ -373,7 +365,7 @@
         "x": 0,
         "y": 5
       },
-      "id": 5,
+      "id": 19,
       "options": {
         "legend": {
           "calcs": [],
@@ -382,7 +374,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -391,11 +383,9 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "exemplar": false,
-          "expr": "rate(udp4_connections_handled[15m])",
+          "expr": "rate(udp4_connections_handled{job=\"tracker_stats\"}[15m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -464,32 +454,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "{instance=\"tracker:1212\", job=\"tracker_metrics\"}"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
@@ -497,7 +462,7 @@
         "x": 6,
         "y": 5
       },
-      "id": 6,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -506,7 +471,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -515,11 +480,9 @@
         {
           "disableTextWrap": false,
           "editorMode": "code",
-          "exemplar": false,
           "expr": "rate(udp4_announces_handled[15m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -588,32 +551,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "{instance=\"tracker:1212\", job=\"tracker_metrics\"}"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
@@ -621,7 +559,7 @@
         "x": 12,
         "y": 5
       },
-      "id": 7,
+      "id": 21,
       "options": {
         "legend": {
           "calcs": [],
@@ -630,7 +568,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -638,12 +576,10 @@
       "targets": [
         {
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
+          "editorMode": "code",
           "expr": "rate(udp4_scrapes_handled[15m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -712,32 +648,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "{instance=\"tracker:1212\", job=\"tracker_metrics\"}"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
@@ -745,7 +656,7 @@
         "x": 18,
         "y": 5
       },
-      "id": 8,
+      "id": 22,
       "options": {
         "legend": {
           "calcs": [],
@@ -754,7 +665,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -762,12 +673,10 @@
       "targets": [
         {
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
+          "editorMode": "code",
           "expr": "rate(udp4_errors_handled[15m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -861,11 +770,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "udp_avg_connect_processing_time_ns",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "udp_avg_connect_processing_time_ns{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP Average Connect Time",
@@ -955,11 +868,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "udp_avg_announce_processing_time_ns",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "udp_avg_announce_processing_time_ns{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP Average Announce Time",
@@ -1049,11 +966,15 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "udp_avg_scrape_processing_time_ns",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "udp_avg_scrape_processing_time_ns{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP Average Scrape Time",
@@ -1146,13 +1067,17 @@
             "type": "prometheus",
             "uid": "ce6lwx047kutca"
           },
-          "editorMode": "code",
-          "expr": "rate(udp_requests_banned[15m])",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "rate(udp_requests_banned{job=\"tracker_stats\"}[15m])",
+          "fullMetaSearch": false,
           "hide": false,
+          "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP banned requests (per second)",
@@ -1242,8 +1167,8 @@
       "targets": [
         {
           "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "rate(udp4_requests[15m])",
+          "editorMode": "builder",
+          "expr": "rate(udp4_requests{job=\"tracker_stats\"}[15m])",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1356,13 +1281,17 @@
             "type": "prometheus",
             "uid": "ce6lwx047kutca"
           },
-          "editorMode": "code",
-          "expr": "udp_banned_ips_total",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "udp_banned_ips_total{job=\"tracker_stats\"}",
+          "fullMetaSearch": false,
           "hide": false,
+          "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP Banned IPs",
@@ -1455,13 +1384,17 @@
             "type": "prometheus",
             "uid": "ce6lwx047kutca"
           },
-          "editorMode": "code",
-          "expr": "rate(udp_requests_aborted[15m])",
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "rate(udp_requests_aborted{job=\"tracker_stats\"}[15m])",
+          "fullMetaSearch": false,
           "hide": false,
+          "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "UDP aborted requests (per second)",
@@ -1475,13 +1408,13 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Torrust Live Demo Tracker",
+  "title": "Torrust Live Demo Tracker (stats)",
   "uid": "de6lx6hce8fswc",
-  "version": 74,
+  "version": 93,
   "weekStart": ""
 }

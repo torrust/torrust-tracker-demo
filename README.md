@@ -11,6 +11,12 @@ It's also used to track issues in production.
 - HTTP Tracker: <https://tracker.torrust-demo.com/announce>
 - UDP Tracker: udp://tracker.torrust-demo.com:6969/announce
 
+### Monitoring
+
+The demo includes monitoring with Grafana dashboards for the tracker to track performance metrics, peer connections, and system health.
+
+![Grafana Dashboard](docs/media/torrust-tracker-grafana-dashboard.png)
+
 ## Documentation
 
 - [Setup](docs/setup.md)

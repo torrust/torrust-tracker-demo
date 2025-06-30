@@ -1,10 +1,10 @@
-# Torrust Demo
+# Torrust Tracker Demo
 
-This repo contains all the configuration needed to run the live Torrust demo.
-
-Live demo: <https://index.torrust-demo.com/torrents>.
+This repo contains all the configuration needed to run the live Torrust Tracker demo.
 
 It's also used to track issues in production.
+
+> IMPORTANT: We are in the process of [splitting the Torrust Demo repo into two repos](https://github.com/torrust/torrust-demo/issues/79). This will allow us to deploy both services independently and it would make easier for users who only want to setup the tracker to re-use this setup. The content of this repo may change drastically in the future.
 
 ## Demo tracker
 

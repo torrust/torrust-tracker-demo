@@ -21,23 +21,6 @@ fi
 mkdir -p ./storage/certbot/etc
 mkdir -p ./storage/certbot/lib
 
-## Index
-
-# Generate the Index sqlite database directory and file if it does not exist
-mkdir -p ./storage/index/lib/database
-
-if ! [ -f "./storage/index/lib/database/sqlite3.db" ]; then
-	echo "Creating index database: './storage/index/lib/database/sqlite3.db'"
-	sqlite3 "./storage/index/lib/database/sqlite3.db" "VACUUM;"
-fi
-
-mkdir -p ./storage/index/etc
-
-if ! [ -f "./storage/index/etc/index.prod.container.sqlite3.toml" ]; then
-	echo "Crating index configuration: './storage/index/etc/index.toml'"
-	cp ./share/container/default/config/index.prod.container.sqlite3.toml ./storage/index/etc/index.toml
-fi
-
 ## Tracker
 
 # Generate the Tracker sqlite database directory and file if it does not exist

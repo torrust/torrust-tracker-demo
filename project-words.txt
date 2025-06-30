@@ -9,6 +9,7 @@ nosniff
 NUXT
 privkey
 publickey
+rwxr
 SAMEORIGIN
 secp
 webroot

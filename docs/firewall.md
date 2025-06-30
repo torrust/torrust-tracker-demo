@@ -1,6 +1,6 @@
 # Firewall
 
-We are using a Digital Ocean Firewall.
+We are using a Hetzner Firewall.
 
 ![Firewall Rules](./do-firewall-configuration.png)
 

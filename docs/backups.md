@@ -1,10 +1,10 @@
 # Backups
 
-## Backup Index Database
+## Backup Tracker Database
 
 ```bash
-cd /home/torrust/github/torrust/torrust-demo/
-./share/bin/index-db-backup.sh 
+cd /home/torrust/github/torrust/torrust-tracker-demo/
+./share/bin/tracker-db-backup.sh 
 ```
 
 ## Check Backups Crontab Configuration
@@ -26,7 +26,7 @@ total 26618268
 -rwxr-x--- 1 root    root        2342912 May 12 04:00 backup_2025-05-12_04-00-01.db
 ```
 
-YOu can also check the script output with:
+You can also check the script output with:
 
 ```bash
 tail /var/log/cron.log

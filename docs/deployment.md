@@ -1,7 +1,7 @@
 # Deployment
 
 1. SSH into the server.
-2. Execute the deployment script: `./bin/deploy-torrust-demo.com.sh`.
+2. Execute the deployment script: `./bin/deploy-torrust-tracker-demo.com.sh`.
 3. Execute the smoke tests:
 
     ```console

@@ -2,7 +2,7 @@
 
 Follow instructions on [Deploying Torrust To Production](https://torrust.com/blog/deploying-torrust-to-production).
 
-You need to also enable a [firewall](./docs/firewall.md).
+You need to also enable a [firewall](./firewall-requirements.md).
 
 The application is located in the directory: `/home/torrust/github/torrust/torrust-tracker-demo`.
 

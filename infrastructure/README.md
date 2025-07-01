@@ -27,8 +27,49 @@ This infrastructure setup provides:
 
 ## Quick Start
 
-See the [Quick Start Guide](../docs/infrastructure/quick-start.md) for the
-fastest way to get started.
+See the [Quick Start Guide](docs/quick-start.md) for the fastest way to get started.
+
+### Infrastructure Testing Commands
+
+```bash
+# Setup infrastructure dependencies
+make dev-setup
+# Log out and log back in for group permissions
+
+# Configure SSH key
+make setup-ssh-key
+# Edit terraform/local.tfvars with your SSH public key
+
+# Test infrastructure layer
+make test-prereq     # Check prerequisites
+make test-syntax     # Validate configurations
+make apply          # Deploy VM
+make ssh            # Test access
+make destroy        # Clean up
+
+# Run full infrastructure test suite
+make test
+```
+
+### Infrastructure Only Workflow
+
+```bash
+# 1. Install dependencies
+make dev-setup
+
+# 2. Configure SSH access
+make setup-ssh-key
+
+# 3. Test everything
+make test
+
+# 4. Deploy for development
+make apply
+make ssh
+
+# 5. Clean up
+make destroy
+```
 
 ## Components
 
@@ -129,9 +170,9 @@ make test-syntax
 
 - 22/tcp - SSH
 - 80/tcp, 443/tcp - HTTP/HTTPS
-- 6868/udp, 6969/udp - Tracker UDP
-- 7070/tcp - Tracker HTTP API
-- 1212/tcp - Metrics
+- 6868/udp, 6969/udp - Tracker UDP (see [Port Documentation](../application/docs/firewall-requirements.md#torrust-tracker-ports))
+- 7070/tcp - Tracker HTTP API (see [Port Documentation](../application/docs/firewall-requirements.md#torrust-tracker-ports))
+- 1212/tcp - Metrics (see [Port Documentation](../application/docs/firewall-requirements.md#torrust-tracker-ports))
 
 ## Security
 
@@ -184,3 +225,27 @@ When modifying the infrastructure:
 2. Update documentation as needed
 3. Follow the project's commit conventions
 4. Ensure backward compatibility
+
+### Documentation Guidelines
+
+When adding infrastructure documentation:
+
+- **Infrastructure docs**: VMs, cloud-init, system setup, networking, OpenTofu/Terraform
+- **Keep it actionable**: Guides should be step-by-step
+- **Include troubleshooting**: Document common issues and solutions
+- **Cross-reference**: Link to related infrastructure documentation
+- **Test instructions**: Always include commands to verify setup
+
+### Infrastructure vs Application Separation
+
+Infrastructure = "Where and how the application runs"
+
+Infrastructure documentation should cover:
+
+- VM provisioning and configuration
+- Operating system setup and networking
+- System-level security and firewall implementation
+- Infrastructure testing and validation
+- Cloud provider specific configurations
+
+See [`../application/`](../application/) for application-specific documentation.

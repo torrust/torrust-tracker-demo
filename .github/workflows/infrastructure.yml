@@ -5,14 +5,14 @@ on:
     branches: [main, develop]
     paths:
       - "infrastructure/**"
-      - "tests/infrastructure/**"
+      - "infrastructure/tests/**"
       - "Makefile"
       - ".github/workflows/infrastructure.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "infrastructure/**"
-      - "tests/infrastructure/**"
+      - "infrastructure/tests/**"
       - "Makefile"
       - ".github/workflows/infrastructure.yml"
 
@@ -39,8 +39,8 @@ jobs:
 
       - name: Test script permissions
         run: |
-          test -x tests/infrastructure/test-local-setup.sh
-          test -x tests/infrastructure/test-integration.sh
+          test -x infrastructure/tests/test-local-setup.sh
+          test -x infrastructure/tests/test-integration.sh
 
       - name: Run syntax tests
         env:
@@ -65,11 +65,12 @@ jobs:
       - name: Check documentation links
         run: |
           # Verify documentation files exist
-          test -f docs/infrastructure/quick-start.md
-          test -f docs/infrastructure/local-testing-setup.md
+          test -f infrastructure/docs/quick-start.md
+          test -f infrastructure/docs/local-testing-setup.md
           test -f infrastructure/README.md
+          test -f application/README.md
 
           # Check for common documentation issues
-          grep -q "Quick Start" docs/infrastructure/quick-start.md
-          grep -q "OpenTofu" docs/infrastructure/local-testing-setup.md
+          grep -q "Quick Start" infrastructure/docs/quick-start.md
+          grep -q "OpenTofu" infrastructure/docs/local-testing-setup.md
           grep -q "make" README.md

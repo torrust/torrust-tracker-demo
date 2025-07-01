@@ -31,7 +31,7 @@ docs/infrastructure/
 ### Testing Framework
 
 ```output
-tests/infrastructure/
+tests/
 ├── test-local-setup.sh             # Infrastructure deployment tests
 └── test-integration.sh             # Torrust Tracker integration tests
 ```
@@ -124,9 +124,9 @@ make destroy
 
 - `22/tcp` - SSH access
 - `80/tcp`, `443/tcp` - HTTP/HTTPS for proxy
-- `6868/udp`, `6969/udp` - Torrust Tracker UDP
-- `7070/tcp` - Tracker HTTP API
-- `1212/tcp` - Metrics endpoint
+- `6868/udp`, `6969/udp` - Torrust Tracker UDP (see [detailed port docs](../../application/docs/firewall-requirements.md#torrust-tracker-ports))
+- `7070/tcp` - Tracker HTTP API (see [detailed port docs](../../application/docs/firewall-requirements.md#torrust-tracker-ports))
+- `1212/tcp` - Metrics endpoint (see [detailed port docs](../../application/docs/firewall-requirements.md#torrust-tracker-ports))
 - `9090/tcp` - Prometheus (internal)
 - `3100/tcp` - Grafana (internal)
 

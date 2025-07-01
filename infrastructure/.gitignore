@@ -1,39 +1,58 @@
-# Terraform/OpenTofu files
+# Infrastructure-specific gitignore
+
+# OpenTofu/Terraform files
 *.tfstate
 *.tfstate.*
 *.tfvars
+!terraform.tfvars.example
 .terraform/
 .terraform.lock.hcl
-
-# Local SSH configuration (contains private keys)
-local.tfvars
-terraform.tfvars
-
-# Crash log files
-crash.log
-crash.*.log
-
-# Exclude all .tfvars files except example files
-*.tfvars
-!*.tfvars.example
-
-# Temporary files
-*.tmp
-*.log
-*~
-.DS_Store
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
+terraform.tfplan
+terraform.tfplan.*
 
 # Cloud-init generated files
-*.iso
+user-data.yaml
+user-data-minimal.yaml
+
+# libvirt/KVM generated files
+*.qcow2
+*.img
+libvirt_cloudinit_*.iso
+
+# Infrastructure logs
+*.log
+/logs/
+infrastructure-test.log
+
+# SSH keys and secrets
+*.pem
+*.key
+!*.pub
+id_*
+!id_*.pub
+
+# Local configuration files
+local.tfvars
+.env.local
+.env.infrastructure
+
+# VM and storage artifacts
+/storage/
+/images/
+/disks/
 
 # Test artifacts
-/tmp/torrust-infrastructure-test.log
+test-results/
+test-output/
+/tmp/
+
+# Cloud provider CLI configs
+.aws/
+.azure/
+.gcloud/
+.hcloud/
 
 # Backup files
 *.backup
+*.bak
+*~

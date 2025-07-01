@@ -27,31 +27,46 @@ torrust-tracker-demo/
 │   ├── workflows/           # GitHub Actions CI/CD pipelines
 │   └── copilot-instructions.md  # This contributor guide
 ├── docs/
-│   ├── infrastructure/      # Local testing documentation
-│   │   ├── quick-start.md   # Fast setup guide
-│   │   ├── local-testing-setup.md  # Detailed setup
-│   │   └── libvirt-setup.md # Troubleshooting guide
-│   ├── setup.md            # Production deployment docs
-│   ├── deployment.md       # Deployment procedures
-│   ├── firewall.md         # Security configuration
-│   └── *.md                # Additional operational docs
+│   ├── adr/                # Architecture Decision Records
+│   │   └── 001-makefile-location.md  # Makefile location decision
+│   └── README.md           # Cross-cutting documentation index
 ├── infrastructure/         # Infrastructure as Code
 │   ├── terraform/          # OpenTofu/Terraform configurations
 │   │   ├── main.tf         # VM and infrastructure definition
-│   │   └── local.tfvars    # Local configuration (git-ignored)
+│   │   └── terraform.tfvars.example  # Example configuration
 │   ├── cloud-init/         # VM provisioning templates
 │   │   ├── user-data.yaml.tpl     # Main system configuration
 │   │   ├── user-data-minimal.yaml.tpl  # Debug configuration
 │   │   ├── meta-data.yaml  # VM metadata
 │   │   └── network-config.yaml    # Network setup
-│   └── scripts/           # Infrastructure automation scripts
-├── share/
-│   ├── bin/               # Deployment and utility scripts
-│   └── container/default/config/  # Docker service configurations
-├── tests/infrastructure/  # Infrastructure validation tests
-├── compose.yaml           # Docker Compose for services
+│   ├── scripts/           # Infrastructure automation scripts
+│   ├── tests/             # Infrastructure validation tests
+│   ├── docs/              # Infrastructure documentation
+│   │   ├── quick-start.md  # Fast setup guide
+│   │   ├── local-testing-setup.md  # Detailed setup
+│   │   ├── infrastructure-overview.md  # Architecture overview
+│   │   ├── testing/        # Testing documentation
+│   │   └── third-party/    # Third-party setup guides
+│   ├── .gitignore         # Infrastructure-specific ignores
+│   └── README.md          # Infrastructure overview
+├── application/           # Application deployment and services
+│   ├── share/
+│   │   ├── bin/           # Deployment and utility scripts
+│   │   ├── container/     # Docker service configurations
+│   │   ├── dev/           # Development configs
+│   │   └── grafana/       # Grafana dashboards
+│   ├── docs/              # Application documentation
+│   │   ├── production-setup.md    # Production deployment docs
+│   │   ├── deployment.md          # Deployment procedures
+│   │   ├── firewall-requirements.md # Application firewall requirements
+│   │   ├── useful-commands.md     # Operational commands
+│   │   └── media/         # Screenshots and diagrams
+│   ├── compose.yaml       # Docker Compose for services
+│   ├── .env.production    # Production environment template
+│   ├── .gitignore         # Application-specific ignores
+│   └── README.md          # Application overview
 ├── Makefile              # Main automation interface
-└── *.md                  # Project documentation
+└── *.md                  # Project root documentation
 ```
 
 ### Key Components
@@ -61,25 +76,20 @@ torrust-tracker-demo/
 - **OpenTofu/Terraform**: Declarative infrastructure configuration
 - **Cloud-init**: Automated VM provisioning and setup
 - **Scripts**: Automation helpers for libvirt, monitoring, etc.
+- **Tests**: Infrastructure validation and integration tests
+- **Documentation**: Infrastructure-specific guides and references
 
-#### 🐳 Docker Services (`compose.yaml`, `share/container/`)
+#### 🐳 Application Services (`application/`)
 
-- **Nginx**: Reverse proxy and SSL termination
-- **Grafana**: Metrics visualization and dashboards
-- **Prometheus**: Metrics collection and storage
-- **Certbot**: Automated SSL certificate management
-
-#### 🧪 Testing (`tests/infrastructure/`)
-
-- **Validation scripts**: Ensure infrastructure works correctly
-- **Integration tests**: End-to-end deployment verification
-- **CI/CD pipelines**: Automated testing in GitHub Actions
+- **Docker Compose**: Service orchestration configuration
+- **Service Configs**: Nginx, Grafana, Prometheus configurations
+- **Deployment Scripts**: Application deployment and utility scripts
+- **Documentation**: Production setup, deployment, and operational guides
 
 #### 📚 Documentation (`docs/`)
 
-- **Production**: Setup, deployment, and operational guides
-- **Local testing**: Development and testing instructions
-- **Troubleshooting**: Common issues and solutions
+- **Cross-cutting**: Project-wide documentation and ADRs
+- **Architecture Decisions**: Documented design choices and rationale
 
 ## 🛠️ Development Workflow
 
@@ -174,11 +184,22 @@ make test-syntax # Syntax validation only
 - **Links**: Prefer relative links for internal documentation
 - **Code blocks**: Always specify language for syntax highlighting
 
+#### TOML Configuration Files
+
+- **Formatting**: Use [Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml) extension for VS Code
+- **Style**: Blank lines between sections, 2-space indentation, preserve comments
+- **Configuration**: Project includes `.taplo.toml` and `.vscode/settings.json` for consistent formatting
+- **Key conventions**:
+  - Blank line before each `[section]` and `[[array]]`
+  - Detailed comments for port configurations
+  - Preserve logical grouping and order
+  - No automatic key reordering
+
 #### Infrastructure as Code
 
 - **Validation**: All Terraform/OpenTofu must pass `tofu validate`
 - **Planning**: Test with `tofu plan` before applying
-- **Variables**: Use `local.tfvars` for sensitive/local config (git-ignored)
+- **Variables**: Use `terraform.tfvars` for sensitive/local config (git-ignored)
 - **Templates**: Use `.tpl` extension for templated files
 
 ### Testing Requirements
@@ -200,8 +221,8 @@ make test-syntax # Syntax validation only
 
 #### Secrets Management
 
-- **SSH Keys**: Use template variables, store in `local.tfvars`
-- **Git Ignore**: All sensitive files must be in `.gitignore`
+- **SSH Keys**: Use template variables, store in `terraform.tfvars`
+- **Git Ignore**: Distributed `.gitignore` files in each component (root, infrastructure, application)
 - **Environment Variables**: Use environment variables for CI/CD secrets
 - **Review**: All security-related changes require review
 
@@ -218,10 +239,11 @@ make test-syntax # Syntax validation only
 
 1. **Read the documentation**:
 
-   - [Quick Start Guide](../docs/infrastructure/quick-start.md)
-   - [Complete Setup Guide](../docs/infrastructure/local-testing-setup.md)
+   - [Quick Start Guide](../infrastructure/docs/quick-start.md)
+   - [Complete Setup Guide](../infrastructure/docs/local-testing-setup.md)
+   - [Production Setup Guide](../application/docs/production-setup.md)
 
-2. **Set up your environment**:
+2. **Set up your development environment**:
 
    ```bash
    make install-deps  # Install dependencies
@@ -229,7 +251,29 @@ make test-syntax # Syntax validation only
    make test-prereq   # Verify setup
    ```
 
-3. **Test a simple change**:
+3. **Install recommended VS Code extensions**:
+
+   - **[Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml)** - TOML syntax highlighting and formatting
+   - **[ShellCheck](https://marketplace.visualstudio.com/items?itemName=timonwong.shellcheck)** - Shell script linting
+   - **[YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)** - YAML support with schema validation
+   - **[markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint)** - Markdown linting
+   - **[HashiCorp Terraform](https://marketplace.visualstudio.com/items?itemName=HashiCorp.terraform)** - Terraform/OpenTofu support
+
+4. **Configure VS Code workspace**:
+
+   - Project includes `.vscode/settings.json` with TOML formatting configuration
+   - Extensions will use project-specific settings automatically
+   - Reload VS Code after installing extensions for settings to take effect
+
+5. **TOML Formatting Setup**:
+
+   - **Configuration files**: `.taplo.toml` and `.vscode/settings.json` control formatting
+   - **Format on save**: TOML files auto-format when saved (`Ctrl+S`)
+   - **Manual format**: Use `Shift+Alt+F` (Windows/Linux) or `Shift+Option+F` (Mac)
+   - **Style**: Blank lines between sections, 2-space indentation, preserved comments
+   - **Reload required**: After changing settings, reload VS Code window (`Ctrl+Shift+P` → "Developer: Reload Window")
+
+6. **Test a simple change**:
 
    ```bash
    make apply        # Deploy test VM
@@ -237,7 +281,7 @@ make test-syntax # Syntax validation only
    make destroy      # Clean up
    ```
 
-4. **Review existing issues**: Check [GitHub Issues](https://github.com/torrust/torrust-tracker-demo/issues) for good first contributions
+7. **Review existing issues**: Check [GitHub Issues](https://github.com/torrust/torrust-tracker-demo/issues) for good first contributions
 
 ### For Infrastructure Changes
 

@@ -12,6 +12,7 @@ domifaddr
 dominfo
 domstate
 ECDH
+ehthumbs
 ethernets
 fullchain
 genisoimage
@@ -20,9 +21,11 @@ letsencrypt
 libvirtd
 LOGLEVEL
 mailcatcher
+Makefiles
 mkisofs
 netdev
 newgrp
+newtrackon
 NOPASSWD
 nosniff
 NUXT
@@ -41,6 +44,7 @@ rwxr
 SAMEORIGIN
 secp
 somaxconn
+Taplo
 tfstate
 tfvars
 UEFI

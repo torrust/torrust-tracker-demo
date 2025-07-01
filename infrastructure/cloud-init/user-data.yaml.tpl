@@ -104,10 +104,10 @@ runcmd:
   - ufw allow ssh
   - ufw allow 80/tcp
   - ufw allow 443/tcp
-  - ufw allow 6868/udp # Torrust Tracker UDP
-  - ufw allow 6969/udp # Torrust Tracker UDP
-  - ufw allow 7070/tcp # Torrust Tracker HTTP API
-  - ufw allow 1212/tcp # Torrust Tracker metrics
+  - ufw allow 6868/udp # Torrust Tracker UDP (internal testing)
+  - ufw allow 6969/udp # Torrust Tracker UDP (official public)
+  - ufw allow 7070/tcp # Torrust Tracker HTTP (internal, via Nginx)
+  - ufw allow 1212/tcp # Torrust Tracker API & metrics
 
   # Apply sysctl settings
   - sysctl -p /etc/sysctl.d/99-torrust.conf

@@ -1,0 +1,81 @@
+# Application-specific gitignore
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production.local
+!.env.production
+
+# Docker and container files
+docker-compose.override.yml
+.dockerignore
+
+# Application data and storage
+/storage/
+/data/
+/database/
+/uploads/
+/logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# SSL certificates and keys
+/ssl/
+/certs/
+*.pem
+*.key
+*.crt
+*.csr
+!*.example.*
+
+# Application logs
+*.log
+/logs/
+tracker.log
+nginx.log
+access.log
+error.log
+
+# Backup files
+*.backup
+*.bak
+*.dump
+*.sql.gz
+
+# Grafana data
+/grafana/data/
+/grafana/plugins/
+/grafana/provisioning/datasources/*.yml
+!grafana/provisioning/datasources/*.yml.example
+
+# Prometheus data
+/prometheus/data/
+
+# Temporary files
+/tmp/
+/temp/
+*.tmp
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Application secrets
+secrets.yml
+secrets.yaml
+passwords.txt
+tokens.txt
+
+# Development artifacts
+.vscode/settings.json
+.idea/
+*.swp
+*.swo

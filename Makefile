@@ -4,7 +4,7 @@
 # Default variables
 VM_NAME ?= torrust-tracker-demo
 TERRAFORM_DIR = infrastructure/terraform
-TESTS_DIR = tests/infrastructure
+TESTS_DIR = infrastructure/tests
 
 # Help target
 help: ## Show this help message

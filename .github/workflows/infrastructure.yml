@@ -1,0 +1,75 @@
+name: Infrastructure Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "infrastructure/**"
+      - "tests/infrastructure/**"
+      - "Makefile"
+      - ".github/workflows/infrastructure.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "infrastructure/**"
+      - "tests/infrastructure/**"
+      - "Makefile"
+      - ".github/workflows/infrastructure.yml"
+
+jobs:
+  validate-infrastructure:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        run: |
+          curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+          chmod +x install-opentofu.sh
+          sudo ./install-opentofu.sh --install-method deb
+          rm install-opentofu.sh
+          tofu version
+
+      - name: Install yamllint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yamllint
+
+      - name: Test script permissions
+        run: |
+          test -x tests/infrastructure/test-local-setup.sh
+          test -x tests/infrastructure/test-integration.sh
+
+      - name: Run syntax tests
+        env:
+          CI: true
+        run: |
+          make ci-test-syntax
+
+      - name: Validate Makefile targets
+        run: |
+          make help
+          make workflow-help
+
+  # Note: Full VM testing is not run in CI as it requires KVM/nested virtualization
+  # which is not available in GitHub Actions runners
+  documentation-check:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check documentation links
+        run: |
+          # Verify documentation files exist
+          test -f docs/infrastructure/quick-start.md
+          test -f docs/infrastructure/local-testing-setup.md
+          test -f infrastructure/README.md
+
+          # Check for common documentation issues
+          grep -q "Quick Start" docs/infrastructure/quick-start.md
+          grep -q "OpenTofu" docs/infrastructure/local-testing-setup.md
+          grep -q "make" README.md

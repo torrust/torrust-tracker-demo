@@ -1,0 +1,39 @@
+# Terraform/OpenTofu files
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+
+# Local SSH configuration (contains private keys)
+local.tfvars
+terraform.tfvars
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files except example files
+*.tfvars
+!*.tfvars.example
+
+# Temporary files
+*.tmp
+*.log
+*~
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cloud-init generated files
+*.iso
+
+# Test artifacts
+/tmp/torrust-infrastructure-test.log
+
+# Backup files
+*.backup

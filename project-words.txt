@@ -11,6 +11,7 @@ dnsmasq
 domifaddr
 dominfo
 domstate
+dsmode
 ECDH
 ehthumbs
 ethernets
@@ -31,11 +32,14 @@ nosniff
 NUXT
 opentofu
 pacman
+pasteable
 pipefail
 plugdev
+poweroff
 prereq
 privkey
 publickey
+pwauth
 qcow
 repomix
 rmem
@@ -44,6 +48,7 @@ rwxr
 SAMEORIGIN
 secp
 somaxconn
+sshpass
 Taplo
 tfstate
 tfvars

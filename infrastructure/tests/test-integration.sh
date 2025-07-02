@@ -65,6 +65,19 @@ vm_exec() {
     ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 torrust@"${vm_ip}" "${command}"
 }
 
+# Detect which Docker Compose command is available
+get_docker_compose_cmd() {
+    local vm_ip="$1"
+
+    if vm_exec "${vm_ip}" "docker compose version >/dev/null 2>&1" ""; then
+        echo "docker compose"
+    elif vm_exec "${vm_ip}" "docker-compose --version >/dev/null 2>&1" ""; then
+        echo "docker-compose"
+    else
+        echo ""
+    fi
+}
+
 # Test VM is accessible
 test_vm_access() {
     log_info "Testing VM access..."
@@ -95,8 +108,12 @@ test_docker() {
         return 1
     fi
 
-    if vm_exec "${vm_ip}" "docker compose version" "Checking Docker Compose"; then
-        log_success "Docker Compose is available"
+    # Check Docker Compose (try V2 plugin first, then fallback to standalone)
+    if vm_exec "${vm_ip}" "docker compose version" "Checking Docker Compose V2 plugin"; then
+        log_success "Docker Compose V2 plugin is available"
+    elif vm_exec "${vm_ip}" "docker-compose --version" "Checking Docker Compose standalone"; then
+        log_success "Docker Compose standalone is available"
+        log_warning "Using standalone docker-compose. Consider upgrading to Docker Compose V2 plugin for full compatibility."
     else
         log_error "Docker Compose is not working"
         return 1
@@ -136,18 +153,29 @@ start_tracker_services() {
     local vm_ip
     vm_ip=$(get_vm_ip)
 
+    # Detect which Docker Compose command to use
+    local compose_cmd
+    compose_cmd=$(get_docker_compose_cmd "${vm_ip}")
+
+    if [ -z "${compose_cmd}" ]; then
+        log_error "Docker Compose is not available"
+        return 1
+    fi
+
+    log_info "Using Docker Compose command: ${compose_cmd}"
+
     # Pull latest images
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && docker compose pull" "Pulling Docker images"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} pull" "Pulling Docker images"
 
     # Start services
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && docker compose up -d" "Starting services"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} up -d" "Starting services"
 
     # Wait for services to be ready
     log_info "Waiting for services to be ready..."
     sleep 30
 
     # Check service status
-    if vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && docker compose ps" "Checking service status"; then
+    if vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} ps" "Checking service status"; then
         log_success "Services started successfully"
     else
         log_error "Services failed to start properly"
@@ -244,7 +272,15 @@ stop_services() {
     local vm_ip
     vm_ip=$(get_vm_ip)
 
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && docker compose down" "Stopping services"
+    # Detect which Docker Compose command to use
+    local compose_cmd
+    compose_cmd=$(get_docker_compose_cmd "${vm_ip}")
+
+    if [ -n "${compose_cmd}" ]; then
+        vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} down" "Stopping services"
+    else
+        log_warning "Docker Compose not available, cannot stop services"
+    fi
 
     log_success "Services stopped"
     return 0

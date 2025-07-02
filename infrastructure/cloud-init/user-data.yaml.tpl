@@ -1,5 +1,6 @@
+---
 # cloud-config
-# Cloud-init configuration for Torrust Tracker Demo VM
+# Optimized cloud-init configuration based on manual testing
 
 # Basic system configuration
 hostname: torrust-tracker-demo
@@ -25,13 +26,24 @@ users:
       ]
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
+    lock_passwd: false
     ssh_authorized_keys:
       - ${ssh_public_key}
+
+# Set password using chpasswd (most reliable method)
+chpasswd:
+  list: |
+    torrust:torrust123
+  expire: false
+
+# Enable SSH password authentication for debugging
+ssh_pwauth: true
 
 # Package updates and installations
 package_update: true
 package_upgrade: true
 
+# Install packages (verified working order)
 packages:
   - curl
   - wget
@@ -46,10 +58,17 @@ packages:
   - fail2ban
   - unattended-upgrades
   - docker.io
-  - docker-compose-plugin
 
-# System configuration
+# System configuration files
 write_files:
+  # SSH configuration to enable password authentication
+  - path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+    content: |
+      PasswordAuthentication yes
+      PubkeyAuthentication yes
+    permissions: "0644"
+    owner: root:root
+
   # Docker daemon configuration
   - path: /etc/docker/daemon.json
     content: |
@@ -92,31 +111,48 @@ runcmd:
   - mkdir -p /home/torrust/github/torrust
   - chown -R torrust:torrust /home/torrust/github
 
+  # Configure SSH first (restart sshd with new config)
+  - systemctl restart sshd
+  - systemctl enable ssh
+
   # Configure Docker
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG docker torrust
 
-  # Configure UFW firewall (basic setup)
-  - ufw --force enable
+  # Install Docker Compose V2 plugin (compatible with compose.yaml format)
+  - mkdir -p /usr/local/lib/docker/cli-plugins
+  - >
+    curl -SL
+    "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-linux-x86_64"
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
+  - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+  - >
+    ln -sf /usr/local/lib/docker/cli-plugins/docker-compose
+    /usr/local/bin/docker-compose
+
+  # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
+  - ufw --force reset
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw allow ssh
+  - ufw allow 22/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
-  - ufw allow 6868/udp # Torrust Tracker UDP (internal testing)
-  - ufw allow 6969/udp # Torrust Tracker UDP (official public)
-  - ufw allow 7070/tcp # Torrust Tracker HTTP (internal, via Nginx)
-  - ufw allow 1212/tcp # Torrust Tracker API & metrics
+  - ufw allow 6868/udp
+  - ufw allow 6969/udp
+  - ufw allow 7070/tcp
+  - ufw allow 1212/tcp
+  - ufw --force enable
 
   # Apply sysctl settings
   - sysctl -p /etc/sysctl.d/99-torrust.conf
 
   # Configure automatic security updates
-  - echo 'Unattended-Upgrade::Automatic-Reboot "false";' >>
+  - >
+    echo 'Unattended-Upgrade::Automatic-Reboot "false";' >>
     /etc/apt/apt.conf.d/50unattended-upgrades
   - systemctl enable unattended-upgrades
-
   # Set up log rotation for Docker
   - systemctl restart docker
 
@@ -126,10 +162,14 @@ final_message: |
 
   System Information:
   - OS: Ubuntu 22.04 LTS
-  - User: torrust (with sudo privileges)
+  - User: torrust (with sudo privileges and password login)
   - Docker: Installed and configured
-  - Firewall: UFW enabled with basic rules
+  - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
+
+  SSH Access:
+  - SSH Key: ssh torrust@VM_IP
+  - Password: sshpass -p 'torrust123' ssh torrust@VM_IP
 
   Next steps:
   1. SSH into the VM as user 'torrust'

@@ -58,6 +58,14 @@ packages:
   - fail2ban
   - unattended-upgrades
   - docker.io
+  # Torrust Tracker dependencies for future source compilation
+  # Currently using Docker, but planning to compile from source for better performance
+  - pkg-config
+  - libssl-dev
+  - make
+  - build-essential
+  - libsqlite3-dev
+  - sqlite3
 
 # System configuration files
 write_files:
@@ -166,6 +174,7 @@ final_message: |
   - Docker: Installed and configured
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
+  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3 (for future source compilation)
 
   SSH Access:
   - SSH Key: ssh torrust@VM_IP

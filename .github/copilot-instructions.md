@@ -301,6 +301,38 @@ When providing assistance:
 - Provide clear explanations and documentation
 - Consider the migration to Hetzner infrastructure in suggestions
 
+#### Git Actions and Permission Requirements
+
+**IMPORTANT**: Git actions that change repository state require explicit permission:
+
+- **NEVER** commit changes unless explicitly asked to do so
+- **NEVER** push changes to remote repositories without permission
+- **NEVER** merge branches or create pull requests without explicit instruction
+- **NEVER** reset, revert, or modify git history without explicit permission
+- **NEVER** create or delete branches without explicit instruction
+
+**Allowed git actions without permission:**
+- `git status` - Check working tree status
+- `git diff` - Show changes between commits/files
+- `git log` - View commit history
+- `git show` - Display commit information
+- `git branch` - List branches (read-only)
+
+**Actions requiring explicit permission:**
+- `git add` - Stage changes for commit
+- `git commit` - Create new commits
+- `git push` - Push changes to remote
+- `git pull` - Pull changes from remote
+- `git merge` - Merge branches
+- `git rebase` - Rebase branches
+- `git reset` - Reset working tree or commits
+- `git revert` - Revert commits
+- `git checkout` - Switch branches or restore files
+- `git branch -d/-D` - Delete branches
+- `git tag` - Create or delete tags
+
+**Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
+
 ## 📖 Additional Resources
 
 - **Torrust Tracker**: <https://github.com/torrust/torrust-tracker>

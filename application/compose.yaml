@@ -36,8 +36,6 @@ services:
         max-size: "10m"
         max-file: "10"
     depends_on:
-      - index-gui
-      - index
       - tracker
       - grafana
 
@@ -108,4 +106,3 @@ networks:
 volumes:
   mysql_data: {}
   grafana_data: {}
-

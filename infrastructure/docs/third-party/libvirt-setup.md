@@ -439,9 +439,79 @@ ip link show virbr0
 virsh list --all
 virsh pool-list --all
 
+# DHCP lease information
+virsh net-dhcp-leases default
+
 # Log analysis
 sudo journalctl -u libvirtd --since "1 hour ago"
 ```
+
+## 🌐 Understanding DHCP Lease Behavior
+
+### Why Multiple DHCP Leases Appear
+
+When you run `virsh net-dhcp-leases default`, you might see multiple entries
+even if you're only using one VM. This is **normal behavior** for the
+following reasons:
+
+1. **Lease Persistence**: DHCP leases don't immediately disappear when VMs are
+   destroyed - they persist until their natural expiry time
+2. **VM Lifecycle**: Each time you run `make apply` and `make destroy`, a new
+   VM is created with a different MAC address
+3. **Unique MAC Addresses**: Each VM deployment gets a fresh MAC address,
+   creating a new DHCP lease entry
+
+### Example Output Explanation
+
+```console
+$ virsh net-dhcp-leases default
+ Expiry Time           MAC address         Protocol   IP address
+--------------------------------------------------------------------------------
+ 2025-07-04 18:03:22   52:54:00:02:c2:8b   ipv4       192.168.122.51/24
+ 2025-07-04 18:12:03   52:54:00:76:41:06   ipv4       192.168.122.172/24
+ 2025-07-04 17:57:29   52:54:00:ea:19:a4   ipv4       192.168.122.161/24
+```
+
+In this example:
+
+- **192.168.122.172** - Current active VM (has hostname "torrust-tracker-demo")
+- **192.168.122.51** and **192.168.122.161** - Previous VM deployments
+  (expired/inactive)
+
+### Verifying Active VMs
+
+To see which VMs are actually running:
+
+```bash
+# Check running VMs
+virsh list --all
+
+# Check if any VMs are consuming the leased IPs
+ping -c 1 192.168.122.172  # Should respond if VM is active
+ping -c 1 192.168.122.51   # Should timeout if VM is destroyed
+```
+
+### DHCP Lease Cleanup
+
+- **Automatic**: Leases automatically expire based on their expiry time
+- **Manual**: You can restart the libvirt network to clear expired leases:
+
+```bash
+# Restart default network to clean up expired leases
+virsh net-destroy default
+virsh net-start default
+```
+
+**Note**: This will interrupt network connectivity for running VMs, so only do
+this when no VMs are active.
+
+### Impact on Development
+
+This behavior **does not affect** your development workflow:
+
+- New VM deployments get fresh IP addresses
+- Old leases don't conflict with new deployments
+- The infrastructure works correctly regardless of lease history
 
 ## 🆘 Emergency Reset
 

@@ -174,7 +174,8 @@ final_message: |
   - Docker: Installed and configured
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
-  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3 (for future source compilation)
+  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
+    (for future source compilation)
 
   SSH Access:
   - SSH Key: ssh torrust@VM_IP

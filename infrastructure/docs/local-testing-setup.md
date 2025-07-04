@@ -315,6 +315,7 @@ tofu refresh
      configuration, reboot)
    - **Solution**: This is normal; VM will get IP after cloud-init completes
      (~5-10 minutes)
-   - **Check**: Use `virsh console torrust-tracker-demo` or `virt-viewer spice://127.0.0.1:5900` to monitor boot progress
+   - **Check**: Use `virsh console torrust-tracker-demo` or
+     `virt-viewer spice://127.0.0.1:5900` to monitor boot progress
 
 ### Logs and Debugging

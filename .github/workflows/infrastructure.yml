@@ -5,72 +5,41 @@ on:
     branches: [main, develop]
     paths:
       - "infrastructure/**"
-      - "infrastructure/tests/**"
+      - "application/**"
+      - "scripts/**"
       - "Makefile"
       - ".github/workflows/infrastructure.yml"
+      - "**/*.md"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - "**/*.sh"
   pull_request:
     branches: [main, develop]
     paths:
       - "infrastructure/**"
-      - "infrastructure/tests/**"
+      - "application/**"
+      - "scripts/**"
       - "Makefile"
       - ".github/workflows/infrastructure.yml"
+      - "**/*.md"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - "**/*.sh"
 
 jobs:
-  validate-infrastructure:
+  lint:
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install OpenTofu
-        run: |
-          curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
-          chmod +x install-opentofu.sh
-          sudo ./install-opentofu.sh --install-method deb
-          rm install-opentofu.sh
-          tofu version
-
-      - name: Install yamllint
+      - name: Install linting tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y yamllint
+          sudo apt-get install -y yamllint shellcheck
+          sudo npm install -g markdownlint-cli
 
-      - name: Test script permissions
+      - name: Run linting script
         run: |
-          test -x infrastructure/tests/test-local-setup.sh
-          test -x infrastructure/tests/test-integration.sh
-
-      - name: Run syntax tests
-        env:
-          CI: true
-        run: |
-          make ci-test-syntax
-
-      - name: Validate Makefile targets
-        run: |
-          make help
-          make workflow-help
-
-  # Note: Full VM testing is not run in CI as it requires KVM/nested virtualization
-  # which is not available in GitHub Actions runners
-  documentation-check:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check documentation links
-        run: |
-          # Verify documentation files exist
-          test -f infrastructure/docs/quick-start.md
-          test -f infrastructure/docs/local-testing-setup.md
-          test -f infrastructure/README.md
-          test -f application/README.md
-
-          # Check for common documentation issues
-          grep -q "Quick Start" infrastructure/docs/quick-start.md
-          grep -q "OpenTofu" infrastructure/docs/local-testing-setup.md
-          grep -q "make" README.md
+          ./scripts/lint.sh

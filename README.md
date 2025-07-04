@@ -118,6 +118,39 @@ For contributors and developers:
 - **General contributing guidelines**: See [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
 - **Architecture decisions**: See [`docs/adr/`](docs/adr/) for design rationale
 
+### Code Quality and Linting
+
+The project uses automated linting to ensure code quality and consistency:
+
+```bash
+# Run all linting checks
+make lint
+
+# Run individual linters
+make lint-yaml        # YAML files (yamllint)
+make lint-shell       # Shell scripts (shellcheck)
+make lint-markdown    # Markdown files (markdownlint)
+```
+
+**Required tools:**
+
+- `yamllint` - YAML syntax and style checking
+- `shellcheck` - Shell script analysis
+- `markdownlint` - Markdown style and structure checking
+
+**Installation:**
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install yamllint shellcheck
+sudo npm install -g markdownlint-cli
+
+# Or install all project dependencies
+make install-deps
+```
+
+Linting is automatically run in CI/CD pipelines to validate all contributions.
+
 > **Note**: The main `Makefile` is kept at the root level to serve as the
 > project's primary interface. See [ADR-001](docs/adr/001-makefile-location.md)
 > for the full rationale.

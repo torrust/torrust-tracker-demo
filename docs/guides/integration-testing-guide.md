@@ -106,7 +106,6 @@ ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
 
 **Expected Output**: All checks should show "✅" (no conflicts).
 
-
 ### 1.4.1 Manual Cleanup (if needed)
 
 If the verification step shows "❌ Volumes still exist!" then manually clean them:
@@ -126,7 +125,8 @@ virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
 
 **Expected Output**: Should show "✅ No volume conflicts" after manual cleanup.
 
-**What This Fixes**: Removes leftover volumes that `make clean-and-fix` sometimes misses.
+**What This Fixes**: Removes leftover volumes that `make clean-and-fix`
+sometimes misses.
 
 ### 1.5 Set Up SSH Key Configuration
 
@@ -328,7 +328,7 @@ sudo systemctl status cloud-init-local cloud-init cloud-config cloud-final
 # Exit console: Ctrl+]
 ```
 
-**Method 2: Use virt-viewer for graphical console access**
+#### Method 2: Use virt-viewer for graphical console access
 
 ```bash
 # Connect to VM graphical console (shows login prompt)
@@ -338,7 +338,9 @@ virt-viewer spice://127.0.0.1:5900
 virt-viewer torrust-tracker-demo
 ```
 
-**Note**: The virt-viewer method provides a graphical console where you should see a login prompt. This is particularly useful when the text-based virsh console doesn't work or when you need to see the full boot process.
+**Note**: The virt-viewer method provides a graphical console where you should
+see a login prompt. This is particularly useful when the text-based virsh
+console doesn't work or when you need to see the full boot process.
 
 #### Check from Host System
 

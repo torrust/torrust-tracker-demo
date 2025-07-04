@@ -7,4 +7,4 @@ rules:
     min-spaces-from-content: 1 # Allow single space before comments
   document-start: disable # Cloud-init files don't need --- start
   truthy:
-    allowed-values: ["true", "false", "yes", "no"] # Allow cloud-init common values
+    allowed-values: ["true", "false", "yes", "no", "on", "off"] # Allow cloud-init and GitHub Actions common values

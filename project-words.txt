@@ -47,6 +47,7 @@ runcmd
 rwxr
 SAMEORIGIN
 secp
+shellcheck
 somaxconn
 sshpass
 Taplo

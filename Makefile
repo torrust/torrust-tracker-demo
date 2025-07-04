@@ -1,5 +1,5 @@
 # Makefile for Torrust Tracker Local Testing Infrastructure
-.PHONY: help init plan apply destroy test clean status ssh install-deps console vm-console
+.PHONY: help init plan apply destroy test clean status ssh install-deps console vm-console lint lint-yaml lint-shell lint-markdown
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
@@ -139,6 +139,22 @@ fix-libvirt: ## Fix common libvirt permission issues
 test-syntax: ## Test configuration syntax only
 	@echo "Testing configuration syntax..."
 	$(TESTS_DIR)/test-local-setup.sh syntax
+
+lint: ## Run all linting checks (yamllint, shellcheck, markdownlint)
+	@echo "Running linting checks..."
+	./scripts/lint.sh
+
+lint-yaml: ## Run only yamllint
+	@echo "Running yamllint..."
+	./scripts/lint.sh --yaml
+
+lint-shell: ## Run only shellcheck
+	@echo "Running shellcheck..."
+	./scripts/lint.sh --shell
+
+lint-markdown: ## Run only markdownlint
+	@echo "Running markdownlint..."
+	./scripts/lint.sh --markdown
 
 test-integration: ## Run integration tests (requires deployed VM)
 	@echo "Running integration tests..."

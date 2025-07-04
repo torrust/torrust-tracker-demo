@@ -238,7 +238,7 @@ test_cloud_init_syntax() {
         for template in user-data.yaml.tpl user-data-minimal.yaml.tpl; do
             local test_file="${temp_dir}/${template%.tpl}"
             # Substitute template variables with dummy values for syntax testing
-            sed 's/\${ssh_public_key}/ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/' "${cloud_init_dir}/${template}" >"${test_file}"
+            sed "s/\\\${ssh_public_key}/ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/" "${cloud_init_dir}/${template}" >"${test_file}"
 
             if yamllint -c "${PROJECT_ROOT}/.yamllint-ci.yml" "${test_file}" >/dev/null 2>&1; then
                 log_success "${template} YAML syntax is valid (after variable substitution)"

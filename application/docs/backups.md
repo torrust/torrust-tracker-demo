@@ -4,7 +4,7 @@
 
 ```bash
 cd /home/torrust/github/torrust/torrust-tracker-demo/
-./share/bin/tracker-db-backup.sh 
+./share/bin/tracker-db-backup.sh
 ```
 
 ## Check Backups Crontab Configuration
@@ -13,7 +13,9 @@ cd /home/torrust/github/torrust/torrust-tracker-demo/
 sudo crontab -e
 ```
 
-You should see the [crontab.conf](../share/container/default/config/crontab.conf) configuration file.
+You should see the
+[crontab.conf](../share/container/default/config/crontab.conf) configuration
+file.
 
 ## Check Backups
 

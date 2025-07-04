@@ -11,7 +11,7 @@ echo ""
 check_cloud_init() {
     local ip=$1
     timeout 5 ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o BatchMode=yes \
-        -i "$SSH_KEY_PATH" torrust@$ip \
+        -i "$SSH_KEY_PATH" torrust@"$ip" \
         "sudo cloud-init status --long" 2>/dev/null
 }
 
@@ -19,7 +19,7 @@ check_cloud_init() {
 get_cloud_init_logs() {
     local ip=$1
     timeout 10 ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o BatchMode=yes \
-        -i "$SSH_KEY_PATH" torrust@$ip \
+        -i "$SSH_KEY_PATH" torrust@"$ip" \
         "sudo tail -f /var/log/cloud-init-output.log" 2>/dev/null
 }
 
@@ -39,7 +39,7 @@ while true; do
         echo "VM IP: $ip"
         echo "Checking cloud-init status..."
 
-        if cloud_init_status=$(check_cloud_init $ip); then
+        if cloud_init_status=$(check_cloud_init "$ip"); then
             echo "$cloud_init_status"
 
             if echo "$cloud_init_status" | grep -q "status: done"; then

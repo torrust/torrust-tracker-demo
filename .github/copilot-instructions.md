@@ -118,18 +118,18 @@ make test-syntax # Syntax validation only
 
 ### Main Commands
 
-| Command                   | Purpose                           |
-| ------------------------- | --------------------------------- |
-| `make help`               | Show all available commands       |
+| Command                   | Purpose                                     |
+| ------------------------- | ------------------------------------------- |
+| `make help`               | Show all available commands                 |
 | `make install-deps`       | Install OpenTofu, libvirt, KVM, virt-viewer |
-| `make test`               | Run complete infrastructure tests |
-| `make apply`              | Deploy VM with full configuration |
-| `make apply-minimal`      | Deploy VM with minimal config     |
-| `make ssh`                | Connect to deployed VM            |
-| `make console`            | Access VM console (text-based)    |
-| `make vm-console`         | Access VM graphical console (GUI) |
-| `make destroy`            | Remove deployed VM                |
-| `make monitor-cloud-init` | Watch VM provisioning progress    |
+| `make test`               | Run complete infrastructure tests           |
+| `make apply`              | Deploy VM with full configuration           |
+| `make apply-minimal`      | Deploy VM with minimal config               |
+| `make ssh`                | Connect to deployed VM                      |
+| `make console`            | Access VM console (text-based)              |
+| `make vm-console`         | Access VM graphical console (GUI)           |
+| `make destroy`            | Remove deployed VM                          |
+| `make monitor-cloud-init` | Watch VM provisioning progress              |
 
 ## 📋 Conventions and Standards
 
@@ -185,6 +185,19 @@ make test-syntax # Syntax validation only
 - **Structure**: Use consistent heading hierarchy
 - **Links**: Prefer relative links for internal documentation
 - **Code blocks**: Always specify language for syntax highlighting
+
+#### Automated Linting
+
+The project includes a comprehensive linting script that validates all file types:
+
+```bash
+./scripts/lint.sh              # Run all linters
+./scripts/lint.sh --yaml       # Run only yamllint
+./scripts/lint.sh --shell      # Run only ShellCheck
+./scripts/lint.sh --markdown   # Run only markdownlint
+```
+
+**IMPORTANT**: Always run `./scripts/lint.sh` before committing to ensure code quality standards are met.
 
 #### TOML Configuration Files
 
@@ -306,22 +319,26 @@ When providing assistance:
 #### Preferred Working Methodology
 
 **Work in Small Steps:**
+
 - Break down complex tasks into small, manageable increments
 - Each step should be independently testable and reviewable
 - Prefer multiple small commits over large monolithic changes
 
 **Parallel Changes When Possible:**
+
 - Identify changes that can be made independently
 - Suggest parallel work streams for unrelated modifications
 - Separate concerns to enable concurrent development
 
 **Separate Refactors from Features:**
+
 - **Refactoring commits**: Focus solely on code structure, organization, or cleanup
 - **Feature commits**: Focus on adding new functionality or enabling features
 - Never mix refactoring with feature addition in the same commit
 - Always complete refactoring first, then add features in subsequent commits
 
 **Complex Tasks and Bug Fixes:**
+
 - For any task that requires multiple intermediary steps, always present a plan first
 - Break down the approach into numbered steps with clear objectives
 - Ask for confirmation before implementing the plan
@@ -339,6 +356,7 @@ When providing assistance:
 - **NEVER** create or delete branches without explicit instruction
 
 **Allowed git actions without permission:**
+
 - `git status` - Check working tree status
 - `git diff` - Show changes between commits/files
 - `git log` - View commit history
@@ -346,6 +364,7 @@ When providing assistance:
 - `git branch` - List branches (read-only)
 
 **Actions requiring explicit permission:**
+
 - `git add` - Stage changes for commit
 - `git commit` - Create new commits
 - `git push` - Push changes to remote
@@ -359,6 +378,20 @@ When providing assistance:
 - `git tag` - Create or delete tags
 
 **Commit Signing Requirement**: All commits MUST be signed with GPG. When performing git commits, always use the default git commit behavior (which will trigger GPG signing) rather than `--no-gpg-sign`.
+
+**Pre-commit Linting Requirement**: ALWAYS run the linting script before committing any changes:
+
+```bash
+./scripts/lint.sh
+```
+
+This script validates:
+
+- YAML files with yamllint
+- Shell scripts with ShellCheck
+- Markdown files with markdownlint
+
+Only commit if all linting checks pass. If linting fails, fix the issues before committing.
 
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 

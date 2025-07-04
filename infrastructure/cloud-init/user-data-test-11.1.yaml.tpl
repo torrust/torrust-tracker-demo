@@ -1,6 +1,6 @@
 #cloud-config
-# cloud-config
-# Optimized cloud-init configuration based on manual testing
+# Test 11.1: Add unattended-upgrades configuration (SUSPECT TEST)
+# Based on Test 10.1 + unattended-upgrades package and configuration
 
 # Basic system configuration
 hostname: torrust-tracker-demo
@@ -43,7 +43,7 @@ ssh_pwauth: true
 package_update: true
 package_upgrade: true
 
-# Install packages (verified working order)
+# Install packages including UFW, fail2ban, Docker, and unattended-upgrades
 packages:
   - curl
   - wget
@@ -51,21 +51,13 @@ packages:
   - htop
   - vim
   - net-tools
+  - ufw
+  - fail2ban
+  - docker.io
   - ca-certificates
   - gnupg
   - lsb-release
-  - ufw
-  - fail2ban
   - unattended-upgrades
-  - docker.io
-  # Torrust Tracker dependencies for future source compilation
-  # Currently using Docker, but planning to compile from source for better performance
-  - pkg-config
-  - libssl-dev
-  - make
-  - build-essential
-  - libsqlite3-dev
-  - sqlite3
 
 # System configuration files
 write_files:
@@ -74,6 +66,38 @@ write_files:
     content: |
       PasswordAuthentication yes
       PubkeyAuthentication yes
+    permissions: "0644"
+    owner: root:root
+
+  # UFW basic configuration
+  - path: /etc/ufw/ufw.conf
+    content: |
+      ENABLED=yes
+      LOGLEVEL=low
+    permissions: "0644"
+    owner: root:root
+
+  # fail2ban configuration
+  - path: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      # Default ban time (10 minutes)
+      bantime = 600
+      # Find time window (10 minutes)
+      findtime = 600
+      # Max retries before ban
+      maxretry = 5
+      # Backend to use
+      backend = systemd
+      
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 5
+      bantime = 600
+      findtime = 600
     permissions: "0644"
     owner: root:root
 
@@ -87,14 +111,6 @@ write_files:
           "max-file": "3"
         }
       }
-    permissions: "0644"
-    owner: root:root
-
-  # UFW basic configuration
-  - path: /etc/ufw/ufw.conf
-    content: |
-      ENABLED=yes
-      LOGLEVEL=low
     permissions: "0644"
     owner: root:root
 
@@ -123,12 +139,24 @@ runcmd:
   - systemctl restart sshd
   - systemctl enable ssh
 
+  # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
+  - ufw --force reset
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow ssh
+  - ufw allow 22/tcp
+  - ufw --force enable
+
+  # Configure and start fail2ban service
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+
   # Configure Docker
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG docker torrust
 
-  # Install Docker Compose V2 plugin (compatible with compose.yaml format)
+  # Install Docker Compose V2 plugin
   - mkdir -p /usr/local/lib/docker/cli-plugins
   - >
     curl -SL
@@ -139,54 +167,19 @@ runcmd:
     ln -sf /usr/local/lib/docker/cli-plugins/docker-compose
     /usr/local/bin/docker-compose
 
-  # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
-  - ufw --force reset
-  - ufw default deny incoming
-  - ufw default allow outgoing
-  - ufw allow ssh
-  - ufw allow 22/tcp
-  - ufw allow 80/tcp
-  - ufw allow 443/tcp
-  - ufw allow 6868/udp
-  - ufw allow 6969/udp
-  - ufw allow 7070/tcp
-  - ufw allow 1212/tcp
-  - ufw --force enable
-
   # Apply sysctl settings
   - sysctl -p /etc/sysctl.d/99-torrust.conf
 
-  # Configure automatic security updates
+  # Configure automatic security updates (NEW - SUSPECT)
   - >
     echo 'Unattended-Upgrade::Automatic-Reboot "false";' >>
     /etc/apt/apt.conf.d/50unattended-upgrades
   - systemctl enable unattended-upgrades
-  # Set up log rotation for Docker
-  - systemctl restart docker
 
 # Final message
 final_message: |
-  Torrust Tracker Demo VM setup completed!
-
-  System Information:
-  - OS: Ubuntu 22.04 LTS
-  - User: torrust (with sudo privileges and password login)
-  - Docker: Installed and configured
-  - Firewall: UFW enabled with proper SSH rules
-  - Security: Automatic updates enabled
-  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
-    (for future source compilation)
-
-  SSH Access:
-  - SSH Key: ssh torrust@VM_IP
-  - Password: sshpass -p 'torrust123' ssh torrust@VM_IP
-
-  Next steps:
-  1. SSH into the VM as user 'torrust'
-  2. Clone the torrust-tracker-demo repository
-  3. Run the deployment scripts
-
-  The VM is ready for Torrust Tracker deployment!
+  Test 11.1 VM setup completed!
+  SSH Access: ssh torrust@VM_IP or sshpass -p 'torrust123' ssh torrust@VM_IP
 
 # Power state - reboot after setup
 power_state:

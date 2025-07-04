@@ -1,6 +1,6 @@
 #cloud-config
-# cloud-config
-# Optimized cloud-init configuration based on manual testing
+# Test: Full config with corrected header format (remove YAML document start marker)
+# Testing if the "---" YAML document start marker is causing the SSH failure
 
 # Basic system configuration
 hostname: torrust-tracker-demo
@@ -166,27 +166,15 @@ runcmd:
 
 # Final message
 final_message: |
-  Torrust Tracker Demo VM setup completed!
-
-  System Information:
-  - OS: Ubuntu 22.04 LTS
-  - User: torrust (with sudo privileges and password login)
-  - Docker: Installed and configured
-  - Firewall: UFW enabled with proper SSH rules
-  - Security: Automatic updates enabled
-  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
-    (for future source compilation)
-
+  Test: Full config with corrected header format
+  
+  Testing if the YAML document start marker (---) was causing SSH failure
+  
   SSH Access:
   - SSH Key: ssh torrust@VM_IP
   - Password: sshpass -p 'torrust123' ssh torrust@VM_IP
 
-  Next steps:
-  1. SSH into the VM as user 'torrust'
-  2. Clone the torrust-tracker-demo repository
-  3. Run the deployment scripts
-
-  The VM is ready for Torrust Tracker deployment!
+  If this works, the root cause is the YAML document start marker!
 
 # Power state - reboot after setup
 power_state:

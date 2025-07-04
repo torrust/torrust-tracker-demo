@@ -1,6 +1,6 @@
 #cloud-config
-# cloud-config
-# Optimized cloud-init configuration based on manual testing
+# Test 15.1: Add Docker daemon restart command
+# Based on Test 14.1 + Docker daemon restart command (systemctl restart docker)
 
 # Basic system configuration
 hostname: torrust-tracker-demo
@@ -43,7 +43,7 @@ ssh_pwauth: true
 package_update: true
 package_upgrade: true
 
-# Install packages (verified working order)
+# Install packages including UFW, fail2ban, Docker, unattended-upgrades, and Torrust-specific packages
 packages:
   - curl
   - wget
@@ -147,6 +147,7 @@ runcmd:
   - ufw allow 22/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
+  # Additional Torrust-specific ports
   - ufw allow 6868/udp
   - ufw allow 6969/udp
   - ufw allow 7070/tcp
@@ -161,32 +162,22 @@ runcmd:
     echo 'Unattended-Upgrade::Automatic-Reboot "false";' >>
     /etc/apt/apt.conf.d/50unattended-upgrades
   - systemctl enable unattended-upgrades
-  # Set up log rotation for Docker
+
+  # Set up log rotation for Docker - RESTART DOCKER DAEMON
+  # THIS IS THE SUSPECTED COMPONENT THAT BREAKS SSH!
   - systemctl restart docker
 
 # Final message
 final_message: |
-  Torrust Tracker Demo VM setup completed!
-
-  System Information:
-  - OS: Ubuntu 22.04 LTS
-  - User: torrust (with sudo privileges and password login)
-  - Docker: Installed and configured
-  - Firewall: UFW enabled with proper SSH rules
-  - Security: Automatic updates enabled
-  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
-    (for future source compilation)
-
+  Test 15.1: Torrust Tracker Demo VM with Docker daemon restart
+  
+  Added: Docker daemon restart command (systemctl restart docker)
+  
   SSH Access:
   - SSH Key: ssh torrust@VM_IP
   - Password: sshpass -p 'torrust123' ssh torrust@VM_IP
 
-  Next steps:
-  1. SSH into the VM as user 'torrust'
-  2. Clone the torrust-tracker-demo repository
-  3. Run the deployment scripts
-
-  The VM is ready for Torrust Tracker deployment!
+  Testing Docker daemon restart command - THE SUSPECTED SSH BREAKER!
 
 # Power state - reboot after setup
 power_state:

@@ -81,7 +81,7 @@ status: ## Show current infrastructure status
 
 ssh: ## SSH into the VM
 	@echo "Connecting to VM..."
-	@VM_IP=$$(cd $(TERRAFORM_DIR) && tofu output -raw vm_ip 2>/dev/null); \
+	@VM_IP=$$(virsh domifaddr $(VM_NAME) | grep ipv4 | awk '{print $$4}' | cut -d'/' -f1); \
 	if [ -n "$$VM_IP" ]; then \
 		echo "Connecting to $$VM_IP..."; \
 		ssh torrust@$$VM_IP; \

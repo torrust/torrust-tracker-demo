@@ -56,12 +56,12 @@ variable "vm_disk_size" {
 variable "base_image_url" {
   description = "URL for the base Ubuntu cloud image"
   type        = string
-  default     = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64-disk-kvm.img"
+  default     = "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
 }
 
 # Download Ubuntu cloud image
 resource "libvirt_volume" "base_image" {
-  name   = "ubuntu-22.04-base.qcow2"
+  name   = "ubuntu-24.04-base.qcow2"
   source = var.base_image_url
   format = "qcow2"
   pool   = "user-default"
@@ -105,6 +105,8 @@ resource "libvirt_domain" "vm" {
   vcpu   = var.vm_vcpus
 
   cloudinit = libvirt_cloudinit_disk.commoninit.id
+
+
 
   disk {
     volume_id = libvirt_volume.vm_disk.id

@@ -121,11 +121,13 @@ make test-syntax # Syntax validation only
 | Command                   | Purpose                           |
 | ------------------------- | --------------------------------- |
 | `make help`               | Show all available commands       |
-| `make install-deps`       | Install OpenTofu, libvirt, KVM    |
+| `make install-deps`       | Install OpenTofu, libvirt, KVM, virt-viewer |
 | `make test`               | Run complete infrastructure tests |
 | `make apply`              | Deploy VM with full configuration |
 | `make apply-minimal`      | Deploy VM with minimal config     |
 | `make ssh`                | Connect to deployed VM            |
+| `make console`            | Access VM console (text-based)    |
+| `make vm-console`         | Access VM graphical console (GUI) |
 | `make destroy`            | Remove deployed VM                |
 | `make monitor-cloud-init` | Watch VM provisioning progress    |
 

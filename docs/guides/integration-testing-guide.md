@@ -316,7 +316,7 @@ techniques based on [cloud-init debugging documentation](https://cloudinit.readt
 #### Access VM Console
 
 ```bash
-# Connect to VM console (bypass SSH)
+# Method 1: Connect to VM console via virsh (text-based)
 virsh console torrust-tracker-demo
 
 # Login as 'ubuntu' (default user) with no password, then:
@@ -327,6 +327,18 @@ sudo systemctl status cloud-init-local cloud-init cloud-config cloud-final
 
 # Exit console: Ctrl+]
 ```
+
+**Method 2: Use virt-viewer for graphical console access**
+
+```bash
+# Connect to VM graphical console (shows login prompt)
+virt-viewer spice://127.0.0.1:5900
+
+# Alternative using VM name
+virt-viewer torrust-tracker-demo
+```
+
+**Note**: The virt-viewer method provides a graphical console where you should see a login prompt. This is particularly useful when the text-based virsh console doesn't work or when you need to see the full boot process.
 
 #### Check from Host System
 

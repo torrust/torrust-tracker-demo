@@ -306,7 +306,7 @@ tofu refresh
 5. **SSH connection refused**
 
    - VM might still be booting/configuring
-   - Check VM console: `virsh console torrust-tracker-demo`
+   - Check VM console: `virsh console torrust-tracker-demo` or `virt-viewer spice://127.0.0.1:5900`
    - Verify firewall rules
 
 6. **VM deployment timeout (can't get IP address)**
@@ -315,6 +315,6 @@ tofu refresh
      configuration, reboot)
    - **Solution**: This is normal; VM will get IP after cloud-init completes
      (~5-10 minutes)
-   - **Check**: Use `virsh console torrust-tracker-demo` to monitor boot progress
+   - **Check**: Use `virsh console torrust-tracker-demo` or `virt-viewer spice://127.0.0.1:5900` to monitor boot progress
 
 ### Logs and Debugging

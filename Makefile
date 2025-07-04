@@ -1,5 +1,5 @@
 # Makefile for Torrust Tracker Local Testing Infrastructure
-.PHONY: help init plan apply destroy test clean status ssh install-deps
+.PHONY: help init plan apply destroy test clean status ssh install-deps console vm-console
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
@@ -16,7 +16,7 @@ help: ## Show this help message
 install-deps: ## Install required dependencies (Ubuntu/Debian)
 	@echo "Installing dependencies..."
 	sudo apt update
-	sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager genisoimage
+	sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager virt-viewer genisoimage
 	sudo usermod -aG libvirt $$USER
 	sudo usermod -aG kvm $$USER
 	sudo systemctl enable libvirtd
@@ -306,3 +306,17 @@ vm-info: ## Show detailed VM network information
 	@echo ""
 	@echo "DHCP leases:"
 	@virsh net-dhcp-leases default 2>/dev/null | grep $(VM_NAME) || echo "No DHCP lease found"
+
+console: ## Access VM console (text-based)
+	@echo "Connecting to VM console..."
+	@echo "Use Ctrl+] to exit console"
+	@virsh console $(VM_NAME)
+
+vm-console: ## Access VM graphical console (GUI)
+	@echo "Opening VM graphical console..."
+	@if command -v virt-viewer >/dev/null 2>&1; then \
+		virt-viewer $(VM_NAME) || virt-viewer spice://127.0.0.1:5900; \
+	else \
+		echo "virt-viewer not found. Please install it:"; \
+		echo "  sudo apt install virt-viewer"; \
+	fi

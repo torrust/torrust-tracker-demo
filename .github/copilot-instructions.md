@@ -333,6 +333,8 @@ When providing assistance:
 - `git branch -d/-D` - Delete branches
 - `git tag` - Create or delete tags
 
+**Commit Signing Requirement**: All commits MUST be signed with GPG. When performing git commits, always use the default git commit behavior (which will trigger GPG signing) rather than `--no-gpg-sign`.
+
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 
 ## 📖 Additional Resources

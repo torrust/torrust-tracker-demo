@@ -28,6 +28,7 @@ logpath
 mailcatcher
 Makefiles
 maxretry
+misprocess
 mkisofs
 netdev
 newgrp

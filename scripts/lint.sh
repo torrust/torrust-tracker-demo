@@ -45,67 +45,24 @@ run_yamllint() {
         return 1
     fi
 
-    # Find all YAML files, excluding .git directory and .terraform directories
-    yaml_files=$(find . -name "*.yml" -o -name "*.yaml" | grep -v ".git" | grep -v ".terraform" | sort)
-
-    if [ -z "$yaml_files" ]; then
-        print_status "WARNING" "No YAML files found"
-        return 0
-    fi
-
     # Use yamllint config if it exists
-    yamllint_args=()
     if [ -f ".yamllint-ci.yml" ]; then
-        yamllint_args=("-c" ".yamllint-ci.yml")
-    fi
-
-    local failed=0
-    for file in $yaml_files; do
-        # Skip template files that need variable substitution
-        if [[ "$file" == *.tpl ]]; then
-            # For template files, create a temporary file with dummy values
-            if [[ "$file" == *"user-data"* ]]; then
-                temp_file="/tmp/$(basename "$file" .tpl)"
-                sed "s/\\\${ssh_public_key}/ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/" "$file" >"$temp_file"
-                if [ ${#yamllint_args[@]} -gt 0 ]; then
-                    if yamllint "${yamllint_args[@]}" "$temp_file"; then
-                        print_status "SUCCESS" "yamllint passed for $file"
-                    else
-                        print_status "ERROR" "yamllint failed for $file"
-                        failed=1
-                    fi
-                else
-                    if yamllint "$temp_file"; then
-                        print_status "SUCCESS" "yamllint passed for $file"
-                    else
-                        print_status "ERROR" "yamllint failed for $file"
-                        failed=1
-                    fi
-                fi
-                rm -f "$temp_file"
-            else
-                print_status "WARNING" "Skipping template file $file (needs variable substitution)"
-            fi
+        if yamllint -c .yamllint-ci.yml .; then
+            print_status "SUCCESS" "yamllint passed"
+            return 0
         else
-            if [ ${#yamllint_args[@]} -gt 0 ]; then
-                if yamllint "${yamllint_args[@]}" "$file"; then
-                    print_status "SUCCESS" "yamllint passed for $file"
-                else
-                    print_status "ERROR" "yamllint failed for $file"
-                    failed=1
-                fi
-            else
-                if yamllint "$file"; then
-                    print_status "SUCCESS" "yamllint passed for $file"
-                else
-                    print_status "ERROR" "yamllint failed for $file"
-                    failed=1
-                fi
-            fi
+            print_status "ERROR" "yamllint failed"
+            return 1
         fi
-    done
-
-    return $failed
+    else
+        if yamllint .; then
+            print_status "SUCCESS" "yamllint passed"
+            return 0
+        else
+            print_status "ERROR" "yamllint failed"
+            return 1
+        fi
+    fi
 }
 
 # Function to run ShellCheck
@@ -117,25 +74,33 @@ run_shellcheck() {
         return 1
     fi
 
-    # Find all shell scripts, excluding .git directory and .terraform directories
-    shell_files=$(find . -name "*.sh" -o -name "*.bash" | grep -v ".git" | grep -v ".terraform" | sort)
+    # Use glob pattern to find shell scripts, excluding .git and .terraform directories
+    # Enable globstar for ** patterns
+    shopt -s globstar nullglob
 
-    if [ -z "$shell_files" ]; then
+    # Find shell scripts with common extensions
+    shell_files=()
+    for pattern in "**/*.sh" "**/*.bash"; do
+        for file in $pattern; do
+            # Skip files in .git and .terraform directories
+            if [[ "$file" != *".git"* && "$file" != *".terraform"* ]]; then
+                shell_files+=("$file")
+            fi
+        done
+    done
+
+    if [ ${#shell_files[@]} -eq 0 ]; then
         print_status "WARNING" "No shell scripts found"
         return 0
     fi
 
-    local failed=0
-    for file in $shell_files; do
-        if shellcheck "$file"; then
-            print_status "SUCCESS" "shellcheck passed for $file"
-        else
-            print_status "ERROR" "shellcheck failed for $file"
-            failed=1
-        fi
-    done
-
-    return $failed
+    if shellcheck "${shell_files[@]}"; then
+        print_status "SUCCESS" "shellcheck passed"
+        return 0
+    else
+        print_status "ERROR" "shellcheck failed"
+        return 1
+    fi
 }
 
 # Function to run markdownlint
@@ -147,25 +112,15 @@ run_markdownlint() {
         return 1
     fi
 
-    # Find all markdown files, excluding .git directory and .terraform directories
-    markdown_files=$(find . -name "*.md" | grep -v ".git" | grep -v ".terraform" | sort)
-
-    if [ -z "$markdown_files" ]; then
-        print_status "WARNING" "No Markdown files found"
+    # Use markdownlint with glob pattern to find markdown files
+    # markdownlint can handle glob patterns and will exclude .git directories by default
+    if markdownlint "**/*.md"; then
+        print_status "SUCCESS" "markdownlint passed"
         return 0
+    else
+        print_status "ERROR" "markdownlint failed"
+        return 1
     fi
-
-    local failed=0
-    for file in $markdown_files; do
-        if markdownlint "$file"; then
-            print_status "SUCCESS" "markdownlint passed for $file"
-        else
-            print_status "ERROR" "markdownlint failed for $file"
-            failed=1
-        fi
-    done
-
-    return $failed
 }
 
 # Main function

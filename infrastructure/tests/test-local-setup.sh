@@ -54,7 +54,7 @@ test_prerequisites() {
     if systemctl is-active --quiet libvirtd; then
         log_success "libvirtd service is running"
     else
-        log_error "libvirtd service is not running"
+        log_error "libvirtd service is not running. Run: sudo systemctl start libvirtd"
         return 1
     fi
 

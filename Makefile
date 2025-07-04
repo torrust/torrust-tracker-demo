@@ -51,7 +51,7 @@ apply-minimal: ## Deploy VM with minimal cloud-init configuration
 	@echo "Ensuring libvirt permissions are correct..."
 	@$(MAKE) fix-libvirt
 	@echo "Deploying VM with minimal configuration..."
-	cd $(TERRAFORM_DIR) && tofu apply -var-file="local.tfvars" -var="use_minimal_config=true" -parallelism=1
+	cd $(TERRAFORM_DIR) && tofu apply -var-file="local.tfvars" -var="use_minimal_config=true" -parallelism=1 -auto-approve
 	@echo "Fixing permissions after deployment..."
 	@$(MAKE) fix-libvirt
 
@@ -61,7 +61,7 @@ apply: ## Deploy the VM
 	@echo "Deploying VM..."
 	@if [ -f $(TERRAFORM_DIR)/local.tfvars ]; then \
 		echo "Using local SSH key configuration..."; \
-		cd $(TERRAFORM_DIR) && tofu apply -var-file="local.tfvars" -parallelism=1; \
+		cd $(TERRAFORM_DIR) && tofu apply -var-file="local.tfvars" -parallelism=1 -auto-approve; \
 	else \
 		echo "WARNING: No local.tfvars found. Creating with placeholder..."; \
 		echo 'ssh_public_key = "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY"' > $(TERRAFORM_DIR)/local.tfvars; \
@@ -73,7 +73,7 @@ apply: ## Deploy the VM
 
 destroy: ## Destroy the VM
 	@echo "Destroying VM..."
-	cd $(TERRAFORM_DIR) && tofu destroy
+	cd $(TERRAFORM_DIR) && tofu destroy -auto-approve
 
 status: ## Show current infrastructure status
 	@echo "Infrastructure status:"
@@ -284,3 +284,25 @@ ci-test-syntax: ## Test syntax for CI (with dummy values)
 	else \
 		echo "yamllint not available, skipping additional YAML validation"; \
 	fi
+
+vm-ip: ## Show VM IP address
+	@echo "Getting VM IP address..."
+	@VM_IP=$$(virsh domifaddr $(VM_NAME) | grep ipv4 | awk '{print $$4}' | cut -d'/' -f1); \
+	if [ -n "$$VM_IP" ]; then \
+		echo "VM IP: $$VM_IP"; \
+	else \
+		echo "VM IP not assigned yet or VM not running"; \
+		echo "VM status:"; \
+		virsh list --all | grep $(VM_NAME) || echo "VM not found"; \
+	fi
+
+vm-info: ## Show detailed VM network information
+	@echo "VM Network Information:"
+	@echo "======================"
+	@virsh list --all | grep $(VM_NAME) | head -1 || echo "VM not found"
+	@echo ""
+	@echo "Network interfaces:"
+	@virsh domifaddr $(VM_NAME) 2>/dev/null || echo "No network information available"
+	@echo ""
+	@echo "DHCP leases:"
+	@virsh net-dhcp-leases default 2>/dev/null | grep $(VM_NAME) || echo "No DHCP lease found"

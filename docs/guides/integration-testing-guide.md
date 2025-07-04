@@ -35,8 +35,10 @@ make test-prereq
 
 ### 1.1 Navigate to Project Directory
 
+For example:
+
 ```bash
-cd /home/josecelano/Documents/git/committer/me/github/torrust/torrust-tracker-demo
+cd /home/yourname/Documents/git/committer/me/github/torrust/torrust-tracker-demo
 ```
 
 **⚠️ Important**: All commands in this guide assume you are running from the
@@ -103,6 +105,28 @@ ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
 ```
 
 **Expected Output**: All checks should show "✅" (no conflicts).
+
+
+### 1.4.1 Manual Cleanup (if needed)
+
+If the verification step shows "❌ Volumes still exist!" then manually clean them:
+
+```bash
+# List conflicting volumes
+virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo
+
+# Delete each volume manually
+virsh vol-delete torrust-tracker-demo-cloudinit.iso user-default
+virsh vol-delete torrust-tracker-demo.qcow2 user-default
+
+# Verify cleanup
+virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
+  echo "❌ Volumes still exist!" || echo "✅ No volume conflicts"
+```
+
+**Expected Output**: Should show "✅ No volume conflicts" after manual cleanup.
+
+**What This Fixes**: Removes leftover volumes that `make clean-and-fix` sometimes misses.
 
 ### 1.5 Set Up SSH Key Configuration
 

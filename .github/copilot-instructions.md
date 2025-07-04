@@ -303,6 +303,31 @@ When providing assistance:
 - Provide clear explanations and documentation
 - Consider the migration to Hetzner infrastructure in suggestions
 
+#### Preferred Working Methodology
+
+**Work in Small Steps:**
+- Break down complex tasks into small, manageable increments
+- Each step should be independently testable and reviewable
+- Prefer multiple small commits over large monolithic changes
+
+**Parallel Changes When Possible:**
+- Identify changes that can be made independently
+- Suggest parallel work streams for unrelated modifications
+- Separate concerns to enable concurrent development
+
+**Separate Refactors from Features:**
+- **Refactoring commits**: Focus solely on code structure, organization, or cleanup
+- **Feature commits**: Focus on adding new functionality or enabling features
+- Never mix refactoring with feature addition in the same commit
+- Always complete refactoring first, then add features in subsequent commits
+
+**Complex Tasks and Bug Fixes:**
+- For any task that requires multiple intermediary steps, always present a plan first
+- Break down the approach into numbered steps with clear objectives
+- Ask for confirmation before implementing the plan
+- Include rollback strategies for critical changes
+- Identify potential risks and mitigation strategies upfront
+
 #### Git Actions and Permission Requirements
 
 **IMPORTANT**: Git actions that change repository state require explicit permission:

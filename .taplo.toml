@@ -1,0 +1,31 @@
+# Taplo (Even Better TOML) configuration
+# This configures the TOML formatter for this project
+[formatting]
+# Column width for wrapping
+column_width = 100
+# Indentation (2 spaces)
+indent_string = "  "
+# Alignment and spacing
+align_entries = false
+align_comments = true
+indent_tables = false
+indent_entries = false
+# Compact settings - set to false to preserve spacing
+compact_arrays = false
+compact_inline_tables = false
+compact_entries = false
+# Array formatting
+array_trailing_comma = true
+array_auto_expand = true
+array_auto_collapse = false
+# Inline table settings
+inline_table_expand = true
+# Blank lines - allow up to 2 consecutive blank lines
+allowed_blank_lines = 2
+# Preserve key/array order (don't reorder across blank lines)
+reorder_keys = false
+reorder_arrays = false
+reorder_inline_tables = false
+# Line endings and trailing newline
+trailing_newline = true
+crlf = false

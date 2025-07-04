@@ -1,0 +1,62 @@
+[metadata]
+app = "torrust-tracker"
+purpose = "configuration"
+schema_version = "2.0.0"
+
+[logging]
+#threshold = "trace"
+threshold = "info"
+
+[core]
+listed = false
+private = false
+
+[core.tracker_policy]
+persistent_torrent_completed_stat = true
+
+[core.announce_policy]
+interval = 300
+interval_min = 300
+
+[core.net]
+on_reverse_proxy = true
+
+[core.database]
+driver = "sqlite3"
+path = "/var/lib/torrust/tracker/database/sqlite3.db"
+
+# UDP Tracker Configuration
+# Two UDP ports are configured for different purposes:
+
+# Port 6868: Internal testing UDP tracker
+# - Not listed on public tracker lists (like newtrackon.org)
+# - Used for internal testing and development
+# - Provides alternative endpoint when port 6969 is under heavy load
+# - Guarantees developers can make requests without timeouts
+[[udp_trackers]]
+bind_address = "0.0.0.0:6868"
+
+# Port 6969: Official public UDP tracker
+# - Primary UDP tracker port listed on public tracker lists
+# - Always under heavy usage in production
+# - Standard BitTorrent UDP announce endpoint
+[[udp_trackers]]
+bind_address = "0.0.0.0:6969"
+
+# HTTP Tracker Configuration
+# Port 7070: Internal HTTP tracker (HTTP-only, no HTTPS)
+# - Not directly accessible from internet (internal/private network only)
+# - Accessed through Nginx reverse proxy which provides HTTPS termination
+# - Used for HTTP-based tracker announces
+[[http_trackers]]
+bind_address = "0.0.0.0:7070"
+
+# API and Metrics Configuration  
+# Port 1212: Tracker API and metrics endpoint
+# - Used internally (private network) between Nginx proxy and tracker service
+# - Exposed publicly through Nginx proxy at https://tracker.torrust-demo.com/api/...
+# - Main endpoints: /api/v1/stats, /api/v1/metrics, /api/v1/torrents
+# - Used by Prometheus for monitoring and Grafana dashboards
+# - See application/docs/firewall-requirements.md for complete port documentation
+[http_api]
+bind_address = "0.0.0.0:1212"

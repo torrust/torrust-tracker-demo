@@ -1,0 +1,58 @@
+# Infrastructure-specific gitignore
+
+# OpenTofu/Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraform/
+.terraform.lock.hcl
+terraform.tfplan
+terraform.tfplan.*
+
+# Cloud-init generated files
+user-data.yaml
+user-data-minimal.yaml
+
+# libvirt/KVM generated files
+*.qcow2
+*.img
+libvirt_cloudinit_*.iso
+
+# Infrastructure logs
+*.log
+/logs/
+infrastructure-test.log
+
+# SSH keys and secrets
+*.pem
+*.key
+!*.pub
+id_*
+!id_*.pub
+
+# Local configuration files
+local.tfvars
+.env.local
+.env.infrastructure
+
+# VM and storage artifacts
+/storage/
+/images/
+/disks/
+
+# Test artifacts
+test-results/
+test-output/
+/tmp/
+
+# Cloud provider CLI configs
+.aws/
+.azure/
+.gcloud/
+.hcloud/
+
+# Backup files
+*.backup
+*.bak
+*~

@@ -1,0 +1,27 @@
+{
+    // Even Better TOML formatter configuration (camelCase for VS Code)
+    "evenBetterToml.formatter.columnWidth": 100,
+    "evenBetterToml.formatter.indentString": "  ",
+    "evenBetterToml.formatter.alignEntries": false,
+    "evenBetterToml.formatter.alignComments": true,
+    "evenBetterToml.formatter.indentTables": false,
+    "evenBetterToml.formatter.indentEntries": false,
+    "evenBetterToml.formatter.compactArrays": false,
+    "evenBetterToml.formatter.compactInlineTables": false,
+    "evenBetterToml.formatter.compactEntries": false,
+    "evenBetterToml.formatter.arrayTrailingComma": true,
+    "evenBetterToml.formatter.arrayAutoExpand": true,
+    "evenBetterToml.formatter.arrayAutoCollapse": false,
+    "evenBetterToml.formatter.inlineTableExpand": true,
+    "evenBetterToml.formatter.allowedBlankLines": 2,
+    "evenBetterToml.formatter.reorderKeys": false,
+    "evenBetterToml.formatter.reorderArrays": false,
+    "evenBetterToml.formatter.reorderInlineTables": false,
+    "evenBetterToml.formatter.trailingNewline": true,
+    "evenBetterToml.formatter.crlf": false,
+    // Format on save for TOML files
+    "[toml]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "tamasfe.even-better-toml"
+    }
+}

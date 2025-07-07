@@ -52,7 +52,6 @@ packages:
   - ufw
   - fail2ban
   - unattended-upgrades
-  - docker.io
   # Torrust Tracker dependencies for future source compilation
   # Currently using Docker, but planning to compile from source for better performance
   - pkg-config
@@ -119,21 +118,37 @@ runcmd:
   - systemctl restart sshd
   - systemctl enable ssh
 
+  # Install Docker using official method
+  # Remove any old Docker packages
+  - >
+    for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+    apt-get remove -y $pkg || true; done
+
+  # Add Docker's official GPG key
+  - mkdir -p /etc/apt/keyrings
+  - >
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+    -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  # Add Docker repository
+  - >
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  # Update package index and install Docker
+  - apt-get update
+  - >
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+    docker-buildx-plugin docker-compose-plugin
+
   # Configure Docker
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG docker torrust
 
-  # Install Docker Compose V2 plugin (compatible with compose.yaml format)
-  - mkdir -p /usr/local/lib/docker/cli-plugins
-  - >
-    curl -SL
-    "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-linux-x86_64"
-    -o /usr/local/lib/docker/cli-plugins/docker-compose
-  - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-  - >
-    ln -sf /usr/local/lib/docker/cli-plugins/docker-compose
-    /usr/local/bin/docker-compose
+  # Verify Docker installation
+  - docker --version
+  - docker compose version
 
   # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
   - ufw --force reset

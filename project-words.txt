@@ -2,10 +2,12 @@ AECDH
 AESGCM
 autoport
 bantime
+buildx
 cdrom
 certbot
 cloudinit
 commoninit
+containerd
 CPUS
 dialout
 direnv
@@ -14,6 +16,7 @@ dnsmasq
 domifaddr
 dominfo
 domstate
+dpkg
 dsmode
 ECDH
 ehthumbs
@@ -26,6 +29,7 @@ fullchain
 genisoimage
 hetznercloud
 journalctl
+keyrings
 letsencrypt
 libsqlite
 libvirtd

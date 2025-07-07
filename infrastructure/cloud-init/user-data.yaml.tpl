@@ -52,15 +52,14 @@ packages:
   - ufw
   - fail2ban
   - unattended-upgrades
-  # Torrust Tracker dependencies for potential source compilation
-  # Currently using Docker, but planning to compile from source for better performance
-  # in production environments (see ADR-002)
-  - pkg-config
-  - libssl-dev
-  - make
-  - build-essential
-  - libsqlite3-dev
-  - sqlite3
+  # NOTE: Rust build dependencies commented out since we're using Docker for all services (see ADR-002)
+  # Uncomment the following packages if you need to compile Rust applications (like Torrust Tracker) from source:
+  # - pkg-config
+  # - libssl-dev
+  # - make
+  # - build-essential
+  # - libsqlite3-dev
+  # - sqlite3
 
 # System configuration files
 write_files:
@@ -151,20 +150,22 @@ runcmd:
   - docker --version
   - docker compose version
 
-  # Install Rust using rustup (official method)
-  # Install as torrust user to ensure proper ownership
-  - >
-    sudo -u torrust bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
-
-  # Add Rust to PATH for torrust user
-  - >
-    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.bashrc
-  - >
-    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.profile
-
-  # Verify Rust installation
-  - sudo -u torrust bash -c 'source ~/.cargo/env && rustc --version'
-  - sudo -u torrust bash -c 'source ~/.cargo/env && cargo --version'
+  # NOTE: Rust installation commented out since we're using Docker for all services (see ADR-002)
+  # Uncomment the following section if you need to compile Rust applications from source:
+  # # Install Rust using rustup (official method)
+  # # Install as torrust user to ensure proper ownership
+  # - >
+  #   sudo -u torrust bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+  #
+  # # Add Rust to PATH for torrust user
+  # - >
+  #   echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.bashrc
+  # - >
+  #   echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.profile
+  #
+  # # Verify Rust installation
+  # - sudo -u torrust bash -c 'source ~/.cargo/env && rustc --version'
+  # - sudo -u torrust bash -c 'source ~/.cargo/env && cargo --version'
 
   # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
   - ufw --force reset
@@ -199,11 +200,10 @@ final_message: |
   - OS: Ubuntu 24.04 LTS
   - User: torrust (with sudo privileges and SSH key access only)
   - Docker: Installed and configured
-  - Rust: Installed via rustup (latest stable version)
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
-  - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
-    (for potential source compilation in production environments)
+  - Note: All Torrust Tracker services run in Docker containers (see ADR-002)
+    Rust build dependencies are commented out but can be enabled if needed
 
   SSH Access:
   - SSH Key: ssh torrust@VM_IP
@@ -212,7 +212,7 @@ final_message: |
   Next steps:
   1. SSH into the VM as user 'torrust'
   2. Clone the torrust-tracker-demo repository
-  3. Run the deployment scripts
+  3. Run the deployment scripts using Docker Compose
 
   The VM is ready for Torrust Tracker deployment!
 

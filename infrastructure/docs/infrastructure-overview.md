@@ -48,7 +48,7 @@ Makefile                             # Build automation and shortcuts
 ### Local VM Testing
 
 - **KVM/libvirt virtualization** for local testing
-- **Ubuntu 22.04 LTS** base image with cloud-init
+- **Ubuntu 24.04 LTS** base image with cloud-init
 - **Automated VM provisioning** with OpenTofu
 - **Reproducible environments** identical to production
 
@@ -107,7 +107,7 @@ make destroy
 
 ### Default Configuration
 
-- **OS**: Ubuntu 22.04 LTS
+- **OS**: Ubuntu 24.04 LTS
 - **RAM**: 2GB (configurable)
 - **CPU**: 2 cores (configurable)
 - **Disk**: 20GB (configurable)

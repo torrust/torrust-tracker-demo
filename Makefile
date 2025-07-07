@@ -182,7 +182,7 @@ clean-and-fix: ## Clean up all VMs and fix libvirt permissions
 	@echo "2. Removing OpenTofu state:"
 	@cd $(TERRAFORM_DIR) && rm -f terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl 2>/dev/null || true
 	@echo "3. Cleaning libvirt images:"
-	@sudo rm -f /var/lib/libvirt/images/torrust-tracker-demo* /var/lib/libvirt/images/ubuntu-22.04-base.qcow2 2>/dev/null || true
+	@sudo rm -f /var/lib/libvirt/images/torrust-tracker-demo* /var/lib/libvirt/images/ubuntu-24.04-base.qcow2 2>/dev/null || true
 	@echo "4. Fixing libvirt setup:"
 	@$(MAKE) fix-libvirt
 	@echo "✓ Clean up complete. You can now run 'make apply' safely."

@@ -171,7 +171,7 @@ Since all individual components work, we need to investigate:
 
 ## Technical Details
 
-- **VM Environment**: libvirt/KVM with Ubuntu 22.04 cloud image
+- **VM Environment**: libvirt/KVM with Ubuntu 24.04 cloud image
 - **SSH Configuration**: Both key and password authentication enabled
 - **Network**: UFW firewall with SSH explicitly allowed
 - **Testing Tools**: ssh, sshpass, nc, virsh net-dhcp-leases

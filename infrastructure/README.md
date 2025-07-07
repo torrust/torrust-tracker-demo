@@ -81,7 +81,7 @@ make destroy
 Key features:
 
 - Uses KVM/libvirt provider for local virtualization
-- Downloads Ubuntu 22.04 cloud image automatically
+- Downloads Ubuntu 24.04 cloud image automatically
 - Configures VM with appropriate resources
 - Applies cloud-init configuration during boot
 
@@ -152,7 +152,7 @@ make test-syntax
 
 ### Default Configuration
 
-- **OS**: Ubuntu 22.04 LTS
+- **OS**: Ubuntu 24.04 LTS
 - **RAM**: 2GB
 - **CPU**: 2 cores
 - **Disk**: 20GB

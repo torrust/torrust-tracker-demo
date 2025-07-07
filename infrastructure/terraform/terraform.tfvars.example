@@ -12,6 +12,6 @@ vm_disk_size = 20   # GB - Disk size
 # vm_vcpus    = 4     # 4 CPU cores
 # vm_disk_size = 30   # 30GB disk
 
-# Base image (Ubuntu 22.04 LTS)
+# Base image (Ubuntu 24.04 LTS)
 # You can override this to use a different Ubuntu version
-# base_image_url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64-disk-kvm.img"
+# base_image_url = "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"

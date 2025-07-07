@@ -169,7 +169,7 @@ final_message: |
   Torrust Tracker Demo VM setup completed!
 
   System Information:
-  - OS: Ubuntu 22.04 LTS
+  - OS: Ubuntu 24.04 LTS
   - User: torrust (with sudo privileges and password login)
   - Docker: Installed and configured
   - Firewall: UFW enabled with proper SSH rules

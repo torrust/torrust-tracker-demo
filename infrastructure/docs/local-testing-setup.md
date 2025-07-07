@@ -153,7 +153,7 @@ tofu apply
 
 The deployment will:
 
-- Download Ubuntu 22.04 cloud image
+- Download Ubuntu 24.04 cloud image
 - Create a VM with specified resources
 - Apply cloud-init configuration
 - Set up basic system requirements
@@ -174,7 +174,7 @@ The deployed VM includes:
 
 ### System Configuration
 
-- Ubuntu 22.04 LTS
+- Ubuntu 24.04 LTS
 - User `torrust` with sudo privileges
 - SSH key authentication
 - Automatic security updates enabled

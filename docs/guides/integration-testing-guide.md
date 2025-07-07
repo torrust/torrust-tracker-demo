@@ -249,7 +249,7 @@ time make apply
 **Expected During Deployment**:
 
 1. Libvirt permissions check and fixes
-2. Download of Ubuntu 22.04 cloud image (~600MB)
+2. Download of Ubuntu 24.04 cloud image (~600MB)
 3. VM disk creation
 4. Cloud-init ISO creation
 5. VM startup

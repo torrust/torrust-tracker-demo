@@ -204,3 +204,45 @@ Application documentation should cover:
 - Application-specific troubleshooting
 
 See [`../infrastructure/`](../infrastructure/) for infrastructure-specific documentation.
+
+## 🐳 Docker Design Decision
+
+This demo repository uses **Docker containers for all services**, including the
+Torrust Tracker UDP component, even though this may not provide optimal
+performance for high-throughput UDP tracking operations.
+
+### Why Docker for Everything?
+
+The decision to use Docker for all services, including the performance-critical
+UDP tracker, prioritizes:
+
+1. **Simplicity**: Single orchestration method (Docker Compose) for all services
+2. **Consistency**: Identical deployment process across environments
+3. **Maintainability**: Easier updates and dependency management
+4. **Documentation**: Clear, reusable examples for users
+5. **Demo Focus**: Emphasizes functionality demonstration over peak performance
+
+### Performance Considerations
+
+While Docker networking may introduce some overhead for UDP operations compared
+to running the tracker binary directly on the host, this trade-off aligns with
+the repository's primary goals:
+
+- **Demo Environment**: Showcasing Torrust Tracker functionality
+- **Frequent Updates**: Easy deployment of new tracker versions
+- **User-Friendly**: Simple setup process for evaluation and testing
+
+### Production Performance Optimization
+
+For production deployments requiring maximum UDP performance, consider:
+
+- Running the tracker binary directly on the host
+- Using host networking mode for containers
+- Implementing kernel-level network optimizations
+- Disabling connection tracking for UDP traffic
+
+These optimizations will be covered in dedicated performance documentation
+outside this demo repository.
+
+> **Reference**: See [ADR-002](../docs/adr/002-docker-for-all-services.md) for
+> the complete rationale behind this design decision.

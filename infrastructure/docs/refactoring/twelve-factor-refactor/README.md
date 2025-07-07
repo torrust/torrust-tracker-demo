@@ -40,8 +40,11 @@ From the official Torrust Tracker documentation, we need to account for:
 #### Docker vs Source Compilation
 
 - **Current**: Using Docker images (torrust/tracker:develop)
-- **Future**: Plans to compile from source for better performance
+- **Future Plans**: Considering source compilation for production performance optimization
 - **Dependencies**: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev
+- **Demo Repository Decision**: Uses Docker for all services to prioritize simplicity,
+  consistency, and frequent updates over peak performance
+  (see [ADR-002](../../../docs/adr/002-docker-for-all-services.md))
 
 ### Twelve-Factor Violations Identified
 

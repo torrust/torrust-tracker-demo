@@ -108,6 +108,10 @@ make destroy                                 # Clean up
 
 - [Documentation Structure](docs/README.md) - Cross-cutting documentation
 - [Architecture Decisions](docs/adr/) - Design decisions and rationale
+  - [ADR-001: Makefile Location](docs/adr/001-makefile-location.md) - Why the
+    main Makefile is at repository root
+  - [ADR-002: Docker for All Services](docs/adr/002-docker-for-all-services.md) -
+    Why we use Docker for all services including UDP tracker
 
 ## 🛠️ Development
 

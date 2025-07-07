@@ -52,8 +52,9 @@ packages:
   - ufw
   - fail2ban
   - unattended-upgrades
-  # Torrust Tracker dependencies for future source compilation
+  # Torrust Tracker dependencies for potential source compilation
   # Currently using Docker, but planning to compile from source for better performance
+  # in production environments (see ADR-002)
   - pkg-config
   - libssl-dev
   - make
@@ -202,7 +203,7 @@ final_message: |
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
   - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3
-    (for future source compilation)
+    (for potential source compilation in production environments)
 
   SSH Access:
   - SSH Key: ssh torrust@VM_IP

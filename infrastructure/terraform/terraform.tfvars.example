@@ -1,0 +1,17 @@
+# Example OpenTofu variables for Torrust Tracker Demo
+# Copy this file to terraform.tfvars and customize as needed
+
+# VM Configuration
+vm_name     = "torrust-tracker-demo"
+vm_memory   = 2048  # MB - Minimum 2GB recommended
+vm_vcpus    = 2     # Number of CPU cores
+vm_disk_size = 20   # GB - Disk size
+
+# Alternative configuration for more resources
+# vm_memory   = 4096  # 4GB RAM for better performance
+# vm_vcpus    = 4     # 4 CPU cores
+# vm_disk_size = 30   # 30GB disk
+
+# Base image (Ubuntu 24.04 LTS)
+# You can override this to use a different Ubuntu version
+# base_image_url = "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"

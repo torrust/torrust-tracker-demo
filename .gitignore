@@ -1,3 +1,13 @@
-.env
+# Project-level gitignore - cross-cutting files only
+# Specific ignores are in infrastructure/.gitignore and application/.gitignore
+
+# Repository organization tool output
 repomix-output.xml
-storage/
+
+# Testing dependencies (when cloned locally for smoke testing)
+torrust-tracker/
+
+# Note: This repository uses distributed .gitignore files:
+# - infrastructure/.gitignore: Infrastructure-specific files (Terraform, VMs, etc.)
+# - application/.gitignore: Application-specific files (Docker, logs, data, etc.)
+# - .gitignore (this file): Project-wide cross-cutting files only

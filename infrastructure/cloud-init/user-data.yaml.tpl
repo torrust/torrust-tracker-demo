@@ -27,14 +27,9 @@ users:
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
     lock_passwd: false
+    plain_text_passwd: torrust123
     ssh_authorized_keys:
       - ${ssh_public_key}
-
-# Set password using chpasswd (most reliable method)
-chpasswd:
-  list: |
-    torrust:torrust123
-  expire: false
 
 # Enable SSH password authentication for debugging
 ssh_pwauth: true

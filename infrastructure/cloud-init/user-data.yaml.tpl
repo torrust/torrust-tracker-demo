@@ -27,12 +27,12 @@ users:
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
     lock_passwd: false
-    plain_text_passwd: torrust123
+    # plain_text_passwd: torrust123  # Commented out - enable only for debugging/recovery
     ssh_authorized_keys:
       - ${ssh_public_key}
 
 # Enable SSH password authentication for debugging
-ssh_pwauth: true
+# ssh_pwauth: true  # Commented out - enable only for debugging/recovery
 
 # Package updates and installations
 package_update: true
@@ -65,12 +65,13 @@ packages:
 # System configuration files
 write_files:
   # SSH configuration to enable password authentication
-  - path: /etc/ssh/sshd_config.d/50-cloud-init.conf
-    content: |
-      PasswordAuthentication yes
-      PubkeyAuthentication yes
-    permissions: "0644"
-    owner: root:root
+  # Commented out - enable only for debugging/recovery
+  # - path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+  #   content: |
+  #     PasswordAuthentication yes
+  #     PubkeyAuthentication yes
+  #   permissions: "0644"
+  #   owner: root:root
 
   # Docker daemon configuration
   - path: /etc/docker/daemon.json
@@ -165,7 +166,7 @@ final_message: |
 
   System Information:
   - OS: Ubuntu 24.04 LTS
-  - User: torrust (with sudo privileges and password login)
+  - User: torrust (with sudo privileges and SSH key access only)
   - Docker: Installed and configured
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
@@ -174,7 +175,7 @@ final_message: |
 
   SSH Access:
   - SSH Key: ssh torrust@VM_IP
-  - Password: sshpass -p 'torrust123' ssh torrust@VM_IP
+  - Password: Disabled for security (can be re-enabled in cloud-init config if needed)
 
   Next steps:
   1. SSH into the VM as user 'torrust'

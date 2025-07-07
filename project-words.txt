@@ -6,7 +6,9 @@ cdrom
 certbot
 cloudinit
 commoninit
+CPUS
 dialout
+direnv
 dmacvicar
 dnsmasq
 domifaddr
@@ -15,10 +17,14 @@ domstate
 dsmode
 ECDH
 ehthumbs
+envrc
+envsubst
+esac
 ethernets
 findtime
 fullchain
 genisoimage
+hetznercloud
 journalctl
 letsencrypt
 libsqlite
@@ -30,6 +36,7 @@ Makefiles
 maxretry
 misprocess
 mkisofs
+mktemp
 netdev
 newgrp
 newtrackon

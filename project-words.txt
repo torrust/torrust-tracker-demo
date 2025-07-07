@@ -63,6 +63,8 @@ qcow
 repomix
 rmem
 runcmd
+rustc
+rustup
 rwxr
 SAMEORIGIN
 secp
@@ -74,6 +76,7 @@ testpass
 testuser
 tfstate
 tfvars
+tlsv
 UEFI
 usermod
 vcpu

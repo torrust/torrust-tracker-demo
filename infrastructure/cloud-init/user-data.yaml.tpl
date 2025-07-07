@@ -150,6 +150,21 @@ runcmd:
   - docker --version
   - docker compose version
 
+  # Install Rust using rustup (official method)
+  # Install as torrust user to ensure proper ownership
+  - >
+    sudo -u torrust bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+
+  # Add Rust to PATH for torrust user
+  - >
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.bashrc
+  - >
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/torrust/.profile
+
+  # Verify Rust installation
+  - sudo -u torrust bash -c 'source ~/.cargo/env && rustc --version'
+  - sudo -u torrust bash -c 'source ~/.cargo/env && cargo --version'
+
   # CRITICAL: Configure UFW firewall SAFELY (allow SSH BEFORE enabling)
   - ufw --force reset
   - ufw default deny incoming
@@ -183,6 +198,7 @@ final_message: |
   - OS: Ubuntu 24.04 LTS
   - User: torrust (with sudo privileges and SSH key access only)
   - Docker: Installed and configured
+  - Rust: Installed via rustup (latest stable version)
   - Firewall: UFW enabled with proper SSH rules
   - Security: Automatic updates enabled
   - Torrust Tracker dependencies: pkg-config, libssl-dev, make, build-essential, libsqlite3-dev, sqlite3

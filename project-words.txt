@@ -29,6 +29,7 @@ findtime
 fullchain
 genisoimage
 hetznercloud
+INFOHASH
 journalctl
 keyrings
 letsencrypt
@@ -87,3 +88,4 @@ virsh
 virt
 webroot
 wmem
+yourname

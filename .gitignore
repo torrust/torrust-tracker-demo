@@ -4,6 +4,9 @@
 # Repository organization tool output
 repomix-output.xml
 
+# Testing dependencies (when cloned locally for smoke testing)
+torrust-tracker/
+
 # Note: This repository uses distributed .gitignore files:
 # - infrastructure/.gitignore: Infrastructure-specific files (Terraform, VMs, etc.)
 # - application/.gitignore: Application-specific files (Docker, logs, data, etc.)

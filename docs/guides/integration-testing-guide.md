@@ -630,6 +630,23 @@ curl -s http://$VM_IP:1212/metrics | head -10
 
 ## Step 6: Performance and Load Testing (Optional)
 
+### Alternative: External Smoke Testing
+
+For quick external validation without infrastructure complexity, consider using
+the dedicated [Smoke Testing Guide](smoke-testing-guide.md). This approach
+uses the Torrust Tracker Client tools to test your deployment from an external
+perspective:
+
+- ✅ **Quick validation** (~5 minutes vs full integration testing)
+- ✅ **External black-box testing** using official client tools
+- ✅ **Protocol-level verification** (UDP, HTTP, API endpoints)
+- ✅ **No infrastructure knowledge required** - just test the deployed services
+- ✅ **Perfect for post-deployment validation** and sanity checks
+
+The smoke testing approach complements this integration guide by providing a
+simpler alternative when you only need to verify that the deployed tracker
+is working correctly.
+
 ### 6.1 Measure Service Response Times
 
 ```bash

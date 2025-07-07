@@ -1,5 +1,5 @@
 # Makefile for Torrust Tracker Local Testing Infrastructure
-.PHONY: help init plan apply destroy test clean status ssh install-deps console vm-console lint lint-yaml lint-shell lint-markdown
+.PHONY: help init plan apply destroy test clean status refresh-state ssh install-deps console vm-console lint lint-yaml lint-shell lint-markdown
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
@@ -78,6 +78,12 @@ destroy: ## Destroy the VM
 status: ## Show current infrastructure status
 	@echo "Infrastructure status:"
 	cd $(TERRAFORM_DIR) && tofu show
+
+refresh-state: ## Refresh Terraform state to detect IP changes
+	@echo "Refreshing Terraform state..."
+	cd $(TERRAFORM_DIR) && tofu refresh
+	@echo "Updated outputs:"
+	cd $(TERRAFORM_DIR) && tofu output
 
 ssh: ## SSH into the VM
 	@echo "Connecting to VM..."

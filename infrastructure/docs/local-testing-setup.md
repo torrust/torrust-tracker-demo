@@ -310,6 +310,7 @@ tofu refresh
    - Verify firewall rules
 
 6. **VM deployment timeout (can't get IP address)**
+
    - **Symptoms**: VM starts but times out waiting for DHCP lease
    - **Cause**: Cloud-init setup takes time (package installation, system
      configuration, reboot)
@@ -317,5 +318,58 @@ tofu refresh
      (~5-10 minutes)
    - **Check**: Use `virsh console torrust-tracker-demo` or
      `virt-viewer spice://127.0.0.1:5900` to monitor boot progress
+
+7. **Terraform/OpenTofu shows "No IP assigned yet" but VM has IP**
+
+   - **Symptoms**: `make status` shows:
+
+     ```text
+     connection_info = "VM created, waiting for IP address..."
+     vm_ip = "No IP assigned yet"
+     ```
+
+     But `virsh domifaddr torrust-tracker-demo` shows an IP address.
+
+   - **Root Cause**: Terraform libvirt provider state is not synchronized with
+     the actual VM network state. This happens because:
+
+     - DHCP lease assignment timing varies
+     - Terraform state becomes stale after cloud-init completes
+     - The provider doesn't automatically refresh network interface information
+
+   - **Solution**: Refresh the Terraform state to synchronize with libvirt:
+
+     ```bash
+     # Method 1: Refresh Terraform state
+     cd infrastructure/terraform
+     tofu refresh
+
+     # Method 2: Use the make command (if available)
+     make refresh-state
+
+     # Verify the fix
+     tofu output
+     ```
+
+   - **Prevention**: The IP detection issue can be minimized by:
+
+     - Waiting 2-3 minutes after `make apply` before checking IP
+     - Using `virsh domifaddr VM_NAME` to get IP directly from libvirt
+     - Adding automatic refresh to the Makefile status command
+
+   - **Alternative**: Get the IP directly from libvirt without Terraform:
+
+     ```bash
+     # Get IP address directly
+     virsh domifaddr torrust-tracker-demo
+
+     # Or use in scripts
+     VM_IP=$(virsh domifaddr torrust-tracker-demo | grep ipv4 | awk '{print $4}' | cut -d'/' -f1)
+     echo "VM IP: $VM_IP"
+     ```
+
+   - **Why This Happens**: The libvirt provider checks `network_interface[0].addresses`
+     which is populated asynchronously. The VM gets its IP from DHCP, but Terraform's
+     cached state doesn't reflect this until explicitly refreshed.
 
 ### Logs and Debugging

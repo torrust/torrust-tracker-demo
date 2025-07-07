@@ -134,14 +134,15 @@ make destroy
 
 ## 📋 Available Commands
 
-| Command        | Description                 |
-| -------------- | --------------------------- |
-| `make help`    | Show all available commands |
-| `make test`    | Run complete test suite     |
-| `make apply`   | Deploy VM                   |
-| `make ssh`     | Connect to VM               |
-| `make destroy` | Remove VM                   |
-| `make status`  | Show infrastructure status  |
+| Command              | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `make help`          | Show all available commands                  |
+| `make test`          | Run complete test suite                      |
+| `make apply`         | Deploy VM                                    |
+| `make ssh`           | Connect to VM                                |
+| `make destroy`       | Remove VM                                    |
+| `make status`        | Show infrastructure status                   |
+| `make refresh-state` | Refresh Terraform state to detect IP changes |
 
 ## 🔧 Troubleshooting
 
@@ -151,6 +152,19 @@ make destroy
 2. **VM won't start**: Check with `sudo kvm-ok` that virtualization is enabled
 3. **SSH connection fails**: VM might still be booting, wait 2-3 minutes
 4. **libvirt file ownership errors**: Run `make fix-libvirt` to fix permissions
+5. **"No IP assigned yet" issue**: If `make status` shows no IP but VM is running:
+
+   ```bash
+   # Check if VM actually has an IP
+   virsh domifaddr torrust-tracker-demo
+
+   # If IP is shown, refresh Terraform state
+   make refresh-state
+   ```
+
+   **Why this happens**: Terraform's state can become stale after cloud-init completes.
+   The VM gets its IP from DHCP, but Terraform doesn't automatically detect this change.
+   See [detailed troubleshooting](local-testing-setup.md#troubleshooting) for more info.
 
 ### Getting Help
 

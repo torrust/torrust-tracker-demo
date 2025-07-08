@@ -235,9 +235,11 @@ cd application/
 
 4. **VM Integration Testing**:
 
-   - **Status**: ⬜ **Pending**
+   - **Status**: ✅ **Completed** (2025-07-08)
    - **Description**: Deploy the complete stack on a local VM to test the full
      infrastructure integration.
+   - **Solution**: MySQL 8.0 x86-64-v2 CPU requirement resolved by configuring VM with
+     `host-model` CPU mode to enable modern instruction sets.
 
    ```bash
    # From the repository root
@@ -245,6 +247,19 @@ cd application/
    make ssh    # Connect to VM
    # Run smoke tests from the smoke testing guide
    ```
+
+   **Results**:
+
+   - ✅ All Docker containers running successfully
+   - ✅ MySQL container: `Up 48 minutes (healthy)` - no more restart loops
+   - ✅ Tracker container: `Up 48 minutes (healthy)` - connected to MySQL
+   - ✅ All services responding to health checks
+
+   **Technical Solution**:
+
+   - **Issue**: MySQL 8.0 Docker image requires x86-64-v2 CPU instruction set
+   - **Fix**: Updated `infrastructure/terraform/main.tf` to use `host-model` CPU mode
+   - **Result**: VM CPU now supports x86-64-v2 instructions required by MySQL 8.0
 
 ### Phase 2: Documentation and Cleanup
 
@@ -269,7 +284,7 @@ remove any outdated SQLite references.
 - [x] Docker Compose service dependencies updated
 - [x] Local functionality testing passed
 - [x] Local data persistence testing passed
-- [ ] VM integration testing passed
+- [x] VM integration testing passed
 - [ ] All documentation updated
 - [ ] Old SQLite configurations removed or documented as legacy
 - [ ] Final PR reviewed and approved

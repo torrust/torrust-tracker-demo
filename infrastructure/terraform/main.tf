@@ -106,7 +106,12 @@ resource "libvirt_domain" "vm" {
 
   cloudinit = libvirt_cloudinit_disk.commoninit.id
 
-
+  # CPU configuration - use a modern CPU model that supports x86-64-v2
+  # Enable modern CPU model for x86-64-v2 instruction set support (required by MySQL 8.0)
+  # Reference: https://github.com/docker-library/mysql/issues/1055
+  cpu {
+    mode = "host-model"
+  }
 
   disk {
     volume_id = libvirt_volume.vm_disk.id

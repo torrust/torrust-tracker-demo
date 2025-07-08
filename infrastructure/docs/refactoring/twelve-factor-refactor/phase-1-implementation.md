@@ -21,7 +21,6 @@ mkdir -p application/config/templates
 **Files to create:**
 
 - [ ] `infrastructure/config/environments/local.env`
-- [ ] `infrastructure/config/environments/staging.env`
 - [ ] `infrastructure/config/environments/production.env`
 - [ ] `infrastructure/config/templates/tracker.toml.tpl`
 - [ ] `infrastructure/config/templates/prometheus.yml.tpl`
@@ -81,30 +80,6 @@ PROMETHEUS_RETENTION_TIME=7d
 USER_ID=1000
 ```
 
-**Staging Environment (`staging.env`):**
-
-```bash
-# Infrastructure
-INFRASTRUCTURE_PROVIDER=hetzner
-INFRASTRUCTURE_REGION=fsn1
-INFRASTRUCTURE_INSTANCE_TYPE=cx11
-
-# Application
-TORRUST_TRACKER_MODE=private
-TORRUST_TRACKER_LOG_LEVEL=info
-TORRUST_TRACKER_DATABASE_DRIVER=sqlite3
-TORRUST_TRACKER_API_TOKEN=${TORRUST_STAGING_API_TOKEN}
-
-# Services
-GRAFANA_ADMIN_PASSWORD=${GRAFANA_STAGING_PASSWORD}
-PROMETHEUS_RETENTION_TIME=15d
-
-# Security
-SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
-DOMAIN_NAME=staging.torrust-demo.com
-SSL_EMAIL=${SSL_EMAIL}
-```
-
 **Production Environment (`production.env`):**
 
 ```bash
@@ -155,7 +130,7 @@ PROMETHEUS_RETENTION_TIME=30d
 
 # Security Configuration
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
-DOMAIN_NAME=torrust-demo.com
+DOMAIN_NAME=tracker.torrust-demo.com
 SSL_EMAIL=${SSL_EMAIL}
 
 # Docker Configuration
@@ -498,7 +473,7 @@ main() {
     local failed=0
 
     # Validate environment files
-    for env in local staging production; do
+    for env in local production; do
         env_file="${CONFIG_DIR}/environments/${env}.env"
         if ! validate_env_file "${env_file}" "${env}"; then
             failed=1

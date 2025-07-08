@@ -109,8 +109,6 @@ The tracker uses four main ports, each serving a specific purpose:
     - `/api/v1/metrics` - Prometheus metrics
   - Used by Prometheus for monitoring and Grafana dashboards
 
-### Application Service Mapping
-
 ### Torrust Tracker
 
 - **UDP ports 6868, 6969**: BitTorrent announce endpoints

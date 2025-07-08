@@ -29,6 +29,7 @@ ethernets
 findtime
 fullchain
 genisoimage
+healthcheck
 hetznercloud
 INFOHASH
 initdb
@@ -45,6 +46,7 @@ maxretry
 misprocess
 mkisofs
 mktemp
+mysqladmin
 netdev
 newgrp
 newtrackon

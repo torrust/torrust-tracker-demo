@@ -63,7 +63,7 @@ services:
     networks:
       - backend_network
     ports:
-      - "9090:9090" # This port should not be exposed to the internet
+      - "9090:9090"  # This port should not be exposed to the internet
     volumes:
       - ./storage/prometheus/etc:/etc/prometheus:Z
     logging:
@@ -85,11 +85,18 @@ services:
     networks:
       - backend_network
     ports:
-      - "3306:3306" # Only for debugging, remove in production
+      - "3306:3306"  # Only for debugging, remove in production
     volumes:
       - mysql_data:/var/lib/mysql
       - ./storage/mysql/init:/docker-entrypoint-initdb.d:ro
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     logging:
       options:
         max-size: "10m"

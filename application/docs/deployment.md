@@ -5,7 +5,8 @@ This document outlines the deployment process for the Torrust Tracker demo appli
 ## 1. Prerequisites
 
 - Ensure you have SSH access to the production server.
-- The server should be provisioned and configured according to the [Production Setup Guide](./production-setup.md).
+- The server should be provisioned and configured according to the
+  [Production Setup Guide](./production-setup.md).
 
 ## 2. Deployment Steps
 

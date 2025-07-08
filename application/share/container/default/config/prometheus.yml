@@ -1,3 +1,4 @@
+---
 global:
   scrape_interval: 15s # How often to scrape metrics
 

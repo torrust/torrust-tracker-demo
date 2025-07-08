@@ -6,7 +6,10 @@ This document outlines the detailed implementation plan for migrating from SQLit
 as the default database for the Torrust Tracker Demo deployment.
 
 **Parent Issue**: Phase 1: Database Migration to MySQL  
-**Migration Plan Reference**: [docs/plans/hetzner-migration-plan.md](../plans/hetzner-migration-plan.md)
+**Migration Plan Reference**:
+[docs/plans/hetzner-migration-plan.md](../plans/hetzner-migration-plan.md)  
+**Database Choice Decision**:
+[ADR-003: Use MySQL Over MariaDB](../adr/003-use-mysql-over-mariadb.md)
 
 ## 📋 Implementation Steps
 

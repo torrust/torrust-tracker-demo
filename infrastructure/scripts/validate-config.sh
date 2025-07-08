@@ -124,21 +124,43 @@ validate_yaml_files() {
 
     log_info "Validating YAML configuration files..."
 
-    # YAML syntax validation
-    if command -v yamllint >/dev/null 2>&1; then
-        if yamllint "${prometheus_config}"; then
-            log_success "YAML syntax validation passed (using yamllint)"
-        else
-            log_error "YAML syntax validation failed"
-            return 1
-        fi
-    else
-        # Basic YAML validation using Python
+    # Check if file is in ignored directory
+    if [[ "${prometheus_config}" == *"application/storage/"* ]]; then
+        log_info "Skipping yamllint for file in ignored directory: application/storage/"
+        # Basic YAML validation using Python instead
         if python3 -c "import yaml; yaml.safe_load(open('${prometheus_config}'))" 2>/dev/null; then
-            log_success "Basic YAML syntax validation passed"
+            log_success "Basic YAML syntax validation passed (file in ignored directory)"
         else
             log_error "Basic YAML syntax validation failed"
             return 1
+        fi
+    else
+        # YAML syntax validation for files not in ignored directories
+        if command -v yamllint >/dev/null 2>&1; then
+            # Use project yamllint config if it exists
+            if [[ -f "${PROJECT_ROOT}/.yamllint-ci.yml" ]]; then
+                if yamllint -c "${PROJECT_ROOT}/.yamllint-ci.yml" "${prometheus_config}"; then
+                    log_success "YAML syntax validation passed (using yamllint with project config)"
+                else
+                    log_error "YAML syntax validation failed"
+                    return 1
+                fi
+            else
+                if yamllint "${prometheus_config}"; then
+                    log_success "YAML syntax validation passed (using yamllint)"
+                else
+                    log_error "YAML syntax validation failed"
+                    return 1
+                fi
+            fi
+        else
+            # Basic YAML validation using Python
+            if python3 -c "import yaml; yaml.safe_load(open('${prometheus_config}'))" 2>/dev/null; then
+                log_success "Basic YAML syntax validation passed"
+            else
+                log_error "Basic YAML syntax validation failed"
+                return 1
+            fi
         fi
     fi
 
@@ -243,7 +265,7 @@ validate_template_substitution() {
     for file in "${files_to_check[@]}"; do
         if [[ -f "${file}" ]]; then
             # Check for unsubstituted variables (${VAR} patterns)
-            if grep -n '\$\{[^}]*\}' "${file}"; then
+            if grep -n '\$[{][^}]*[}]' "${file}"; then
                 log_error "Unsubstituted template variables found in: ${file}"
                 found_issues=true
             fi

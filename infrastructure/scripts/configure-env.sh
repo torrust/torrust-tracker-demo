@@ -104,6 +104,30 @@ process_templates() {
     log_success "Configuration templates processed"
 }
 
+# Generate .env file for Docker Compose
+generate_docker_env() {
+    local templates_dir="${CONFIG_DIR}/templates"
+    local env_output="${PROJECT_ROOT}/application/.env"
+
+    log_info "Generating Docker Compose environment file"
+
+    # Set generation date for template
+    GENERATION_DATE="$(date)"
+    export GENERATION_DATE
+
+    # Ensure ENVIRONMENT is exported for template substitution
+    export ENVIRONMENT
+
+    # Process Docker Compose environment template
+    if [[ -f "${templates_dir}/docker-compose.env.tpl" ]]; then
+        envsubst <"${templates_dir}/docker-compose.env.tpl" >"${env_output}"
+        log_info "Generated: ${env_output}"
+    else
+        log_error "Docker Compose environment template not found: ${templates_dir}/docker-compose.env.tpl"
+        exit 1
+    fi
+}
+
 # Main execution
 main() {
     log_info "Starting configuration processing for environment: ${ENVIRONMENT}"
@@ -111,6 +135,7 @@ main() {
     load_environment
     validate_environment
     process_templates
+    generate_docker_env
 
     log_success "Configuration processing completed successfully"
 }

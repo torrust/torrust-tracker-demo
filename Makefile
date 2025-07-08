@@ -1,5 +1,5 @@
 # Makefile for Torrust Tracker Local Testing Infrastructure
-.PHONY: help init plan apply destroy test clean status refresh-state ssh install-deps console vm-console lint lint-yaml lint-shell lint-markdown
+.PHONY: help init plan apply destroy test clean status refresh-state ssh install-deps console vm-console lint lint-yaml lint-shell lint-markdown configure-local configure-production validate-config validate-config-production deploy-local deploy-production start-services stop-services
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
@@ -341,4 +341,62 @@ vm-console: ## Access VM graphical console (GUI)
 	else \
 		echo "virt-viewer not found. Please install it:"; \
 		echo "  sudo apt install virt-viewer"; \
+	fi
+
+# Configuration Management Targets
+configure-local: ## Generate local environment configuration
+	@echo "Generating local environment configuration..."
+	@infrastructure/scripts/configure-env.sh local
+
+configure-production: ## Generate production environment configuration (requires secrets)
+	@echo "Generating production environment configuration..."
+	@infrastructure/scripts/configure-env.sh production
+
+validate-config: ## Validate generated configuration files
+	@echo "Validating configuration files..."
+	@infrastructure/scripts/validate-config.sh local
+
+validate-config-production: ## Validate production configuration files
+	@echo "Validating production configuration files..."
+	@infrastructure/scripts/validate-config.sh production
+
+# Deployment workflow targets
+deploy-local: configure-local ## Deploy VM and configure for local environment
+	@echo "Deploying local environment..."
+	@$(MAKE) apply
+	@echo "Waiting for VM to be ready..."
+	@sleep 30
+	@echo "Starting application services..."
+	@$(MAKE) start-services
+
+deploy-production: configure-production ## Deploy and configure for production environment (requires secrets)
+	@echo "Deploying production environment..."
+	@$(MAKE) apply
+	@echo "Waiting for VM to be ready..."
+	@sleep 30
+	@echo "Starting application services..."
+	@$(MAKE) start-services
+
+start-services: ## Start Docker Compose services in the VM
+	@echo "Starting Docker Compose services..."
+	@VM_IP=$$(cd $(TERRAFORM_DIR) && tofu output -raw vm_ip 2>/dev/null) || \
+	 VM_IP=$$(virsh domifaddr $(VM_NAME) | grep ipv4 | awk '{print $$4}' | cut -d'/' -f1); \
+	if [ -n "$$VM_IP" ]; then \
+		echo "Starting services on $$VM_IP..."; \
+		ssh -o StrictHostKeyChecking=no torrust@$$VM_IP 'cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose up -d'; \
+	else \
+		echo "Could not get VM IP. Is the VM deployed?"; \
+		exit 1; \
+	fi
+
+stop-services: ## Stop Docker Compose services in the VM
+	@echo "Stopping Docker Compose services..."
+	@VM_IP=$$(cd $(TERRAFORM_DIR) && tofu output -raw vm_ip 2>/dev/null) || \
+	 VM_IP=$$(virsh domifaddr $(VM_NAME) | grep ipv4 | awk '{print $$4}' | cut -d'/' -f1); \
+	if [ -n "$$VM_IP" ]; then \
+		echo "Stopping services on $$VM_IP..."; \
+		ssh -o StrictHostKeyChecking=no torrust@$$VM_IP 'cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose down'; \
+	else \
+		echo "Could not get VM IP. Is the VM deployed?"; \
+		exit 1; \
 	fi

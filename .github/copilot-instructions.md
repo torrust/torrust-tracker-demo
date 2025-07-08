@@ -323,6 +323,41 @@ When providing assistance:
 - Provide clear explanations and documentation
 - Consider the migration to Hetzner infrastructure in suggestions
 
+#### Command Execution Context
+
+Be mindful of the execution context for different types of commands. The project uses several command-line tools that must be run from specific directories:
+
+- **`make` commands**: (e.g., `make help`, `make status`) must be run from the project root directory.
+- **OpenTofu commands**: (e.g., `tofu init`, `tofu plan`, `tofu apply`) must be run from the `infrastructure/terraform/` directory.
+- **Docker Compose commands**: (e.g., `docker compose up -d`, `docker compose ps`) are intended to be run _inside the deployed virtual machine_, typically from the `/home/torrust/github/torrust/torrust-tracker-demo/application` directory.
+
+**IMPORTANT**: Always be aware of the current working directory. The repository location `~/Documents/git/committer/me/github/torrust/torrust-tracker-demo` is used in documentation as an example, but contributors may have the project cloned elsewhere. Verify the current location before executing commands.
+
+#### Working with Remote Terminals
+
+When executing commands on the remote VM, be aware of limitations with interactive sessions.
+
+- **Problem**: The VS Code integrated terminal may not correctly handle commands that initiate a new interactive shell, such as `ssh torrust@<VM_IP>` or `make ssh`. The connection may succeed, but subsequent commands sent to that shell may not execute as expected, and their output may not be captured.
+
+- **Solution**: Prefer executing commands non-interactively whenever possible. Instead of opening a persistent SSH session, pass the command directly to `ssh`.
+
+  - **Don't do this**:
+
+    ```bash
+    # 1. Log in
+    make ssh
+    # 2. Run command (this might fail or output won't be seen)
+    df -H
+    ```
+
+  - **Do this instead**:
+    ```bash
+    # Execute the command directly via ssh
+    ssh torrust@<VM_IP> 'df -H'
+    ```
+
+This ensures that the command is executed and its output is returned to the primary terminal session.
+
 #### Preferred Working Methodology
 
 **Work in Small Steps:**

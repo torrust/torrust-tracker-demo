@@ -96,7 +96,7 @@ make destroy                                 # Clean up
 - [Application Overview](application/README.md) - Application components and
   deployment
 - [Production Setup](application/docs/production-setup.md) - Production
-  deployment
+  deployment with MySQL
 - [Deployment Guide](application/docs/deployment.md) - Deployment procedures
 - [Backup Procedures](application/docs/backups.md) - Data backup and recovery
 - [Rollback Guide](application/docs/rollbacks.md) - Application rollbacks

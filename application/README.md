@@ -59,7 +59,7 @@ application/
 - **Nginx**: Reverse proxy and SSL termination
 - **Prometheus**: Metrics collection and storage
 - **Grafana**: Metrics visualization and dashboards
-- **MySQL**: Database (migrating from SQLite)
+- **MySQL**: Default database for production
 - **Certbot**: SSL certificate management
 
 ## 🚀 Quick Start

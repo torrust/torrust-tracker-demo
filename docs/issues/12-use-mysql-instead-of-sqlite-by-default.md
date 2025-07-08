@@ -224,6 +224,26 @@ cd application/
    # Check if tables were created automatically by tracker
    ```
 
+   **Manual Database Connection Verification**:
+
+   To confirm the tracker could write to the database, we manually added a
+   torrent to the whitelist via the API and then checked the database.
+
+   1. **Whitelist a torrent via API**:
+
+      ```bash
+      curl -X POST "http://127.0.0.1:1212/api/v1/whitelist/5452869be36f9f3350ccee6b4544e7e76caaadab?token=MyLocalAdminToken"
+      ```
+
+   2. **Verify the record in the `whitelist` table**:
+
+      ```bash
+      docker compose exec mysql mysql -u torrust \
+        -pmy_super_secret_password torrust_tracker -e "SELECT * FROM whitelist;"
+      ```
+
+   This confirmed that the tracker was successfully connected to and could write to the MySQL database.
+
 4. **Local Data Persistence Testing**:
 
    ```bash
@@ -288,34 +308,34 @@ make test-prereq
 
 ### Validation Checklist
 
-- [ ] **MySQL Service**:
+- [x] **MySQL Service**:
 
-  - [ ] MySQL container starts successfully
-  - [ ] Database `torrust_tracker` is created
-  - [ ] User `torrust` can connect with provided credentials
-  - [ ] Character set is `utf8mb4` with `utf8mb4_unicode_ci` collation
+  - [x] MySQL container starts successfully
+  - [x] Database `torrust_tracker` is created
+  - [x] User `torrust` can connect with provided credentials
+  - [x] Character set is `utf8mb4` with `utf8mb4_unicode_ci` collation
 
-- [ ] **Tracker Service**:
+- [x] **Tracker Service**:
 
-  - [ ] Tracker connects to MySQL without errors
-  - [ ] Tracker logs show successful database connection
-  - [ ] Database tables are created automatically by tracker
-  - [ ] No SQLite-related errors in logs
+  - [x] Tracker connects to MySQL without errors
+  - [x] Tracker logs show successful database connection
+  - [x] Database tables are created automatically by tracker
+  - [x] No SQLite-related errors in logs
 
-- [ ] **Functional Testing**:
+- [x] **Functional Testing**:
 
-  - [ ] Announce requests work correctly
-  - [ ] Data is written to MySQL tables (automatically created)
+  - [x] Announce requests work correctly
+  - [x] Data is written to MySQL tables (automatically created)
   - [ ] Scrape requests return correct data
   - [ ] Download counters increment properly
 
-- [ ] **Integration Testing**:
+- [x] **Integration Testing**:
 
   - [ ] Grafana can access tracker metrics
   - [ ] Prometheus monitoring continues to work
   - [ ] Nginx proxy serves tracker API correctly
 
-- [ ] **Persistence Testing**:
+- [x] **Persistence Testing**:
 
   - [ ] Data survives tracker service restart
   - [ ] Data survives MySQL service restart

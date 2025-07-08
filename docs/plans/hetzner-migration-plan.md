@@ -25,19 +25,19 @@ before deploying to production.
 
 #### Tasks
 
-- [ ] Add MySQL service to `docker-compose.yaml`
-- [ ] Update tracker configuration (`tracker.toml`) to use MySQL connection
-- [ ] Create MySQL initialization scripts/schema
-- [ ] Update environment variable templates (`.env.production`)
-- [ ] Update documentation for MySQL setup
+- [x] Add MySQL service to `docker-compose.yaml`
+- [x] Update tracker configuration (`tracker.toml`) to use MySQL connection
+- [x] Create MySQL initialization scripts/schema
+- [x] Update environment variable templates (`.env.production`)
+- [x] Update documentation for MySQL setup
 
 #### Validation
 
-- [ ] Deploy locally using `make apply`
-- [ ] Verify MySQL service starts successfully
-- [ ] Make test announce request
-- [ ] Confirm download counter increases in MySQL `torrents` table
-- [ ] Test tracker restart with persistent MySQL data
+- [x] Deploy locally using `make apply`
+- [x] Verify MySQL service starts successfully
+- [x] Make test announce request
+- [x] Confirm download counter increases in MySQL `torrents` table
+- [x] Test tracker restart with persistent MySQL data
 
 **Deliverable**: Working local deployment with MySQL backend
 
@@ -146,7 +146,24 @@ before deploying to production.
 
 ---
 
-### Phase 6: Testing and Validation
+### Phase 6: Grafana Configuration
+
+**Objective**: Manually configure Grafana for monitoring the tracker.
+
+#### Tasks
+
+- [ ] Log in to Grafana at `http://localhost:3100/` with default credentials (admin/admin).
+- [ ] Change the default admin password.
+- [ ] Configure the Prometheus data source to poll the tracker's API metrics endpoint.
+- [ ] Optional: Import pre-built dashboards from the repository to visualize tracker metrics.
+
+**Note**: An issue will be opened with more details when work on this phase begins.
+
+**Deliverable**: A configured Grafana instance with a Prometheus data source and dashboards.
+
+---
+
+### Phase 7: Testing and Validation
 
 **Objective**: Comprehensive testing of the new Hetzner deployment
 
@@ -171,7 +188,7 @@ before deploying to production.
 
 ---
 
-### Phase 7: Go Live
+### Phase 8: Go Live
 
 **Objective**: Switch production traffic to Hetzner infrastructure
 

@@ -93,15 +93,15 @@ echo "=== Verifying Clean State ==="
 
 # Check VMs
 virsh list --all | grep torrust-tracker-demo && \
-  echo "❌ VM still exists!" || echo "✅ No VM conflicts"
+  echo '❌ VM still exists!' || echo '✅ No VM conflicts'
 
 # Check volumes in user-default pool
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
-  echo "❌ Volumes still exist!" || echo "✅ No volume conflicts"
+  echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
 
 # Check OpenTofu state
 ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
-  echo "❌ State files still exist!" || echo "✅ No state file conflicts"
+  echo '❌ State files still exist!' || echo '✅ No state file conflicts'
 ```
 
 **Expected Output**: All checks should show "✅" (no conflicts).
@@ -120,7 +120,7 @@ virsh vol-delete torrust-tracker-demo.qcow2 user-default
 
 # Verify cleanup
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
-  echo "❌ Volumes still exist!" || echo "✅ No volume conflicts"
+  echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
 ```
 
 **Expected Output**: Should show "✅ No volume conflicts" after manual cleanup.
@@ -392,8 +392,8 @@ while true; do
     echo "$(date): Testing SSH to $VM_IP..."
     if timeout 10 ssh -o StrictHostKeyChecking=no \
        -o ConnectTimeout=10 torrust@$VM_IP \
-       "echo 'SSH works!'" 2>/dev/null; then
-        echo "✅ SSH connection successful!"
+       'echo "SSH works!"' 2>/dev/null; then
+        echo '✅ SSH connection successful!'
         break
     fi
     echo "⏳ Cloud-init still running... waiting 30 seconds"

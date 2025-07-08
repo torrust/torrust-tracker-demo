@@ -96,7 +96,7 @@ make destroy                                 # Clean up
 - [Application Overview](application/README.md) - Application components and
   deployment
 - [Production Setup](application/docs/production-setup.md) - Production
-  deployment
+  deployment with MySQL
 - [Deployment Guide](application/docs/deployment.md) - Deployment procedures
 - [Backup Procedures](application/docs/backups.md) - Data backup and recovery
 - [Rollback Guide](application/docs/rollbacks.md) - Application rollbacks
@@ -112,6 +112,8 @@ make destroy                                 # Clean up
     main Makefile is at repository root
   - [ADR-002: Docker for All Services](docs/adr/002-docker-for-all-services.md) -
     Why we use Docker for all services including UDP tracker
+  - [ADR-003: Use MySQL Over MariaDB](docs/adr/003-use-mysql-over-mariadb.md) -
+    Why we chose MySQL instead of MariaDB for the database backend
 
 ## 🛠️ Development
 

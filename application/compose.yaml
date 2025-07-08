@@ -63,7 +63,7 @@ services:
     networks:
       - backend_network
     ports:
-      - "9090:9090" # This port should not be exposed to the internet
+      - "9090:9090"  # This port should not be exposed to the internet
     volumes:
       - ./storage/prometheus/etc:/etc/prometheus:Z
     logging:
@@ -73,6 +73,35 @@ services:
     depends_on:
       - tracker
 
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    networks:
+      - backend_network
+    ports:
+      - "3306:3306"  # Only for debugging, remove in production
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./storage/mysql/init:/docker-entrypoint-initdb.d:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "10"
+
   tracker:
     image: torrust/tracker:develop
     container_name: tracker
@@ -80,8 +109,9 @@ services:
     restart: unless-stopped
     environment:
       - USER_ID=${USER_ID}
-      - TORRUST_TRACKER_DATABASE=${TORRUST_TRACKER_DATABASE:-sqlite3}
-      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER=${TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER:-sqlite3}
+      - TORRUST_TRACKER_DATABASE=${TORRUST_TRACKER_DATABASE:-mysql}
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER=${TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER:-mysql}
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH=${TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH:-mysql://torrust:password@mysql:3306/torrust_tracker}
       - TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN=${TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN:-MyAccessToken}
     networks:
       - backend_network
@@ -98,6 +128,8 @@ services:
       options:
         max-size: "10m"
         max-file: "10"
+    depends_on:
+      - mysql
 
 networks:
   frontend_network: {}

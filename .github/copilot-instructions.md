@@ -232,6 +232,13 @@ The project includes a comprehensive linting script that validates all file type
 - **No secrets**: Never commit SSH keys, passwords, or tokens
 - **Documentation**: Update docs for any infrastructure changes
 
+#### End-to-End Smoke Testing
+
+For verifying the functionality of the tracker from an end-user's perspective (e.g., simulating announce/scrape requests), refer to the **Smoke Testing Guide**. This guide explains how to use the official `torrust-tracker-client` tools to perform black-box testing against a running tracker instance without needing a full BitTorrent client.
+
+- **Guide**: [Smoke Testing Guide](../docs/guides/smoke-testing-guide.md)
+- **When to use**: After a deployment (`make apply`) or to validate that all services are working together correctly.
+
 ### Security Guidelines
 
 #### Secrets Management

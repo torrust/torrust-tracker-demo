@@ -18,6 +18,10 @@ This directory currently contains cross-cutting documentation:
 
 - [ADR-001: Makefile Location](adr/001-makefile-location.md) - Decision to keep
   Makefile at repository root level
+- [ADR-002: Docker for All Services](adr/002-docker-for-all-services.md) - Decision
+  to use Docker for all services including UDP tracker
+- [ADR-003: Use MySQL Over MariaDB](adr/003-use-mysql-over-mariadb.md) - Decision
+  to use MySQL instead of MariaDB for database backend
 
 ### 📅 [`plans/`](plans/) (Ongoing Plans and Roadmaps)
 
@@ -25,6 +29,13 @@ This directory currently contains cross-cutting documentation:
 
 - [Hetzner Migration Plan](plans/hetzner-migration-plan.md) - Comprehensive plan
   for migrating from Digital Ocean to Hetzner infrastructure
+
+### 🎯 [`issues/`](issues/) (Implementation Plans)
+
+**Issue Implementation Plans:**
+
+- [Phase 1: MySQL Migration](issues/12-use-mysql-instead-of-sqlite-by-default.md) -
+  Detailed implementation plan for database migration from SQLite to MySQL
 
 ### Future Categories
 

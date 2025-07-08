@@ -213,262 +213,74 @@ cd application/
    docker compose logs tracker
    ```
 
-3. **Local Functionality Testing**:
+   **Expected Output**:
 
    ```bash
-   # Test tracker announce functionality locally
-   curl -v "http://localhost:7070/announce?info_hash=1234567890123456789012345678901234567890&peer_id=1234567890123456789&port=6881&uploaded=0&downloaded=0&left=1000&event=started"
-
-   # Connect to MySQL and verify data
-   docker compose exec mysql mysql -u torrust -p torrust_tracker
-   # Check if tables were created automatically by tracker
+   # Verify tracker is running and connected to MySQL
+   docker compose logs tracker | grep "Successfully connected to database"
    ```
 
-   **Manual Database Connection Verification**:
+3. **Local Data Persistence Testing**:
 
-   To confirm the tracker could write to the database, we manually added a
-   torrent to the whitelist via the API and then checked the database.
-
-   1. **Whitelist a torrent via API**:
-
-      ```bash
-      curl -X POST "http://127.0.0.1:1212/api/v1/whitelist/5452869be36f9f3350ccee6b4544e7e76caaadab?token=MyLocalAdminToken"
-      ```
-
-   2. **Verify the record in the `whitelist` table**:
-
-      ```bash
-      docker compose exec mysql mysql -u torrust \
-        -pmy_super_secret_password torrust_tracker -e "SELECT * FROM whitelist;"
-      ```
-
-   This confirmed that the tracker was successfully connected to and could write to the MySQL database.
-
-4. **Local Data Persistence Testing**:
+   - **Status**: ✅ **Completed**
+   - **Verification**: Data persists in MySQL after service restarts.
 
    ```bash
-   # Make announce request, restart services, verify data persists
-   docker compose restart tracker
-   docker compose restart mysql
+   # Restart services
+   docker compose restart
 
-   # Verify data is still there
-   docker compose exec mysql mysql -u torrust -p torrust_tracker -e "SHOW TABLES;"
+   # Verify tables still exist in MySQL
+   docker compose exec mysql mysql -u torrust -p<YOUR_PASSWORD> torrust_tracker -e "SHOW TABLES;"
    ```
 
-### Phase 2: VM Integration Testing
+4. **VM Integration Testing**:
 
-**Prerequisites**:
-
-```bash
-# Ensure local testing environment is ready
-make test-prereq
-```
-
-**VM Testing Steps**:
-
-1. **Clean Deployment Test**:
+   - **Status**: ⬜ **Pending**
+   - **Description**: Deploy the complete stack on a local VM to test the full
+     infrastructure integration.
 
    ```bash
-   make destroy  # Clean any existing VMs
-   make apply    # Deploy with new MySQL configuration
+   # From the repository root
+   make apply  # Deploy VM
+   make ssh    # Connect to VM
+   # Run smoke tests from the smoke testing guide
    ```
 
-2. **Service Health Check**:
+### Phase 2: Documentation and Cleanup
 
-   ```bash
-   make ssh
-   cd /home/torrust/github/torrust/torrust-tracker-demo
-   docker compose ps  # Verify all services are running
-   docker compose logs mysql  # Check MySQL startup logs
-   docker compose logs tracker  # Check tracker connection logs
-   ```
+**Status**: ⬜ **Pending**
 
-3. **Database Connectivity Test**:
+**Description**: Update all relevant documentation to reflect the MySQL migration and
+remove any outdated SQLite references.
 
-   ```bash
-   # Connect to MySQL and verify database exists
-   docker compose exec mysql mysql -u torrust -p torrust_tracker
-   # Should connect successfully and show database with tracker tables
-   ```
+**Files to Update**:
 
-4. **Functional Testing**:
+- `application/README.md`
+- `application/docs/production-setup.md`
+- `docs/guides/smoke-testing-guide.md` (if it contains database-specific instructions)
+- `.github/copilot-instructions.md` (ensure it reflects current best practices)
 
-   ```bash
-   # Test tracker announce functionality
-   curl -v "http://localhost:7070/announce?info_hash=1234567890123456789012345678901234567890&peer_id=1234567890123456789&port=6881&uploaded=0&downloaded=0&left=1000&event=started"
-   ```
+## ✅ Completion Checklist
 
-5. **Data Persistence Test**:
+- [x] MySQL service added to `compose.yaml`
+- [x] Environment variables configured in `.env.production`
+- [x] Tracker `tracker.toml` defaults to MySQL
+- [x] MySQL initialization directory documented
+- [x] Docker Compose service dependencies updated
+- [x] Local functionality testing passed
+- [x] Local data persistence testing passed
+- [ ] VM integration testing passed
+- [ ] All documentation updated
+- [ ] Old SQLite configurations removed or documented as legacy
+- [ ] Final PR reviewed and approved
 
-   ```bash
-   # Make announce request, restart services, verify data persists
-   docker compose restart tracker
-   # Check if torrent data is still in MySQL
-   ```
+## Rollback Plan
 
-### Validation Checklist
+If critical issues arise, the following steps can be taken to revert to SQLite:
 
-- [x] **MySQL Service**:
+1. **Revert `compose.yaml`**: Remove the MySQL service and dependencies.
+2. **Revert `.env.production`**: Restore SQLite environment variables.
+3. **Revert `tracker.toml`**: Set the database driver back to `sqlite3`.
+4. **Restart Services**: Run `docker compose up -d --force-recreate`.
 
-  - [x] MySQL container starts successfully
-  - [x] Database `torrust_tracker` is created
-  - [x] User `torrust` can connect with provided credentials
-  - [x] Character set is `utf8mb4` with `utf8mb4_unicode_ci` collation
-
-- [x] **Tracker Service**:
-
-  - [x] Tracker connects to MySQL without errors
-  - [x] Tracker logs show successful database connection
-  - [x] Database tables are created automatically by tracker
-  - [x] No SQLite-related errors in logs
-
-- [x] **Functional Testing**:
-
-  - [x] Announce requests work correctly
-  - [x] Data is written to MySQL tables (automatically created)
-  - [ ] Scrape requests return correct data
-  - [ ] Download counters increment properly
-
-- [x] **Integration Testing**:
-
-  - [ ] Grafana can access tracker metrics
-  - [ ] Prometheus monitoring continues to work
-  - [ ] Nginx proxy serves tracker API correctly
-
-- [x] **Persistence Testing**:
-
-  - [ ] Data survives tracker service restart
-  - [ ] Data survives MySQL service restart
-  - [ ] Data survives complete stack restart
-  - [ ] Database schema is maintained across restarts
-
-## 🔄 Implementation Order
-
-### Phase A: Service Configuration (No Breaking Changes)
-
-1. Add MySQL service to `compose.yaml`
-2. Create MySQL initialization directory and README
-3. Update environment variables in `.env.production`
-4. Test MySQL service starts independently (local Docker Compose)
-
-### Phase B: Tracker Integration (Local Testing)
-
-1. Update tracker configuration in `tracker.toml`
-2. Add tracker environment variable overrides
-3. Update service dependencies
-4. **Test complete stack deployment locally with Docker Compose**
-5. Verify database tables are created automatically by tracker
-6. Validate announce/scrape functionality locally
-
-### Phase C: VM Integration Testing
-
-1. Deploy to VM using `make apply`
-2. Run comprehensive testing on VM environment
-3. Validate against all acceptance criteria
-4. Document any differences between local and VM environments
-
-### Phase D: Documentation and Finalization
-
-1. Update documentation files
-2. Document local vs VM testing procedures
-3. Create troubleshooting guide
-4. Document any migration notes
-
-## 📁 File Change Summary
-
-```text
-application/
-├── compose.yaml                     # Add MySQL service, update tracker deps
-├── .env.production                  # Add MySQL environment variables
-├── storage/
-│   ├── tracker/
-│   │   └── etc/
-│   │       └── tracker.toml        # Update database configuration
-│   └── mysql/                      # New directory
-│       └── init/                   # New directory
-│           └── README.md           # New file (documentation only)
-├── README.md                       # Update database requirements
-└── docs/
-    ├── production-setup.md         # Add MySQL setup instructions
-    └── deployment.md               # Update deployment procedures
-```
-
-**Note**: No SQL migration scripts needed - Torrust Tracker handles database migrations automatically.
-
-## 🔍 Pre-Implementation Research
-
-### Torrust Tracker MySQL Requirements
-
-**Research Completed**:
-
-- ✅ Torrust Tracker MySQL driver support confirmed
-- ✅ MySQL connection string format: `mysql://user:password@host:port/database`
-- ✅ Configuration uses single `path` parameter, not individual connection fields
-- ✅ Database migrations are handled automatically by tracker
-
-**Key Findings**:
-
-1. **Automatic Migrations**: Torrust Tracker handles database migrations automatically
-   through built-in migration system in database drivers
-2. **Connection Format**: Uses MySQL connection string in `path` field
-3. **Table Creation**: Tables are created automatically on tracker startup
-4. **No Manual Setup**: No manual schema setup or migration scripts required
-
-### Environment Variable Validation
-
-**Research Tasks**:
-
-- [ ] Verify exact environment variable names used by Torrust Tracker
-- [ ] Test environment variable override behavior with connection string format
-- [ ] Confirm configuration precedence (file vs environment)
-
-## 🚨 Risk Assessment
-
-### High Risk Items
-
-- **Database connection failures**: Ensure proper networking between services
-- **Character set issues**: UTF-8 handling for torrent names and peer data
-- **Environment variable conflicts**: Ensure no conflicting configurations
-
-### Medium Risk Items
-
-- **Performance differences**: MySQL vs SQLite performance characteristics
-- **Volume permissions**: Ensure MySQL data directory has correct permissions
-- **Service startup timing**: MySQL must be ready before tracker starts
-
-### Low Risk Items
-
-- **Documentation gaps**: Missing or unclear setup instructions
-- **Development environment differences**: Local vs production environment parity
-
-## 🎯 Success Criteria
-
-### Must Have
-
-- [ ] MySQL service starts and is accessible
-- [ ] Tracker connects to MySQL successfully
-- [ ] Basic announce/scrape functionality works
-- [ ] Data persists across service restarts
-- [ ] All existing functionality continues to work
-
-### Should Have
-
-- [ ] Performance is equivalent to SQLite
-- [ ] Comprehensive documentation is updated
-- [ ] Migration path from SQLite is documented
-- [ ] Local testing environment works reliably
-
-### Nice to Have
-
-- [ ] Database monitoring via Grafana
-- [ ] Automated database backup considerations
-- [ ] Performance optimization notes
-
-## 📚 References
-
-- [Torrust Tracker Documentation](https://docs.rs/torrust-tracker/)
-- [Torrust Tracker MySQL Configuration Example](https://github.com/torrust/torrust-tracker/blob/develop/share/default/config/tracker.container.mysql.toml)
-- [Torrust Tracker MySQL Driver Source](https://github.com/torrust/torrust-tracker/blob/develop/packages/tracker-core/src/databases/driver/mysql.rs)
-- [MySQL 8.0 Documentation](https://dev.mysql.com/doc/refman/8.0/en/)
-- [Docker Compose Networking](https://docs.docker.com/compose/networking/)
-- [Migration Plan](../plans/hetzner-migration-plan.md)
+This ensures a quick rollback path if the MySQL integration causes unforeseen problems.

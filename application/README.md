@@ -59,8 +59,29 @@ application/
 - **Nginx**: Reverse proxy and SSL termination
 - **Prometheus**: Metrics collection and storage
 - **Grafana**: Metrics visualization and dashboards
-- **MySQL**: Default database for production
+- **MySQL**: Default database backend for production
 - **Certbot**: SSL certificate management
+
+### Database Configuration
+
+The Torrust Tracker Demo uses **MySQL as the default database backend** for
+production deployments. This provides:
+
+- **Reliability**: Production-grade database with ACID compliance
+- **Scalability**: Support for high-throughput tracking operations
+- **Data Integrity**: Consistent data storage and retrieval
+- **Performance**: Optimized for concurrent tracker operations
+
+**Database Service**: The MySQL service is automatically configured with:
+
+- Database initialization scripts
+- Proper networking and security
+- Data persistence across container restarts
+- Health checks and monitoring
+
+For development and testing environments, you can optionally configure SQLite
+by modifying the tracker configuration, though MySQL is recommended for all
+production use cases.
 
 ## 🚀 Quick Start
 

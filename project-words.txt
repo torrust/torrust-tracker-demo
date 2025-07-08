@@ -10,6 +10,7 @@ commoninit
 conntrack
 containerd
 CPUS
+crontabs
 dialout
 direnv
 dmacvicar

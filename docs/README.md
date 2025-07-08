@@ -19,6 +19,13 @@ This directory currently contains cross-cutting documentation:
 - [ADR-001: Makefile Location](adr/001-makefile-location.md) - Decision to keep
   Makefile at repository root level
 
+### 📅 [`plans/`](plans/) (Ongoing Plans and Roadmaps)
+
+**Current Plans:**
+
+- [Hetzner Migration Plan](plans/hetzner-migration-plan.md) - Comprehensive plan
+  for migrating from Digital Ocean to Hetzner infrastructure
+
 ### Future Categories
 
 The following directories can be created as needed:
@@ -53,6 +60,7 @@ When adding new documentation:
 2. **Use this directory for cross-cutting concerns only**
 
    - Architecture decisions affecting multiple layers
+   - Ongoing plans and roadmaps spanning multiple phases
    - Research spanning infrastructure and application
    - Theoretical concepts and protocols
    - Performance analysis of the complete system
@@ -70,6 +78,7 @@ When adding new documentation:
 ## Documentation Guidelines
 
 - **Cross-cutting vs Specific**: Keep layer-specific docs in their respective directories
+- **Plans**: Should document strategic initiatives, migration plans, and multi-phase projects
 - **Research**: Should document findings, methodology, and conclusions
 - **ADRs**: Should follow standard ADR template format and affect multiple layers
 - **Theory**: Should explain concepts clearly with examples when possible

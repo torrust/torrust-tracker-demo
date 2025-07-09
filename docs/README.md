@@ -16,12 +16,13 @@ This directory currently contains cross-cutting documentation:
 
 **Current ADRs:**
 
-- [ADR-001: Makefile Location](adr/001-makefile-location.md) - Decision to keep
-  Makefile at repository root level
-- [ADR-002: Docker for All Services](adr/002-docker-for-all-services.md) - Decision
-  to use Docker for all services including UDP tracker
-- [ADR-003: Use MySQL Over MariaDB](adr/003-use-mysql-over-mariadb.md) - Decision
-  to use MySQL instead of MariaDB for database backend
+- [ADR-001: Makefile Location](adr/001-makefile-location.md) - Decision to keep Makefile at repository root level (proposed to be superseded by ADR-005)
+- [ADR-002: Docker for All Services](adr/002-docker-for-all-services.md) - Decision to use Docker for all services including UDP tracker
+- [ADR-003: Use MySQL Over MariaDB](adr/003-use-mysql-over-mariadb.md) - Decision to use MySQL instead of MariaDB for database backend
+- [ADR-004: Adopt Modernized Automation Toolchain](adr/004-adopt-modern-toolchain.md) - *(Proposed)* - High-level strategy to migrate from `Makefile/sh` to `Meson/Perl`.
+- [ADR-005: Adopt Test-Driven Implementation and Structure](adr/005-test-driven-implementation.md) - *(Proposed)* - Implementation plan for a test-driven approach and atomic migration.
+- [ADR-006: Adopt Perl Coding and Security Standards](adr/006-perl-coding-standards.md) - *(Proposed)* - Quality and security standards for the new Perl codebase.
+- [ADR-007: Adopt Meson Build System Principles and Conventions](adr/007-meson-build-system-principles.md) - *(Proposed)* - Guiding principles and conventions for using Meson.
 
 ### 📅 [`plans/`](plans/) (Ongoing Plans and Roadmaps)
 

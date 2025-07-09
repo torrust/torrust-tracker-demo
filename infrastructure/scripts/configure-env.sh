@@ -141,6 +141,15 @@ process_templates() {
         log_info "Generated: ${prometheus_output_dir}/prometheus.yml"
     fi
 
+    # Process nginx configuration template
+    if [[ -f "${templates_dir}/nginx.conf.tpl" ]]; then
+        log_info "Processing nginx configuration template"
+        local nginx_output_dir="${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf"
+        mkdir -p "${nginx_output_dir}"
+        envsubst <"${templates_dir}/nginx.conf.tpl" >"${nginx_output_dir}/nginx.conf"
+        log_info "Generated: ${nginx_output_dir}/nginx.conf"
+    fi
+
     log_success "Configuration templates processed"
 }
 

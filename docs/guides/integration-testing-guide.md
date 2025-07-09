@@ -1548,7 +1548,7 @@ This guide provides a complete integration testing workflow that:
 This guide provides a complete integration testing workflow that:
 
 1. **Creates fresh infrastructure** in ~3-5 minutes
-2. **Generates configuration files** from templates (~2 seconds)  
+2. **Generates configuration files** from templates (~2 seconds)
 3. **Refreshes OpenTofu state** to detect VM IP (~3 seconds)
 4. **Waits for cloud-init** to complete (~2-3 minutes)
 5. **Runs comprehensive tests** covering all services (~3-5 minutes)
@@ -1565,10 +1565,10 @@ During the most recent testing cycle, the following components were validated su
 #### Infrastructure Tests
 
 - ✅ **VM Access**: SSH connectivity working at `192.168.122.54`
-- ✅ **Docker Installation**: Docker 28.3.1 and Docker Compose V2.38.1 working  
+- ✅ **Docker Installation**: Docker 28.3.1 and Docker Compose V2.38.1 working
 - ✅ **Service Health**: All containers running with healthy status
 
-#### Service Deployment  
+#### Service Deployment
 
 - ✅ **MySQL**: Database running healthy with proper credentials
 - ✅ **Tracker**: Torrust Tracker running with all endpoints active
@@ -1603,7 +1603,7 @@ During the most recent testing cycle, the following components were validated su
 # Health check (no auth needed)
 curl -s http://$VM_IP/api/health_check | jq .
 
-# Stats API (auth required) 
+# Stats API (auth required)
 curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq .
 ```
 

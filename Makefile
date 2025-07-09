@@ -189,7 +189,23 @@ clean-and-fix: ## Clean up all VMs and fix libvirt permissions
 	@cd $(TERRAFORM_DIR) && rm -f terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl 2>/dev/null || true
 	@echo "3. Cleaning libvirt images:"
 	@sudo rm -f /var/lib/libvirt/images/torrust-tracker-demo* /var/lib/libvirt/images/ubuntu-24.04-base.qcow2 2>/dev/null || true
-	@echo "4. Fixing libvirt setup:"
+	@echo "4. Cleaning application storage (generated configuration files):"
+	@if [ -d "application/storage" ]; then \
+		echo "   WARNING: This will delete all generated configuration files in application/storage/"; \
+		echo "   This includes nginx configs, tracker configs, and any cached data."; \
+		echo "   These files will be regenerated when you run 'make configure-local'."; \
+		read -p "   Do you want to delete application/storage? (y/N): " confirm; \
+		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+			echo "   Removing application/storage..."; \
+			rm -rf application/storage; \
+			echo "   ✓ Application storage cleaned"; \
+		else \
+			echo "   Skipping application/storage cleanup"; \
+		fi; \
+	else \
+		echo "   No application/storage directory found"; \
+	fi
+	@echo "5. Fixing libvirt setup:"
 	@$(MAKE) fix-libvirt
 	@echo "✓ Clean up complete. You can now run 'make apply' safely."
 

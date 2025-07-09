@@ -41,9 +41,19 @@ For example:
 cd /home/yourname/Documents/git/committer/me/github/torrust/torrust-tracker-demo
 ```
 
-**⚠️ Important**: All commands in this guide assume you are running from the
-project root directory. If you see "command not found" errors, verify you are
+**⚠️ CRITICAL**: All commands in this guide assume you are running from the
+**project root directory**. If you see "command not found" errors, verify you are
 in the correct directory.
+
+**Working Directory Indicator**: Commands will be shown with this format:
+
+```bash
+# [PROJECT_ROOT] - Run from project root directory
+make command
+
+# [TERRAFORM_DIR] - Run from infrastructure/terraform directory
+cd infrastructure/terraform && tofu command
+```
 
 ### 1.2 Check for Existing Resources
 
@@ -51,14 +61,14 @@ in the correct directory.
 data. Only proceed if you want to start with a completely clean environment.
 
 ```bash
-# Check for existing VMs that might conflict
+# [PROJECT_ROOT] Check for existing VMs that might conflict
 virsh list --all | grep torrust-tracker-demo || echo "✅ No conflicting VM found"
 
-# Check for existing libvirt volumes
+# [PROJECT_ROOT] Check for existing libvirt volumes
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo || \
   echo "✅ No conflicting volumes found"
 
-# Check for existing OpenTofu state
+# [PROJECT_ROOT] Check for existing OpenTofu state
 ls -la infrastructure/terraform/terraform.tfstate* 2>/dev/null || \
   echo "✅ No existing state files"
 ```
@@ -71,7 +81,7 @@ ls -la infrastructure/terraform/terraform.tfstate* 2>/dev/null || \
 and state files.
 
 ```bash
-# Complete cleanup - removes VMs, state files, and fixes permissions
+# [PROJECT_ROOT] Complete cleanup - removes VMs, state files, and fixes permissions
 time make clean-and-fix
 ```
 
@@ -88,18 +98,18 @@ time make clean-and-fix
 ### 1.4 Verify Clean State
 
 ```bash
-# Verify no conflicting resources remain
+# [PROJECT_ROOT] Verify no conflicting resources remain
 echo "=== Verifying Clean State ==="
 
-# Check VMs
+# [PROJECT_ROOT] Check VMs
 virsh list --all | grep torrust-tracker-demo && \
   echo '❌ VM still exists!' || echo '✅ No VM conflicts'
 
-# Check volumes in user-default pool
+# [PROJECT_ROOT] Check volumes in user-default pool
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
   echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
 
-# Check OpenTofu state
+# [PROJECT_ROOT] Check OpenTofu state
 ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
   echo '❌ State files still exist!' || echo '✅ No state file conflicts'
 ```
@@ -111,14 +121,14 @@ ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
 If the verification step shows "❌ Volumes still exist!" then manually clean them:
 
 ```bash
-# List conflicting volumes
+# [PROJECT_ROOT] List conflicting volumes
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo
 
-# Delete each volume manually
+# [PROJECT_ROOT] Delete each volume manually
 virsh vol-delete torrust-tracker-demo-cloudinit.iso user-default
 virsh vol-delete torrust-tracker-demo.qcow2 user-default
 
-# Verify cleanup
+# [PROJECT_ROOT] Verify cleanup
 virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
   echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
 ```
@@ -136,7 +146,7 @@ caused SSH connection failures!
 #### For Default SSH Keys (id_rsa)
 
 ```bash
-# Set up SSH key configuration for VM access
+# [PROJECT_ROOT] Set up SSH key configuration for VM access
 time make setup-ssh-key
 ```
 
@@ -148,10 +158,10 @@ time make setup-ssh-key
 1. **Configure the public key in terraform**:
 
 ```bash
-# Get your non-default public key
+# [PROJECT_ROOT] Get your non-default public key
 cat ~/.ssh/torrust_rsa.pub
 
-# Manually edit the terraform configuration
+# [PROJECT_ROOT] Manually edit the terraform configuration
 vim infrastructure/terraform/local.tfvars
 
 # Add your public key content:
@@ -161,12 +171,12 @@ ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... your-key-here"
 1. **Configure SSH client to use the correct private key**:
 
 ```bash
-# Option 1: Create/edit SSH config
+# [PROJECT_ROOT] Option 1: Create/edit SSH config
 echo "Host 192.168.122.*
     IdentityFile ~/.ssh/torrust_rsa
     IdentitiesOnly yes" >> ~/.ssh/config
 
-# Option 2: Always specify key explicitly when connecting
+# [PROJECT_ROOT] Option 2: Always specify key explicitly when connecting
 # ssh -i ~/.ssh/torrust_rsa torrust@VM_IP
 ```
 
@@ -195,7 +205,7 @@ configuration.
 **Verify Configuration**:
 
 ```bash
-# Ensure the file contains your actual public key (not placeholder)
+# [PROJECT_ROOT] Ensure the file contains your actual public key (not placeholder)
 cat infrastructure/terraform/local.tfvars | grep ssh_public_key
 
 # Should show your full public key, not "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY"
@@ -204,7 +214,7 @@ cat infrastructure/terraform/local.tfvars | grep ssh_public_key
 ### 1.6 Initialize OpenTofu
 
 ```bash
-# Initialize OpenTofu providers
+# [PROJECT_ROOT] Initialize OpenTofu providers
 time make init
 ```
 
@@ -219,12 +229,53 @@ time make init
 
 ---
 
+## Step 1.7: Generate Configuration Files (New Workflow)
+
+⚠️ **IMPORTANT**: Recent changes introduced a new configuration management system
+that generates final configuration files from templates and environment values.
+
+### 1.7.1 Generate Local Environment Configuration
+
+```bash
+# [PROJECT_ROOT] Generate local environment configuration
+time make configure-local
+```
+
+**Expected Output**:
+
+- Configuration files generated from templates
+- Environment values applied to templates
+- **Time**: ~2 seconds
+
+**What This Creates**: Final configuration files in `infrastructure/cloud-init/`
+from templates in `infrastructure/config/templates/` using values from
+`infrastructure/config/environments/local.env`.
+
+### 1.7.2 Validate Generated Configuration
+
+```bash
+# [PROJECT_ROOT] Validate generated configuration files
+time make validate-config
+```
+
+**Expected Output**:
+
+- All configuration files pass validation
+- YAML syntax checks pass
+- Template rendering successful
+- **Time**: ~3 seconds
+
+**What This Verifies**: Generated configuration files are syntactically correct
+and ready for deployment.
+
+---
+
 ## Step 2: Deploy Fresh Virtual Machine
 
 ### 2.1 Plan the Deployment
 
 ```bash
-# Review what will be created
+# [PROJECT_ROOT] Review what will be created
 time make plan
 ```
 
@@ -242,7 +293,7 @@ time make plan
 ### 2.2 Deploy the VM
 
 ```bash
-# Deploy VM with full configuration (this takes time!)
+# [PROJECT_ROOT] Deploy VM with full configuration (this takes time!)
 time make apply
 ```
 
@@ -275,7 +326,7 @@ time make apply
 ### 2.3 Verify VM is Running
 
 ```bash
-# Check VM status
+# [PROJECT_ROOT] Check VM status
 virsh list --all
 ```
 
@@ -300,7 +351,7 @@ has been improved to allow SSH access throughout the process.
 ### 3.1 Get VM IP Address
 
 ```bash
-# Get IP from libvirt (more reliable during cloud-init)
+# [PROJECT_ROOT] Get IP from libvirt (more reliable during cloud-init)
 VM_IP=$(virsh domifaddr torrust-tracker-demo | grep ipv4 | \
         awk '{print $4}' | cut -d'/' -f1)
 echo "VM IP: $VM_IP"
@@ -464,7 +515,7 @@ for better compatibility with modern compose.yaml files.
 ### 4.1 Test VM Access
 
 ```bash
-# Test basic VM connectivity
+# [PROJECT_ROOT] Test basic VM connectivity
 time ./infrastructure/tests/test-integration.sh access
 ```
 
@@ -477,7 +528,7 @@ time ./infrastructure/tests/test-integration.sh access
 ### 4.2 Test Docker Installation
 
 ```bash
-# Test Docker functionality
+# [PROJECT_ROOT] Test Docker functionality
 time ./infrastructure/tests/test-integration.sh docker
 ```
 
@@ -495,7 +546,7 @@ available and uses the appropriate command.
 ### 4.3 Setup Torrust Tracker Demo
 
 ```bash
-# Clone and setup the Torrust Tracker repository
+# [PROJECT_ROOT] Clone and setup the Torrust Tracker repository
 time ./infrastructure/tests/test-integration.sh setup
 ```
 
@@ -511,7 +562,7 @@ configuration.
 ### 4.4 Start Torrust Tracker Services
 
 ```bash
-# Pull images and start all services
+# [PROJECT_ROOT] Pull images and start all services
 time ./infrastructure/tests/test-integration.sh start
 ```
 
@@ -532,7 +583,7 @@ time ./infrastructure/tests/test-integration.sh start
 ### 4.5 Test Service Endpoints
 
 ```bash
-# Test all API endpoints
+# [PROJECT_ROOT] Test all API endpoints
 time ./infrastructure/tests/test-integration.sh endpoints
 ```
 
@@ -546,7 +597,7 @@ time ./infrastructure/tests/test-integration.sh endpoints
 ### 4.6 Test Monitoring Services
 
 ```bash
-# Test Prometheus and Grafana
+# [PROJECT_ROOT] Test Prometheus and Grafana
 time ./infrastructure/tests/test-integration.sh monitoring
 ```
 
@@ -559,7 +610,7 @@ time ./infrastructure/tests/test-integration.sh monitoring
 ### 4.7 Run Complete Integration Test Suite
 
 ```bash
-# Run all tests in sequence
+# [PROJECT_ROOT] Run all tests in sequence
 time ./infrastructure/tests/test-integration.sh full-test
 ```
 
@@ -580,44 +631,44 @@ Tracker deployment.
 ### 5.1 SSH Into VM and Explore
 
 ```bash
-# Connect to VM for manual inspection
+# [PROJECT_ROOT] Connect to VM for manual inspection
 make ssh
 ```
 
 **Inside the VM, you can run**:
 
 ```bash
-# Check cloud-init logs
+# [VM_REMOTE] Check cloud-init logs
 sudo cat /var/log/cloud-init-output.log | tail -20
 
-# Check running services
+# [VM_REMOTE] Check running services
 docker compose ps
 
-# Check service logs
+# [VM_REMOTE] Check service logs
 docker compose logs --tail=20
 
-# Check system status
+# [VM_REMOTE] Check system status
 sudo systemctl status docker
 sudo ufw status verbose
 
-# Check Torrust Tracker logs
+# [VM_REMOTE] Check Torrust Tracker logs
 docker compose logs torrust-tracker --tail=20
 
-# Exit the VM
+# [VM_REMOTE] Exit the VM
 exit
 ```
 
 ### 5.2 Test External Access (from Host)
 
 ```bash
-# Get VM IP for external testing
+# [PROJECT_ROOT] Get VM IP for external testing
 VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
 echo "VM IP: $VM_IP"
 
-# Test HTTP API from host
+# [PROJECT_ROOT] Test HTTP API from host
 curl -s http://$VM_IP:7070/api/v1/stats | jq . || echo "API test failed"
 
-# Test metrics endpoint from host
+# [PROJECT_ROOT] Test metrics endpoint from host
 curl -s http://$VM_IP:1212/metrics | head -10
 ```
 
@@ -682,14 +733,14 @@ ssh torrust@$VM_IP "docker stats --no-stream"
 ### 7.1 Stop Services (if needed)
 
 ```bash
-# Stop all services cleanly
+# [PROJECT_ROOT] Stop all services cleanly
 ./infrastructure/tests/test-integration.sh stop
 ```
 
 ### 7.2 Destroy VM and Clean Up
 
 ```bash
-# Destroy the VM and clean up resources
+# [PROJECT_ROOT] Destroy the VM and clean up resources
 time make destroy
 ```
 
@@ -702,7 +753,7 @@ time make destroy
 ### 7.3 Final Cleanup
 
 ```bash
-# Complete cleanup
+# [PROJECT_ROOT] Complete cleanup
 make clean
 ```
 
@@ -755,6 +806,31 @@ virsh vol-delete torrust-tracker-demo.qcow2 user-default
 
 ### Common Issues and Solutions
 
+#### Working Directory Confusion
+
+**MOST COMMON ISSUE**: Commands failing due to being in the wrong directory.
+
+```bash
+# [PROJECT_ROOT] Check current directory
+pwd
+# Should output: /path/to/torrust-tracker-demo
+
+# [PROJECT_ROOT] If you're in the wrong directory, navigate to project root
+cd /home/yourname/Documents/git/committer/me/github/torrust/torrust-tracker-demo
+
+# [PROJECT_ROOT] Verify you're in the right place
+ls -la | grep -E "(Makefile|infrastructure|application)"
+# Should show all three: Makefile, infrastructure/, application/
+```
+
+**Symptoms**:
+
+- `make: *** No rule to make target 'configure-local'. Stop.`
+- `make: *** No such file or directory. Stop.`
+- `./infrastructure/tests/test-integration.sh: No such file or directory`
+
+**Solution**: Always ensure you're in the project root directory before running commands.
+
 #### SSH Connection Fails
 
 **MOST COMMON CAUSES**:
@@ -762,12 +838,12 @@ virsh vol-delete torrust-tracker-demo.qcow2 user-default
 1. **Missing SSH key configuration**:
 
 ```bash
-# Check if SSH key was configured
+# [PROJECT_ROOT] Check if SSH key was configured
 cat infrastructure/terraform/local.tfvars
 
-# If file doesn't exist or contains "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY":
+# [PROJECT_ROOT] If file doesn't exist or contains "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY":
 make setup-ssh-key
-# Then redeploy: make destroy && make apply
+# [PROJECT_ROOT] Then redeploy: make destroy && make apply
 ```
 
 1. **Using non-default SSH key** (e.g., `torrust_rsa` instead of `id_rsa`):
@@ -859,10 +935,11 @@ ssh torrust@$VM_IP "sudo cloud-init analyze show"
 This guide provides a complete integration testing workflow that:
 
 1. **Creates fresh infrastructure** in ~3-5 minutes
-2. **Waits for cloud-init** to complete (~2-3 minutes)
-3. **Runs comprehensive tests** covering all services (~3-5 minutes)
-4. **Verifies end-to-end functionality** of the Torrust Tracker
-5. **Cleans up resources** when complete
+2. **Generates configuration files** from templates (~2 seconds)
+3. **Waits for cloud-init** to complete (~2-3 minutes)
+4. **Runs comprehensive tests** covering all services (~3-5 minutes)
+5. **Verifies end-to-end functionality** of the Torrust Tracker
+6. **Cleans up resources** when complete
 
 **Total Time**: ~8-12 minutes for complete cycle
 
@@ -870,21 +947,29 @@ This guide provides a complete integration testing workflow that:
 
 During the development of this guide, we identified several critical issues:
 
-1. **SSH Key Configuration**: The most common failure is missing or incorrect SSH
-   key setup. The `make setup-ssh-key` step is **mandatory**.
+1. **Working Directory Requirements**: The most common failure is running commands
+   from the wrong directory. All `make` commands and test scripts must be run from
+   the **project root directory**, not from subdirectories like `infrastructure/terraform/`.
 
-2. **Non-Default SSH Keys**: If using custom SSH keys (like `torrust_rsa`
+2. **New Configuration Workflow**: Recent changes introduced a template-based
+   configuration system. You must run `make configure-local` to generate final
+   configuration files before deployment.
+
+3. **SSH Key Configuration**: SSH key setup is **mandatory**. The `make setup-ssh-key`
+   step must be completed before deployment.
+
+4. **Non-Default SSH Keys**: If using custom SSH keys (like `torrust_rsa`
    instead of `id_rsa`), you must:
 
    - Configure the public key in `infrastructure/terraform/local.tfvars`
    - Set up SSH client configuration or use `-i` flag explicitly
 
-3. **Docker Compose Compatibility**: Cloud-init now installs Docker Compose V2
+5. **Docker Compose Compatibility**: Cloud-init now installs Docker Compose V2
    plugin for better compatibility with modern compose.yaml files. Integration
    tests automatically detect and use the appropriate command (`docker compose`
    or `docker-compose`).
 
-4. **Cloud-Init Timing**: Cloud-init performs many operations including:
+6. **Cloud-Init Timing**: Cloud-init performs many operations including:
 
    - Package downloads and installations
    - System configuration
@@ -895,7 +980,7 @@ During the development of this guide, we identified several critical issues:
    during cloud-init, preventing connectivity blocks that caused completion
    delays. Actual completion time is typically 2-3 minutes.
 
-5. **Debugging Techniques**: Use `virsh console` and cloud-init logs to debug
+7. **Debugging Techniques**: Use `virsh console` and cloud-init logs to debug
    issues when SSH fails.
 
 ### Success Factors

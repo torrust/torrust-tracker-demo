@@ -118,25 +118,51 @@ ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
 
 ### 1.4.1 Manual Cleanup (if needed)
 
-If the verification step shows "❌ Volumes still exist!" then manually clean them:
+⚠️ **CRITICAL**: This step is often **required** because `make clean-and-fix`
+sometimes misses libvirt volumes, causing deployment failures with errors like:
+
+- `storage volume 'torrust-tracker-demo-cloudinit.iso' exists already`
+- `storage volume 'torrust-tracker-demo.qcow2' exists already`
+
+If the verification step shows "❌ Volumes still exist!" **OR** if you encounter
+volume conflicts during deployment, perform this manual cleanup:
 
 ```bash
-# [PROJECT_ROOT] List conflicting volumes
-virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo
+# [PROJECT_ROOT] List all volumes to see conflicts
+echo "=== Current volumes in user-default pool ==="
+virsh vol-list user-default
 
-# [PROJECT_ROOT] Delete each volume manually
-virsh vol-delete torrust-tracker-demo-cloudinit.iso user-default
-virsh vol-delete torrust-tracker-demo.qcow2 user-default
+# [PROJECT_ROOT] List only conflicting volumes
+virsh vol-list user-default | grep torrust-tracker-demo || echo "No torrust volumes found"
 
-# [PROJECT_ROOT] Verify cleanup
-virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
+# [PROJECT_ROOT] Delete ALL torrust-tracker-demo volumes
+# Common volumes that need cleanup:
+virsh vol-delete torrust-tracker-demo-cloudinit.iso user-default 2>/dev/null || \
+  echo "cloudinit.iso not found"
+virsh vol-delete torrust-tracker-demo.qcow2 user-default 2>/dev/null || \
+  echo "VM disk not found"
+
+# [PROJECT_ROOT] Verify complete cleanup
+echo "=== Verifying volume cleanup ==="
+virsh vol-list user-default | grep torrust-tracker-demo && \
   echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
 ```
 
 **Expected Output**: Should show "✅ No volume conflicts" after manual cleanup.
 
-**What This Fixes**: Removes leftover volumes that `make clean-and-fix`
-sometimes misses.
+**What This Fixes**:
+
+- Removes leftover volumes that `make clean-and-fix` consistently misses
+- Prevents "volume already exists" errors during deployment
+- Ensures a truly clean state for fresh deployments
+
+**Why This Happens**: The `make clean-and-fix` command primarily handles
+OpenTofu state and VM definitions, but libvirt volumes can persist independently.
+This is especially common when:
+
+- Previous deployments were interrupted
+- Manual VM deletion was performed
+- OpenTofu state was corrupted or manually removed
 
 ### 1.5 Set Up SSH Key Configuration
 
@@ -609,10 +635,14 @@ time ./infrastructure/tests/test-integration.sh endpoints
 
 **Expected Output**:
 
-- HTTP API responding on port 7070
-- Metrics endpoint responding on port 1212
+- HTTP API responding through nginx proxy on port 80
+- Health check API accessible without authentication
+- Stats API requires authentication token
 - UDP ports listening (6868, 6969)
 - **Time**: ~15 seconds
+
+**Note**: The integration test script may fail on endpoint testing due to authentication
+requirements. For manual testing, see Step 5.2 for the correct endpoint testing procedures.
 
 ### 4.6 Test Monitoring Services
 
@@ -680,22 +710,137 @@ exit
 
 ### 5.2 Test External Access (from Host)
 
+**⚠️ CRITICAL NETWORK ARCHITECTURE UNDERSTANDING:**
+
+The deployment uses **double virtualization**:
+
+1. **VM Level**: VM has IP (e.g., `192.168.122.253`) with specific ports exposed
+2. **Docker Network Level**: Inside VM, Docker Compose creates internal network
+3. **Nginx Proxy**: Routes external traffic from port 80 to internal services
+
+**Port Access Rules**:
+
+- ✅ **Port 80**: Nginx proxy (accessible from host) → routes to internal services
+- ✅ **UDP ports 6868, 6969**: Direct tracker access (accessible from host)
+- ❌ **Internal ports** (1212, 7070, 3000, 9090): Only accessible within Docker network
+
+#### 5.2.1 Get VM IP and Test API Endpoints
+
 ```bash
 # [PROJECT_ROOT] Get VM IP for external testing
 VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
 echo "VM IP: $VM_IP"
 
-# [PROJECT_ROOT] Test HTTP API from host
-curl -s http://$VM_IP:7070/api/v1/stats | jq . || echo "API test failed"
+# [PROJECT_ROOT] Test health check API (no authentication required)
+curl -s http://$VM_IP/api/health_check | jq .
 
-# [PROJECT_ROOT] Test metrics endpoint from host
-curl -s http://$VM_IP:1212/metrics | head -10
+# [PROJECT_ROOT] Test stats API (requires authentication token)
+# Note: Get the token from the .env file in the VM
+TOKEN="local-dev-admin-token-12345"
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq .
 ```
 
 **Expected Output**:
 
-- JSON response from stats API
-- Prometheus metrics data
+- **Health check**:
+
+  ```json
+  {
+    "status": "Ok"
+  }
+  ```
+
+- **Stats API** (with pretty JSON formatting):
+
+  ```json
+  {
+    "torrents": 0,
+    "seeders": 0,
+    "completed": 0,
+    "leechers": 0,
+    "tcp4_connections_handled": 0,
+    "tcp4_announces_handled": 0,
+    "tcp4_scrapes_handled": 0,
+    "tcp6_connections_handled": 0,
+    "tcp6_announces_handled": 0,
+    "tcp6_scrapes_handled": 0,
+    "udp_requests_aborted": 0,
+    "udp_requests_banned": 0,
+    "udp_banned_ips_total": 0,
+    "udp_avg_connect_processing_time_ns": 0,
+    "udp_avg_announce_processing_time_ns": 0,
+    "udp_avg_scrape_processing_time_ns": 0,
+    "udp4_requests": 0,
+    "udp4_connections_handled": 0,
+    "udp4_announces_handled": 0,
+    "udp4_scrapes_handled": 0,
+    "udp4_responses": 0,
+    "udp4_errors_handled": 0,
+    "udp6_requests": 0,
+    "udp6_connections_handled": 0,
+    "udp6_announces_handled": 0,
+    "udp6_scrapes_handled": 0,
+    "udp6_responses": 0,
+    "udp6_errors_handled": 0
+  }
+  ```
+
+#### 5.2.2 Test Monitoring Services
+
+```bash
+# [PROJECT_ROOT] Test Prometheus (accessible through nginx proxy)
+curl -s http://$VM_IP/prometheus/api/v1/targets | jq .
+
+# [PROJECT_ROOT] Test Grafana web interface
+curl -s -I http://$VM_IP:3100/ | head -5
+
+# [PROJECT_ROOT] Alternative: Check if services are responding
+curl -s -o /dev/null -w "%{http_code}\n" http://$VM_IP/prometheus/
+curl -s -o /dev/null -w "%{http_code}\n" http://$VM_IP:3100/
+```
+
+#### 5.2.3 Common Endpoint Testing Mistakes
+
+❌ **Wrong - Trying to access internal ports directly**:
+
+```bash
+# These will fail - internal ports not exposed outside Docker network
+curl http://$VM_IP:1212/api/health_check  # Port 1212 not accessible
+curl http://$VM_IP:7070/api/v1/stats      # Port 7070 not accessible
+curl http://$VM_IP:9090/                  # Port 9090 not accessible
+```
+
+✅ **Correct - Using nginx proxy on port 80**:
+
+```bash
+# All API access goes through nginx proxy on port 80
+curl http://$VM_IP/api/health_check           # Health check
+curl "http://$VM_IP/api/v1/stats?token=TOKEN" # Stats with auth
+curl http://$VM_IP/prometheus/                # Prometheus UI
+```
+
+#### 5.2.4 Getting the Authentication Token
+
+```bash
+# [PROJECT_ROOT] Get the authentication token from the VM
+ssh torrust@$VM_IP \
+  "grep TRACKER_ADMIN_TOKEN /home/torrust/github/torrust/torrust-tracker-demo/application/.env"
+
+# Should output: TRACKER_ADMIN_TOKEN=local-dev-admin-token-12345
+```
+
+#### 5.2.5 Advanced Testing with jq
+
+```bash
+# [PROJECT_ROOT] Extract specific metrics with jq
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq '.torrents, .seeders, .leechers'
+
+# [PROJECT_ROOT] Check if tracker is healthy
+curl -s http://$VM_IP/api/health_check | jq -r '.status'
+
+# [PROJECT_ROOT] Pretty print with color (if jq supports it)
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq --color-output .
+```
 
 ---
 
@@ -784,11 +929,163 @@ make clean
 
 ---
 
+---
+
+## Step 8: Key Testing Insights and Best Practices
+
+### 8.1 Critical Architecture Understanding
+
+During testing, several important architectural details were discovered:
+
+#### Network Architecture (Double Virtualization)
+
+The deployment uses **two layers of virtualization**:
+
+1. **Host → VM**: KVM/libvirt provides VM with IP `192.168.122.X`
+2. **VM → Docker Compose**: Creates internal Docker network for services
+
+**Port Mapping Flow**:
+
+```text
+Host (192.168.122.1)
+    ↓ SSH/HTTP requests
+VM (192.168.122.253:80)
+    ↓ nginx proxy
+Docker Network (tracker:1212, prometheus:9090, grafana:3000)
+```
+
+#### Authentication Requirements
+
+- **Health Check API**: `/api/health_check` - No authentication required
+- **Stats API**: `/api/v1/stats` - Requires `?token=ADMIN_TOKEN` parameter
+- **Admin Token**: Located in `/application/.env` as `TRACKER_ADMIN_TOKEN`
+
+### 8.2 Correct Testing Procedures
+
+#### ✅ Proper API Testing
+
+```bash
+# Get VM IP
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+
+# Test health (no auth needed)
+curl -s http://$VM_IP/api/health_check | jq .
+
+# Test stats (auth required)
+TOKEN="local-dev-admin-token-12345"
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq .
+
+# Test specific metrics with jq filtering
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq '.torrents, .seeders'
+```
+
+#### ✅ Monitoring Service Testing
+
+```bash
+# Prometheus (through nginx proxy)
+curl -s http://$VM_IP/prometheus/api/v1/targets | jq .
+
+# Grafana (direct port access allowed)
+curl -I http://$VM_IP:3100/
+
+# Check HTTP response codes
+curl -s -o /dev/null -w "%{http_code}\n" http://$VM_IP/prometheus/
+```
+
+### 8.3 Common Testing Mistakes
+
+#### ❌ Port Confusion
+
+**Wrong**: Trying to access internal Docker ports directly from host:
+
+```bash
+curl http://$VM_IP:1212/api/health_check    # 1212 not exposed
+curl http://$VM_IP:7070/api/v1/stats        # 7070 not exposed
+curl http://$VM_IP:9090/                    # 9090 not exposed
+```
+
+**Correct**: Using nginx proxy on port 80:
+
+```bash
+curl http://$VM_IP/api/health_check         # Proxied to tracker:1212
+curl http://$VM_IP/api/v1/stats?token=X     # Proxied to tracker:1212
+curl http://$VM_IP/prometheus/              # Proxied to prometheus:9090
+```
+
+#### ❌ Missing Authentication
+
+**Wrong**: Testing stats API without token:
+
+```bash
+curl http://$VM_IP/api/v1/stats
+# Returns: Unhandled rejection: Err { reason: "unauthorized" }
+```
+
+**Correct**: Including authentication token:
+
+```bash
+curl "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345"
+```
+
+### 8.4 Integration Test Script Limitations
+
+The automated integration test script (`./infrastructure/tests/test-integration.sh endpoints`)
+may fail because:
+
+1. **Authentication**: Script doesn't include token for stats API
+2. **Port Assumptions**: May test internal ports instead of nginx proxy
+3. **JSON Parsing**: Doesn't use `jq` for response validation
+
+**Manual testing** (as shown in this guide) provides more reliable results and
+better insight into the actual API functionality.
+
+### 8.5 Useful Testing Commands
+
+#### JSON Processing with jq
+
+```bash
+# Pretty print with colors
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq --color-output .
+
+# Extract specific fields
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq '.torrents, .seeders, .leechers'
+
+# Check if service is healthy
+curl -s http://$VM_IP/api/health_check | jq -r '.status'
+
+# Count total UDP requests
+curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq '.udp4_requests + .udp6_requests'
+```
+
+#### Service Status Verification
+
+```bash
+# Check all Docker services
+ssh torrust@$VM_IP \
+  'cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps'
+
+# Check specific service logs
+ssh torrust@$VM_IP \
+  'cd /home/torrust/github/torrust/torrust-tracker-demo/application && \
+   docker compose logs tracker --tail=20'
+
+# Check service health status
+ssh torrust@$VM_IP 'docker ps --format "table {{.Names}}\t{{.Status}}"'
+```
+
+---
+
 ## Troubleshooting
 
 ### Resource Conflicts During Deployment
 
 #### Cloud-init ISO Already Exists
+
+**Error**: `storage volume 'torrust-tracker-demo-cloudinit.iso' exists already`
+
+**Root Cause**: Previous deployment cleanup was incomplete, leaving libvirt volumes.
+
+**Solution**:
 
 ```bash
 # Check if cloud-init ISO exists
@@ -797,8 +1094,20 @@ virsh vol-list user-default | grep cloudinit
 # Remove the conflicting cloud-init ISO
 virsh vol-delete torrust-tracker-demo-cloudinit.iso user-default
 
+# Check for VM disk volume too
+virsh vol-list user-default | grep torrust-tracker-demo
+
+# Remove VM disk if it exists
+virsh vol-delete torrust-tracker-demo.qcow2 user-default 2>/dev/null || echo "VM disk not found"
+
+# Verify cleanup
+virsh vol-list user-default | grep torrust-tracker-demo || echo "✅ All volumes cleaned"
+
 # Then retry: make apply
 ```
+
+**Prevention**: Always run the complete cleanup verification (Step 1.4.1) before
+starting fresh deployments.
 
 #### OpenTofu State Conflicts
 

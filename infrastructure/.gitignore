@@ -10,6 +10,12 @@
 terraform.tfplan
 terraform.tfplan.*
 
+# Environment files with secrets (keep templates)
+config/environments/production.env
+config/environments/*.env
+!config/environments/*.env.tpl
+!config/environments/local.env
+
 # Cloud-init generated files
 user-data.yaml
 user-data-minimal.yaml

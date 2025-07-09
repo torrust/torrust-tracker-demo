@@ -189,57 +189,40 @@ validate_environment_config() {
     log_info "Validating environment-specific configuration..."
 
     case "${ENVIRONMENT}" in
-    "local")
-        # Local environment validations
-        if grep -q 'threshold = "debug"' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Local: Debug logging enabled"
-        else
-            log_error "Local: Debug logging not enabled"
-            return 1
-        fi
-
-        if grep -q 'on_reverse_proxy = false' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Local: Reverse proxy disabled"
-        else
-            log_error "Local: Reverse proxy should be disabled"
-            return 1
-        fi
-
-        if grep -q 'driver = "mysql"' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Local: MySQL database configured"
-        else
-            log_error "Local: MySQL database not configured"
-            return 1
-        fi
-        ;;
-
-    "production")
-        # Production environment validations
+    "local" | "production")
+        # Both environments use the same sensible defaults
         if grep -q 'threshold = "info"' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Production: Info logging enabled"
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Info logging enabled"
         else
-            log_error "Production: Info logging not enabled"
+            log_error "${ENVIRONMENT}: Info logging not enabled"
             return 1
         fi
 
         if grep -q 'on_reverse_proxy = true' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Production: Reverse proxy enabled"
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Reverse proxy enabled"
         else
-            log_error "Production: Reverse proxy should be enabled"
+            log_error "${ENVIRONMENT}: Reverse proxy should be enabled"
             return 1
         fi
 
         if grep -q 'private = true' "${tracker_config}"; then
-            [[ "${VERBOSE}" == "true" ]] && log_info "Production: Private tracker mode enabled"
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Private tracker mode enabled"
         else
-            log_error "Production: Private tracker mode should be enabled"
+            log_error "${ENVIRONMENT}: Private tracker mode should be enabled"
             return 1
         fi
 
-        # Check for production external IP (not localhost)
-        if grep -q 'external_ip = "0.0.0.0"' "${tracker_config}"; then
-            log_error "Production: External IP should not be 0.0.0.0"
+        if grep -q 'driver = "mysql"' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: MySQL database configured"
+        else
+            log_error "${ENVIRONMENT}: MySQL database not configured"
             return 1
+        fi
+
+        if grep -q 'external_ip = "0.0.0.0"' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: External IP set to 0.0.0.0"
+        else
+            log_warning "${ENVIRONMENT}: External IP not set to 0.0.0.0 (this may be intentional)"
         fi
         ;;
 

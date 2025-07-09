@@ -41,9 +41,48 @@ log_error() {
     log "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Setup production environment from template
+setup_production_environment() {
+    local env_file="${CONFIG_DIR}/environments/production.env"
+    local template_file="${CONFIG_DIR}/environments/production.env.tpl"
+
+    if [[ ! -f "${env_file}" ]]; then
+        if [[ ! -f "${template_file}" ]]; then
+            log_error "Production template not found: ${template_file}"
+            exit 1
+        fi
+
+        log_info "Creating production.env from template..."
+        cp "${template_file}" "${env_file}"
+        log_warning "Production environment file created from template: ${env_file}"
+        log_warning "IMPORTANT: You must edit this file and replace placeholder values with secure secrets!"
+        log_warning "File location: ${env_file}"
+        log_error "Aborting: Please configure production secrets first, then run this script again."
+        exit 1
+    fi
+
+    # Validate that placeholder values have been replaced
+    if grep -q "REPLACE_WITH_SECURE" "${env_file}"; then
+        log_error "Production environment file contains placeholder values!"
+        log_error "Please edit ${env_file} and replace all 'REPLACE_WITH_SECURE_*' values with actual secrets."
+        log_error "Found placeholder values:"
+        grep "REPLACE_WITH_SECURE" "${env_file}" | while read -r line; do
+            log_error "  ${line}"
+        done
+        exit 1
+    fi
+
+    log_success "Production environment file validated"
+}
+
 # Load environment configuration
 load_environment() {
     local env_file="${CONFIG_DIR}/environments/${ENVIRONMENT}.env"
+
+    # Special handling for production environment
+    if [[ "${ENVIRONMENT}" == "production" ]]; then
+        setup_production_environment
+    fi
 
     if [[ ! -f "${env_file}" ]]; then
         log_error "Environment file not found: ${env_file}"
@@ -61,10 +100,11 @@ load_environment() {
 # Validate required environment variables
 validate_environment() {
     local required_vars=(
-        "INFRASTRUCTURE_PROVIDER"
-        "TORRUST_TRACKER_MODE"
-        "TORRUST_TRACKER_LOG_LEVEL"
-        "TORRUST_TRACKER_API_TOKEN"
+        "ENVIRONMENT"
+        "MYSQL_ROOT_PASSWORD"
+        "MYSQL_PASSWORD"
+        "TRACKER_ADMIN_TOKEN"
+        "GF_SECURITY_ADMIN_PASSWORD"
     )
 
     for var in "${required_vars[@]}"; do

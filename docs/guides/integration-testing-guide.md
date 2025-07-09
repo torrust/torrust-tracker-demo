@@ -338,6 +338,26 @@ virsh list --all
  1    torrust-tracker-demo   running
 ```
 
+### 2.4 Refresh OpenTofu State (Important!)
+
+⚠️ **CRITICAL STEP**: After VM deployment, OpenTofu's state may not immediately
+reflect the VM's IP address assigned by DHCP. This is a known issue where the
+libvirt provider state becomes stale after cloud-init completes.
+
+```bash
+# [PROJECT_ROOT] Refresh OpenTofu state to detect IP assignment
+time make refresh-state
+```
+
+**Expected Output**:
+
+- OpenTofu state refreshed successfully
+- VM IP address properly detected
+- **Time**: ~3 seconds
+
+**What This Fixes**: Ensures OpenTofu knows the VM's actual IP address, preventing
+"No IP assigned yet" issues in subsequent commands.
+
 ---
 
 ## Step 3: Wait for Cloud-Init Completion (Critical!)
@@ -936,10 +956,11 @@ This guide provides a complete integration testing workflow that:
 
 1. **Creates fresh infrastructure** in ~3-5 minutes
 2. **Generates configuration files** from templates (~2 seconds)
-3. **Waits for cloud-init** to complete (~2-3 minutes)
-4. **Runs comprehensive tests** covering all services (~3-5 minutes)
-5. **Verifies end-to-end functionality** of the Torrust Tracker
-6. **Cleans up resources** when complete
+3. **Refreshes OpenTofu state** to detect VM IP (~3 seconds)
+4. **Waits for cloud-init** to complete (~2-3 minutes)
+5. **Runs comprehensive tests** covering all services (~3-5 minutes)
+6. **Verifies end-to-end functionality** of the Torrust Tracker
+7. **Cleans up resources** when complete
 
 **Total Time**: ~8-12 minutes for complete cycle
 
@@ -958,18 +979,22 @@ During the development of this guide, we identified several critical issues:
 3. **SSH Key Configuration**: SSH key setup is **mandatory**. The `make setup-ssh-key`
    step must be completed before deployment.
 
-4. **Non-Default SSH Keys**: If using custom SSH keys (like `torrust_rsa`
+4. **OpenTofu State Refresh**: After VM deployment, the OpenTofu state may not
+   immediately reflect the VM's IP address. The `make refresh-state` step (Section 2.4)
+   prevents "No IP assigned yet" issues in subsequent commands.
+
+5. **Non-Default SSH Keys**: If using custom SSH keys (like `torrust_rsa`
    instead of `id_rsa`), you must:
 
    - Configure the public key in `infrastructure/terraform/local.tfvars`
    - Set up SSH client configuration or use `-i` flag explicitly
 
-5. **Docker Compose Compatibility**: Cloud-init now installs Docker Compose V2
+6. **Docker Compose Compatibility**: Cloud-init now installs Docker Compose V2
    plugin for better compatibility with modern compose.yaml files. Integration
    tests automatically detect and use the appropriate command (`docker compose`
    or `docker-compose`).
 
-6. **Cloud-Init Timing**: Cloud-init performs many operations including:
+7. **Cloud-Init Timing**: Cloud-init performs many operations including:
 
    - Package downloads and installations
    - System configuration
@@ -980,7 +1005,7 @@ During the development of this guide, we identified several critical issues:
    during cloud-init, preventing connectivity blocks that caused completion
    delays. Actual completion time is typically 2-3 minutes.
 
-7. **Debugging Techniques**: Use `virsh console` and cloud-init logs to debug
+8. **Debugging Techniques**: Use `virsh console` and cloud-init logs to debug
    issues when SSH fails.
 
 ### Success Factors

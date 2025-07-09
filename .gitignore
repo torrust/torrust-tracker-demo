@@ -11,3 +11,15 @@ torrust-tracker/
 # - infrastructure/.gitignore: Infrastructure-specific files (Terraform, VMs, etc.)
 # - application/.gitignore: Application-specific files (Docker, logs, data, etc.)
 # - .gitignore (this file): Project-wide cross-cutting files only
+
+
+# Ignore log files
+*.log
+logs/
+*.log.*
+
+# Ignore report files
+*report.txt*
+*report.diff*
+*report.commit*
+

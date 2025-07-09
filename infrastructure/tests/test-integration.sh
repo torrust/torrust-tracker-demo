@@ -175,9 +175,8 @@ setup_torrust_tracker() {
         return 1
     fi
 
-    # Extract archive on VM
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && tar -xzf /tmp/$(basename "${temp_archive}") && mv torrust-tracker-demo torrust-tracker-demo-temp || true" "Extracting archive"
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mv torrust-tracker-demo-temp torrust-tracker-demo" "Moving to final location"
+    # Extract archive on VM (git archive doesn't create parent directory)
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mkdir -p torrust-tracker-demo && cd torrust-tracker-demo && tar -xzf /tmp/$(basename "${temp_archive}")" "Extracting archive"
     vm_exec "${vm_ip}" "rm -f /tmp/$(basename "${temp_archive}")" "Cleaning up archive"
 
     # Clean up local temp file
@@ -223,7 +222,7 @@ setup_torrust_tracker() {
 
     log_success "Installation script completed successfully"
 
-    # Step 5: Copy the configured storage folder to the VM
+    # Step 5: Copy the configured storage folder and .env file to the VM
     log_info "Copying configured storage folder to VM..."
 
     # Ensure storage directory exists and has proper structure
@@ -238,6 +237,15 @@ setup_torrust_tracker() {
         "${PROJECT_ROOT}/application/storage/" \
         "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/application/storage/"; then
         log_error "Failed to copy storage folder to VM"
+        return 1
+    fi
+
+    # Copy .env file to VM
+    log_info "Copying .env file to VM..."
+    if ! scp -o StrictHostKeyChecking=no \
+        "${PROJECT_ROOT}/application/.env" \
+        "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/application/.env"; then
+        log_error "Failed to copy .env file to VM"
         return 1
     fi
 
@@ -307,25 +315,25 @@ test_tracker_endpoints() {
     local vm_ip
     vm_ip=$(get_vm_ip)
 
-    # Test HTTP API endpoint
+    # Test HTTP API endpoint through nginx proxy using Host header
     log_info "Testing HTTP API endpoint..."
-    if vm_exec "${vm_ip}" "curl -f -s http://localhost:7070/api/v1/stats" "Checking HTTP API"; then
+    if vm_exec "${vm_ip}" "curl -f -s -H 'Host: tracker.torrust-demo.com' http://localhost:80/api/health_check" "Checking HTTP API"; then
         log_success "HTTP API is responding"
     else
         log_error "HTTP API is not responding"
         return 1
     fi
 
-    # Test metrics endpoint
-    log_info "Testing metrics endpoint..."
-    if vm_exec "${vm_ip}" "curl -f -s http://localhost:1212/metrics" "Checking metrics endpoint"; then
-        log_success "Metrics endpoint is responding"
+    # Test tracker statistics API
+    log_info "Testing tracker statistics API..."
+    if vm_exec "${vm_ip}" "curl -f -s -H 'Host: tracker.torrust-demo.com' 'http://localhost:80/api/v1/stats?token=local-dev-admin-token-12345'" "Checking statistics API"; then
+        log_success "Statistics API is responding"
     else
-        log_error "Metrics endpoint is not responding"
+        log_error "Statistics API is not responding"
         return 1
     fi
 
-    # Test if UDP ports are listening
+    # Test if UDP ports are listening (these are directly exposed)
     log_info "Testing UDP tracker ports..."
     if vm_exec "${vm_ip}" "ss -ul | grep -E ':6868|:6969'" "Checking UDP ports"; then
         log_success "UDP tracker ports are listening"
@@ -343,21 +351,21 @@ test_monitoring() {
     local vm_ip
     vm_ip=$(get_vm_ip)
 
-    # Test Prometheus
-    log_info "Testing Prometheus..."
-    if vm_exec "${vm_ip}" "curl -f -s http://localhost:9090/-/healthy" "Checking Prometheus health"; then
-        log_success "Prometheus is healthy"
-    else
-        log_error "Prometheus is not healthy"
-        return 1
-    fi
-
-    # Test Grafana
+    # Test Grafana through nginx proxy using Host header
     log_info "Testing Grafana..."
-    if vm_exec "${vm_ip}" "curl -f -s http://localhost:3100/api/health" "Checking Grafana health"; then
+    if vm_exec "${vm_ip}" "curl -f -s -H 'Host: grafana.torrust-demo.com' http://localhost:80/api/health" "Checking Grafana health"; then
         log_success "Grafana is healthy"
     else
         log_error "Grafana is not healthy"
+        return 1
+    fi
+
+    # Test Prometheus directly (no proxy configuration for Prometheus in current setup)
+    log_info "Testing Prometheus..."
+    if vm_exec "${vm_ip}" "docker exec prometheus wget -qO- http://localhost:9090/-/healthy" "Checking Prometheus health"; then
+        log_success "Prometheus is healthy"
+    else
+        log_error "Prometheus is not healthy"
         return 1
     fi
 

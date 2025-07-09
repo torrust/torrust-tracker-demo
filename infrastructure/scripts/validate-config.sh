@@ -189,8 +189,45 @@ validate_environment_config() {
     log_info "Validating environment-specific configuration..."
 
     case "${ENVIRONMENT}" in
-    "local" | "production")
-        # Both environments use the same sensible defaults
+    "local")
+        # Local environment allows public mode for integration testing
+        if grep -q 'threshold = "info"' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Info logging enabled"
+        else
+            log_error "${ENVIRONMENT}: Info logging not enabled"
+            return 1
+        fi
+
+        if grep -q 'on_reverse_proxy = true' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Reverse proxy enabled"
+        else
+            log_error "${ENVIRONMENT}: Reverse proxy should be enabled"
+            return 1
+        fi
+
+        if grep -q 'private = false' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Public tracker mode enabled (for integration testing)"
+        else
+            log_error "${ENVIRONMENT}: Public tracker mode should be enabled for integration testing"
+            return 1
+        fi
+
+        if grep -q 'driver = "mysql"' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: MySQL database configured"
+        else
+            log_error "${ENVIRONMENT}: MySQL database not configured"
+            return 1
+        fi
+
+        if grep -q 'external_ip = "0.0.0.0"' "${tracker_config}"; then
+            [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: External IP set to 0.0.0.0"
+        else
+            log_warning "${ENVIRONMENT}: External IP not set to 0.0.0.0 (this may be intentional)"
+        fi
+        ;;
+
+    "production")
+        # Production environment requires private mode for security
         if grep -q 'threshold = "info"' "${tracker_config}"; then
             [[ "${VERBOSE}" == "true" ]] && log_info "${ENVIRONMENT}: Info logging enabled"
         else

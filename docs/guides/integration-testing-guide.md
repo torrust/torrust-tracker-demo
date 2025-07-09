@@ -1543,10 +1543,12 @@ This guide provides a complete integration testing workflow that:
 
 ### Integration Testing Results Summary
 
+✅ **INTEGRATION TESTS NOW PASS COMPLETELY!**
+
 This guide provides a complete integration testing workflow that:
 
 1. **Creates fresh infrastructure** in ~3-5 minutes
-2. **Generates configuration files** from templates (~2 seconds)
+2. **Generates configuration files** from templates (~2 seconds)  
 3. **Refreshes OpenTofu state** to detect VM IP (~3 seconds)
 4. **Waits for cloud-init** to complete (~2-3 minutes)
 5. **Runs comprehensive tests** covering all services (~3-5 minutes)
@@ -1554,49 +1556,64 @@ This guide provides a complete integration testing workflow that:
 7. **Verifies end-to-end functionality** of the Torrust Tracker
 8. **Cleans up resources** when complete (~1 minute)
 
-### Successful Test Results
+**Total Time**: ~8-12 minutes for complete cycle
 
-During this testing cycle, the following components were validated:
+### ✅ Successful Test Results (Latest Run)
 
-#### ✅ Infrastructure Tests
+During the most recent testing cycle, the following components were validated successfully:
 
-- VM deployment and configuration
-- Cloud-init provisioning
-- SSH connectivity and authentication
-- Docker and Docker Compose installation
+#### Infrastructure Tests
 
-#### ✅ Service Integration Tests
+- ✅ **VM Access**: SSH connectivity working at `192.168.122.54`
+- ✅ **Docker Installation**: Docker 28.3.1 and Docker Compose V2.38.1 working  
+- ✅ **Service Health**: All containers running with healthy status
 
-- All Docker services startup (tracker, mysql, prometheus, grafana, nginx)
-- Service health checks and inter-service communication
-- Environment configuration and secrets management
+#### Service Deployment  
 
-#### ✅ API and Endpoint Tests
+- ✅ **MySQL**: Database running healthy with proper credentials
+- ✅ **Tracker**: Torrust Tracker running with all endpoints active
+- ✅ **Prometheus**: Metrics collection working
+- ✅ **Grafana**: Dashboard service healthy (version 11.4.0)
+- ✅ **Nginx Proxy**: Reverse proxy routing working correctly
 
-- Health check API: `{"status":"Ok"}`
-- Stats API with authentication: Complete metrics data
-- Nginx proxy configuration with correct headers
+#### API and Endpoint Tests
 
-#### ✅ External Smoke Tests (Official Client Tools)
+- ✅ **Health Check API**: `{"status":"Ok"}` via nginx proxy on port 80
+- ✅ **Statistics API**: Full stats JSON with admin token authentication
+- ✅ **UDP Tracker Ports**: 6868 and 6969 listening on both IPv4 and IPv6
+- ✅ **Monitoring Services**: Grafana and Prometheus both healthy
 
-- **UDP Tracker (6868)**: `{"AnnounceIpv4": {"seeders": 2, "peers": ["192.168.122.1:17548"]}}`
-- **UDP Tracker (6969)**: `{"AnnounceIpv4": {"seeders": 4, "peers": [...]}}`
-- **HTTP Tracker (via proxy)**: `{"complete": 1, "interval": 120, "peers": []}`
-- **Comprehensive Checker**: All operations (Setup, Connect, Announce, Scrape) successful
+#### Final Test Output
 
-#### ✅ Performance Validation
+```console
+[SUCCESS] All integration tests passed!
+```
 
-- **UDP Response Time**: < 160ms
-- **HTTP Response Time**: < 187ms
-- **All protocols**: Sub-second response times under test load
+### Critical Configuration Details
 
-### Critical Configuration Fixes Applied
+#### Authentication Requirements
 
-During testing, several critical configuration issues were identified and resolved:
+- **Health Check API**: `/api/health_check` - No authentication required
+- **Stats API**: `/api/v1/stats` - **Requires authentication token**
+- **Admin Token**: `local-dev-admin-token-12345` (from `.env` file)
 
-1. **Tracker Visibility**: Changed `private = true` to `private = false` in tracker.toml
-2. **Nginx Proxy Headers**: Added missing `X-Forwarded-For` headers for HTTP tracker functionality
-3. **Authentication Setup**: Validated admin token configuration for API access
+#### Correct API Testing Examples
+
+```bash
+# Health check (no auth needed)
+curl -s http://$VM_IP/api/health_check | jq .
+
+# Stats API (auth required) 
+curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq .
+```
+
+#### Network Architecture
+
+The deployment uses **nginx proxy** on port 80 that routes to internal services:
+
+- `/api/*` → routes to tracker service (internal port 1212)
+- Internal Docker ports (1212, 7070, 9090) are NOT accessible from outside the VM
+- UDP ports (6868, 6969) are directly exposed for tracker protocol
 
 ### Key Lessons Learned
 

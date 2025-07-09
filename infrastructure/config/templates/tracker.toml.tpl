@@ -100,7 +100,7 @@ threshold = "info"
 [core]
 inactive_peer_cleanup_interval = 600
 listed = false
-private = true
+private = false
 tracker_usage_statistics = true
 
 [core.announce_policy]

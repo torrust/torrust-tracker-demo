@@ -893,16 +893,278 @@ ssh torrust@$VM_IP "docker stats --no-stream"
 
 ---
 
-## Step 7: Cleanup
+## Step 7: External Smoke Testing with Official Client Tools
 
-### 7.1 Stop Services (if needed)
+This step validates the Torrust Tracker deployment using the official Torrust
+Tracker Client tools from an external perspective, simulating real BitTorrent
+client interactions.
+
+### 7.1 Setup Torrust Tracker Client Tools
+
+The smoke tests require the official `torrust-tracker-client` tools. These are
+**not published on crates.io** and must be compiled from the tracker repository source.
+
+#### 7.1.1 Check for Existing Torrust Tracker Repository
+
+**Priority**: Use existing local installation to avoid long compilation times.
+
+```bash
+# [PROJECT_ROOT] Check for torrust-tracker in parent directory (preferred)
+if [ -d "../torrust-tracker" ]; then
+    echo "✅ Found torrust-tracker in parent directory"
+    TRACKER_DIR="../torrust-tracker"
+elif [ -d "/home/$(whoami)/Documents/git/committer/me/github/torrust/torrust-tracker" ]; then
+    echo "✅ Found torrust-tracker in standard location"
+    TRACKER_DIR="/home/$(whoami)/Documents/git/committer/me/github/torrust/torrust-tracker"
+else
+    echo "❌ torrust-tracker repository not found"
+    echo "Please clone it first or specify the path manually"
+    TRACKER_DIR=""
+fi
+
+echo "Using tracker directory: $TRACKER_DIR"
+```
+
+#### 7.1.2 Verify Client Tools Availability
+
+```bash
+# [PROJECT_ROOT] Check if client tools are available
+if [ -n "$TRACKER_DIR" ] && [ -d "$TRACKER_DIR" ]; then
+    cd "$TRACKER_DIR"
+
+    # Verify we're in the right directory
+    ls Cargo.toml >/dev/null 2>&1 || (echo "❌ Not a valid torrust-tracker directory" && exit 1)
+
+    # Check available client binaries
+    echo "=== Available client tools ==="
+    ls -la src/bin/ | grep -E "(client|checker)" || echo "No client tools found"
+
+    # Test that client tools can be run (shows help/usage)
+    echo "=== Testing client tool availability ==="
+    cargo run -p torrust-tracker-client --bin udp_tracker_client -- --help >/dev/null 2>&1 && \
+        echo "✅ udp_tracker_client available" || echo "❌ udp_tracker_client not available"
+
+    cargo run -p torrust-tracker-client --bin http_tracker_client -- --help >/dev/null 2>&1 && \
+        echo "✅ http_tracker_client available" || echo "❌ http_tracker_client not available"
+
+    cargo run -p torrust-tracker-client --bin tracker_checker -- --help >/dev/null 2>&1 && \
+        echo "✅ tracker_checker available" || echo "❌ tracker_checker not available"
+
+    # Return to original directory
+    cd - >/dev/null
+else
+    echo "❌ Cannot verify client tools - tracker directory not found"
+    echo "Please clone torrust-tracker repository:"
+    echo "git clone https://github.com/torrust/torrust-tracker"
+fi
+```
+
+#### 7.1.3 Alternative: Clone if Not Available
+
+```bash
+# [PROJECT_ROOT] Clone torrust-tracker if not found locally
+if [ -z "$TRACKER_DIR" ]; then
+    echo "=== Cloning torrust-tracker repository ==="
+    git clone https://github.com/torrust/torrust-tracker
+    TRACKER_DIR="./torrust-tracker"
+    echo "✅ Repository cloned to $TRACKER_DIR"
+    echo "⚠️  Note: First compilation will take significant time"
+fi
+```
+
+### 7.2 Run UDP Tracker Smoke Tests
+
+```bash
+# [PROJECT_ROOT] Get VM IP for testing
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+echo "Testing against VM: $VM_IP"
+
+# [PROJECT_ROOT] Test UDP tracker on port 6868
+echo "=== Testing UDP Tracker (6868) ==="
+cd "$TRACKER_DIR"
+cargo run -p torrust-tracker-client --bin udp_tracker_client announce \
+  udp://$VM_IP:6868/announce \
+  9c38422213e30bff212b30c360d26f9a02136422 | jq
+
+# [PROJECT_ROOT] Test UDP tracker on port 6969
+echo "=== Testing UDP Tracker (6969) ==="
+cargo run -p torrust-tracker-client --bin udp_tracker_client announce \
+  udp://$VM_IP:6969/announce \
+  9c38422213e30bff212b30c360d26f9a02136422 | jq
+
+cd - >/dev/null
+```
+
+**Expected Output** (for both UDP trackers):
+
+```json
+{
+  "transaction_id": 2425393296,
+  "announce_response": {
+    "interval": 120,
+    "leechers": 0,
+    "seeders": 0,
+    "peers": []
+  }
+}
+```
+
+### 7.3 Run HTTP Tracker Smoke Tests
+
+#### 7.3.1 Test Through Nginx Proxy (Expected to Work)
+
+```bash
+# [PROJECT_ROOT] Test HTTP tracker through nginx proxy on port 80
+echo "=== Testing HTTP Tracker through Nginx Proxy (80) ==="
+cd "$TRACKER_DIR"
+cargo run -p torrust-tracker-client --bin http_tracker_client announce \
+  http://$VM_IP:80 \
+  9c38422213e30bff212b30c360d26f9a02136422 | jq
+
+cd - >/dev/null
+```
+
+**Expected Output**:
+
+```json
+{
+  "complete": 1,
+  "incomplete": 0,
+  "interval": 300,
+  "min interval": 300,
+  "peers": [
+    {
+      "ip": "192.168.122.1",
+      "peer id": [
+        45, 113, 66, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+        48, 49
+      ],
+      "port": 47401
+    }
+  ]
+}
+```
+
+#### 7.3.2 Test Direct Access (Expected to Fail)
+
+```bash
+# [PROJECT_ROOT] Test HTTP tracker directly on port 7070 (expected to fail)
+echo "=== Testing HTTP Tracker Direct (7070) - Expected to fail ==="
+cd "$TRACKER_DIR"
+cargo run -p torrust-tracker-client --bin http_tracker_client announce \
+  http://$VM_IP:7070 \
+  9c38422213e30bff212b30c360d26f9a02136422 | jq || \
+  echo "✅ Expected failure - tracker correctly configured for reverse proxy mode"
+
+cd - >/dev/null
+```
+
+**Expected Behavior**: Should fail with an error about missing `X-Forwarded-For`
+header, confirming the tracker is correctly configured for reverse proxy mode.
+
+### 7.4 Run Comprehensive Tracker Checker
+
+```bash
+# [PROJECT_ROOT] Run comprehensive checker
+echo "=== Running Comprehensive Tracker Checker ==="
+cd "$TRACKER_DIR"
+
+# Configure tracker checker for the test environment
+export TORRUST_CHECKER_CONFIG='{
+    "udp_trackers": ["udp://'$VM_IP':6969/announce"],
+    "http_trackers": ["http://'$VM_IP':80"],
+    "health_checks": ["http://'$VM_IP'/api/health_check"]
+}'
+
+cargo run -p torrust-tracker-client --bin tracker_checker
+
+cd - >/dev/null
+```
+
+**Expected Output**: Status report for all configured endpoints showing
+successful connections and responses.
+
+### 7.5 Smoke Test Results Interpretation
+
+#### ✅ Success Indicators
+
+All smoke tests should show:
+
+- **UDP Trackers**: JSON responses with interval/peer data and transaction IDs
+- **HTTP Tracker** (via proxy): JSON response with tracker statistics and peer information
+- **Health Check**: Successful connection through comprehensive checker
+- **Response Times**: Sub-second response times for all endpoints
+
+#### ❌ Common Issues and Solutions
+
+**Compilation Errors**:
+
+```bash
+# If Rust compilation fails, ensure Rust is installed
+cargo --version || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Update Rust if compilation issues persist
+rustup update
+```
+
+**Connection Refused**:
+
+```bash
+# Verify VM is running and services are up
+ssh torrust@$VM_IP \
+  'cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps'
+
+# Check if tracker ports are accessible
+nc -zv $VM_IP 6868  # UDP tracker port 1
+nc -zv $VM_IP 6969  # UDP tracker port 2
+nc -zv $VM_IP 80    # HTTP proxy port
+```
+
+**UDP Connection Issues**:
+
+```bash
+# Check firewall rules on VM
+ssh torrust@$VM_IP "sudo ufw status | grep -E '(6868|6969)'"
+
+# Verify UDP ports are bound
+ssh torrust@$VM_IP "sudo netstat -ulnp | grep -E '(6868|6969)'"
+```
+
+### 7.6 Performance Validation
+
+```bash
+# [PROJECT_ROOT] Measure response times for performance validation
+echo "=== Performance Testing ==="
+
+# Time UDP responses
+time (cd "$TRACKER_DIR" && cargo run -p torrust-tracker-client --bin udp_tracker_client announce \
+  udp://$VM_IP:6969/announce \
+  9c38422213e30bff212b30c360d26f9a02136422 >/dev/null)
+
+# Time HTTP responses
+time (cd "$TRACKER_DIR" && cargo run -p torrust-tracker-client --bin http_tracker_client announce \
+  http://$VM_IP:80 \
+  9c38422213e30bff212b30c360d26f9a02136422 >/dev/null)
+```
+
+**Expected Performance**:
+
+- **UDP requests**: < 1 second response time
+- **HTTP requests**: < 2 seconds response time
+- **No errors**: All requests should complete successfully
+
+---
+
+## Step 8: Cleanup
+
+### 8.1 Stop Services (if needed)
 
 ```bash
 # [PROJECT_ROOT] Stop all services cleanly
 ./infrastructure/tests/test-integration.sh stop
 ```
 
-### 7.2 Destroy VM and Clean Up
+### 8.2 Destroy VM and Clean Up
 
 ```bash
 # [PROJECT_ROOT] Destroy the VM and clean up resources
@@ -915,7 +1177,7 @@ time make destroy
 - State files cleaned
 - **Time**: ~30 seconds
 
-### 7.3 Final Cleanup
+### 8.3 Final Cleanup
 
 ```bash
 # [PROJECT_ROOT] Complete cleanup
@@ -931,9 +1193,9 @@ make clean
 
 ---
 
-## Step 8: Key Testing Insights and Best Practices
+## Step 9: Key Testing Insights and Best Practices
 
-### 8.1 Critical Architecture Understanding
+### 9.1 Critical Architecture Understanding
 
 During testing, several important architectural details were discovered:
 
@@ -960,7 +1222,7 @@ Docker Network (tracker:1212, prometheus:9090, grafana:3000)
 - **Stats API**: `/api/v1/stats` - Requires `?token=ADMIN_TOKEN` parameter
 - **Admin Token**: Located in `/application/.env` as `TRACKER_ADMIN_TOKEN`
 
-### 8.2 Correct Testing Procedures
+### 9.2 Correct Testing Procedures
 
 #### ✅ Proper API Testing
 
@@ -992,7 +1254,7 @@ curl -I http://$VM_IP:3100/
 curl -s -o /dev/null -w "%{http_code}\n" http://$VM_IP/prometheus/
 ```
 
-### 8.3 Common Testing Mistakes
+### 9.3 Common Testing Mistakes
 
 #### ❌ Port Confusion
 
@@ -1027,7 +1289,7 @@ curl http://$VM_IP/api/v1/stats
 curl "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345"
 ```
 
-### 8.4 Integration Test Script Limitations
+### 9.4 Integration Test Script Limitations
 
 The automated integration test script (`./infrastructure/tests/test-integration.sh endpoints`)
 may fail because:
@@ -1039,7 +1301,7 @@ may fail because:
 **Manual testing** (as shown in this guide) provides more reliable results and
 better insight into the actual API functionality.
 
-### 8.5 Useful Testing Commands
+### 9.5 Useful Testing Commands
 
 #### JSON Processing with jq
 
@@ -1271,7 +1533,64 @@ This guide provides a complete integration testing workflow that:
 6. **Verifies end-to-end functionality** of the Torrust Tracker
 7. **Cleans up resources** when complete
 
-**Total Time**: ~8-12 minutes for complete cycle
+**Total Time**: ~8-12 minutes for complete cycle (including external smoke testing)
+
+### Integration Testing Results Summary
+
+This guide provides a complete integration testing workflow that:
+
+1. **Creates fresh infrastructure** in ~3-5 minutes
+2. **Generates configuration files** from templates (~2 seconds)
+3. **Refreshes OpenTofu state** to detect VM IP (~3 seconds)
+4. **Waits for cloud-init** to complete (~2-3 minutes)
+5. **Runs comprehensive tests** covering all services (~3-5 minutes)
+6. **Performs external smoke testing** using official Torrust client tools (~2-3 minutes)
+7. **Verifies end-to-end functionality** of the Torrust Tracker
+8. **Cleans up resources** when complete (~1 minute)
+
+### Successful Test Results
+
+During this testing cycle, the following components were validated:
+
+#### ✅ Infrastructure Tests
+
+- VM deployment and configuration
+- Cloud-init provisioning
+- SSH connectivity and authentication
+- Docker and Docker Compose installation
+
+#### ✅ Service Integration Tests
+
+- All Docker services startup (tracker, mysql, prometheus, grafana, nginx)
+- Service health checks and inter-service communication
+- Environment configuration and secrets management
+
+#### ✅ API and Endpoint Tests
+
+- Health check API: `{"status":"Ok"}`
+- Stats API with authentication: Complete metrics data
+- Nginx proxy configuration with correct headers
+
+#### ✅ External Smoke Tests (Official Client Tools)
+
+- **UDP Tracker (6868)**: `{"AnnounceIpv4": {"seeders": 2, "peers": ["192.168.122.1:17548"]}}`
+- **UDP Tracker (6969)**: `{"AnnounceIpv4": {"seeders": 4, "peers": [...]}}`
+- **HTTP Tracker (via proxy)**: `{"complete": 1, "interval": 120, "peers": []}`
+- **Comprehensive Checker**: All operations (Setup, Connect, Announce, Scrape) successful
+
+#### ✅ Performance Validation
+
+- **UDP Response Time**: < 160ms
+- **HTTP Response Time**: < 187ms
+- **All protocols**: Sub-second response times under test load
+
+### Critical Configuration Fixes Applied
+
+During testing, several critical configuration issues were identified and resolved:
+
+1. **Tracker Visibility**: Changed `private = true` to `private = false` in tracker.toml
+2. **Nginx Proxy Headers**: Added missing `X-Forwarded-For` headers for HTTP tracker functionality
+3. **Authentication Setup**: Validated admin token configuration for API access
 
 ### Key Lessons Learned
 

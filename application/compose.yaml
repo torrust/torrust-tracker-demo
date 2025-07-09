@@ -110,6 +110,7 @@ services:
     environment:
       - USER_ID=${USER_ID:-1000}
       # Database connection for tracker (using Figment override pattern)
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER=mysql
       - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       # Admin API token for tracker (using Figment override pattern)
       - TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN=${TRACKER_ADMIN_TOKEN}

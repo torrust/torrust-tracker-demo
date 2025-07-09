@@ -1,6 +1,14 @@
 #!/bin/bash
 # Integration test script for Torrust Tracker deployment
 # Tests the complete deployment workflow in the VM
+#
+# IMPORTANT: This script copies the current local repository to the VM
+# to test exactly the changes being developed. This ensures we test our
+# modifications rather than the published main branch.
+#
+# For testing against the published repository (e.g., for E2E tests of
+# released versions), consider creating a separate script that clones
+# from GitHub instead of copying local files.
 
 set -euo pipefail
 
@@ -122,25 +130,60 @@ test_docker() {
     return 0
 }
 
-# Clone and setup Torrust Tracker Demo
+# Copy and setup local Torrust Tracker Demo repository
+# NOTE: This copies the current local repository to test our exact changes.
+# For testing against the published main branch, consider creating a separate
+# test script that clones from GitHub instead of copying local files.
 setup_torrust_tracker() {
-    log_info "Setting up Torrust Tracker Demo..."
+    log_info "Setting up Torrust Tracker Demo (copying local repository)..."
 
     local vm_ip
     vm_ip=$(get_vm_ip)
 
-    # Check if already cloned
-    if vm_exec "${vm_ip}" "test -d /home/torrust/github/torrust/torrust-tracker-demo" "Checking if repo exists"; then
-        log_info "Repository already exists, updating..."
-        vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && git pull" "Updating repository"
-    else
-        log_info "Cloning repository..."
-        vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
-        vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && git clone https://github.com/torrust/torrust-tracker-demo.git" "Cloning repository"
+    # Create target directory structure
+    vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
+
+    # Remove existing directory if it exists
+    if vm_exec "${vm_ip}" "test -d /home/torrust/github/torrust/torrust-tracker-demo" ""; then
+        log_info "Removing existing repository directory..."
+        vm_exec "${vm_ip}" "rm -rf /home/torrust/github/torrust/torrust-tracker-demo" "Removing old directory"
     fi
 
-    # Setup environment file
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && cp .env.production .env" "Setting up environment file"
+    # Copy current local repository to VM (excluding .git and build artifacts)
+    log_info "Copying local repository to VM..."
+    rsync -av --progress \
+        --exclude='.git' \
+        --exclude='target' \
+        --exclude='node_modules' \
+        --exclude='*.log' \
+        --exclude='infrastructure/terraform/terraform.tfstate*' \
+        --exclude='infrastructure/terraform/.terraform' \
+        --exclude='application/storage/*/data' \
+        -e "ssh -o StrictHostKeyChecking=no" \
+        "${PROJECT_ROOT}/" \
+        "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"
+
+    # Verify copy was successful
+    if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository copy"; then
+        log_success "Local repository copied successfully"
+    else
+        log_error "Failed to copy local repository"
+        return 1
+    fi
+
+    # Setup environment file using the new configuration system
+    # The VM should already have the generated configuration from make configure-local
+    log_info "Verifying configuration files..."
+    if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/application/.env" "Checking .env file"; then
+        log_success "Environment configuration already available"
+    else
+        log_warning ".env file not found, this might indicate configuration generation issues"
+        # Fallback: copy from .env.production if it exists
+        if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/.env.production" ""; then
+            vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && cp .env.production application/.env" "Creating fallback .env"
+            log_info "Created fallback .env from .env.production"
+        fi
+    fi
 
     log_success "Torrust Tracker Demo setup completed"
     return 0
@@ -165,17 +208,17 @@ start_tracker_services() {
     log_info "Using Docker Compose command: ${compose_cmd}"
 
     # Pull latest images
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} pull" "Pulling Docker images"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && ${compose_cmd} pull" "Pulling Docker images"
 
     # Start services
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} up -d" "Starting services"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && ${compose_cmd} up -d" "Starting services"
 
     # Wait for services to be ready
     log_info "Waiting for services to be ready..."
     sleep 30
 
     # Check service status
-    if vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} ps" "Checking service status"; then
+    if vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && ${compose_cmd} ps" "Checking service status"; then
         log_success "Services started successfully"
     else
         log_error "Services failed to start properly"
@@ -257,7 +300,7 @@ collect_logs() {
     vm_ip=$(get_vm_ip)
 
     # Docker logs
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && docker compose logs --tail=50" "Collecting Docker logs"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose logs --tail=50" "Collecting Docker logs"
 
     # System logs
     vm_exec "${vm_ip}" "sudo journalctl --since='1 hour ago' --no-pager | tail -50" "Collecting system logs"
@@ -277,7 +320,7 @@ stop_services() {
     compose_cmd=$(get_docker_compose_cmd "${vm_ip}")
 
     if [ -n "${compose_cmd}" ]; then
-        vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && ${compose_cmd} down" "Stopping services"
+        vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && ${compose_cmd} down" "Stopping services"
     else
         log_warning "Docker Compose not available, cannot stop services"
     fi

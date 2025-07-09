@@ -42,8 +42,8 @@
 #   interval_min = 120
 # 
 #   [core.database]
-#   driver = "sqlite3"
-#   path = "./storage/tracker/lib/database/sqlite3.db"
+#   driver = "mysql"
+#   path = "mysql://torrust:password@mysql:3306/torrust_tracker"
 # 
 #   [core.net]
 #   external_ip = "0.0.0.0"
@@ -108,9 +108,10 @@ interval = 120
 interval_min = 120
 
 [core.database]
-driver = "mysql"
-# Path will be overridden via environment variable:
+# Driver and path will be overridden via environment variables:
+# TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER
 # TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH
+driver = "mysql"
 path = ""
 
 [core.net]

@@ -1,4 +1,17 @@
 ---
+# Prometheus Configuration Template
+# Generated from environment variables for ${ENVIRONMENT}
+#
+# NOTE: Admin token is stored in plain text in this config file after template processing.
+# This is a limitation of Prometheus configuration - it does not support runtime environment
+# variable substitution like other services.
+#
+# TODO: Research safer secret injection methods for Prometheus:
+#   - Prometheus file_sd_configs with dynamic token refresh
+#   - External authentication proxy (oauth2-proxy, etc.)
+#   - Vault integration or secret management solutions
+#   - Init containers to generate configs with short-lived tokens
+
 global:
   scrape_interval: 15s
 

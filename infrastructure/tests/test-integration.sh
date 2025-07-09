@@ -130,15 +130,34 @@ test_docker() {
     return 0
 }
 
-# Copy and setup local Torrust Tracker Demo repository
-# NOTE: This copies the current local repository to test our exact changes.
-# For testing against the published main branch, consider creating a separate
-# test script that clones from GitHub instead of copying local files.
+# Setup local Torrust Tracker Demo repository following 12-factor principles
+# This function:
+# 1. Creates a git archive of the current repository (only tracked files)
+# 2. Copies it to the VM to test the exact version being developed
+# 3. Runs the infrastructure configuration system to generate config files
+# 4. Executes the official installation script
+# 5. Copies the configured storage folder to the VM
 setup_torrust_tracker() {
-    log_info "Setting up Torrust Tracker Demo (copying local repository)..."
+    log_info "Setting up Torrust Tracker Demo (using 12-factor configuration approach)..."
 
     local vm_ip
     vm_ip=$(get_vm_ip)
+
+    # Step 1: Create git archive of tracked files only
+    log_info "Creating git archive of tracked files..."
+    local temp_archive
+    temp_archive="/tmp/torrust-tracker-demo-$(date +%s).tar.gz"
+
+    cd "${PROJECT_ROOT}"
+    if ! git archive --format=tar.gz --output="${temp_archive}" HEAD; then
+        log_error "Failed to create git archive"
+        return 1
+    fi
+
+    log_success "Git archive created: ${temp_archive}"
+
+    # Step 2: Copy git archive to VM and extract
+    log_info "Copying and extracting repository to VM..."
 
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
@@ -149,43 +168,96 @@ setup_torrust_tracker() {
         vm_exec "${vm_ip}" "rm -rf /home/torrust/github/torrust/torrust-tracker-demo" "Removing old directory"
     fi
 
-    # Copy current local repository to VM (excluding .git and build artifacts)
-    log_info "Copying local repository to VM..."
-    rsync -av --progress \
-        --exclude='.git' \
-        --exclude='target' \
-        --exclude='node_modules' \
-        --exclude='*.log' \
-        --exclude='infrastructure/terraform/terraform.tfstate*' \
-        --exclude='infrastructure/terraform/.terraform' \
-        --exclude='application/storage/*/data' \
-        -e "ssh -o StrictHostKeyChecking=no" \
-        "${PROJECT_ROOT}/" \
-        "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"
-
-    # Verify copy was successful
-    if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository copy"; then
-        log_success "Local repository copied successfully"
-    else
-        log_error "Failed to copy local repository"
+    # Copy archive to VM
+    if ! scp -o StrictHostKeyChecking=no "${temp_archive}" "torrust@${vm_ip}:/tmp/"; then
+        log_error "Failed to copy git archive to VM"
+        rm -f "${temp_archive}"
         return 1
     fi
 
-    # Setup environment file using the new configuration system
-    # The VM should already have the generated configuration from make configure-local
-    log_info "Verifying configuration files..."
-    if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/application/.env" "Checking .env file"; then
-        log_success "Environment configuration already available"
+    # Extract archive on VM
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && tar -xzf /tmp/$(basename "${temp_archive}") && mv torrust-tracker-demo torrust-tracker-demo-temp || true" "Extracting archive"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mv torrust-tracker-demo-temp torrust-tracker-demo" "Moving to final location"
+    vm_exec "${vm_ip}" "rm -f /tmp/$(basename "${temp_archive}")" "Cleaning up archive"
+
+    # Clean up local temp file
+    rm -f "${temp_archive}"
+
+    # Verify extraction was successful
+    if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository extraction"; then
+        log_success "Repository extracted successfully"
     else
-        log_warning ".env file not found, this might indicate configuration generation issues"
-        # Fallback: copy from .env.production if it exists
-        if vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/.env.production" ""; then
-            vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && cp .env.production application/.env" "Creating fallback .env"
-            log_info "Created fallback .env from .env.production"
-        fi
+        log_error "Failed to extract repository"
+        return 1
     fi
 
-    log_success "Torrust Tracker Demo setup completed"
+    # Step 3: Generate configuration files locally using infrastructure system
+    log_info "Generating configuration files locally..."
+
+    cd "${PROJECT_ROOT}"
+
+    # Generate local configuration (this creates .env and processes templates)
+    if ! make configure-local; then
+        log_error "Failed to generate local configuration"
+        return 1
+    fi
+
+    log_success "Configuration files generated locally"
+
+    # Step 4: Run the official installation script locally to create directories
+    log_info "Running installation script locally to create directories..."
+
+    cd "${PROJECT_ROOT}/application"
+
+    # Ensure .env file exists (should have been created by configure-local)
+    if [[ ! -f ".env" ]]; then
+        log_error "Missing .env file after configuration generation"
+        return 1
+    fi
+
+    # Run the installation script
+    if ! ./share/bin/install.sh; then
+        log_error "Installation script failed"
+        return 1
+    fi
+
+    log_success "Installation script completed successfully"
+
+    # Step 5: Copy the configured storage folder to the VM
+    log_info "Copying configured storage folder to VM..."
+
+    # Ensure storage directory exists and has proper structure
+    if [[ ! -d "${PROJECT_ROOT}/application/storage" ]]; then
+        log_error "Storage directory not found after installation"
+        return 1
+    fi
+
+    # Copy storage folder to VM
+    if ! rsync -av --progress \
+        -e "ssh -o StrictHostKeyChecking=no" \
+        "${PROJECT_ROOT}/application/storage/" \
+        "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/application/storage/"; then
+        log_error "Failed to copy storage folder to VM"
+        return 1
+    fi
+
+    # Verify critical configuration files exist on VM
+    log_info "Verifying configuration files on VM..."
+
+    local critical_files=(
+        "/home/torrust/github/torrust/torrust-tracker-demo/application/.env"
+        "/home/torrust/github/torrust/torrust-tracker-demo/application/storage/tracker/etc/tracker.toml"
+        "/home/torrust/github/torrust/torrust-tracker-demo/application/storage/prometheus/etc/prometheus.yml"
+    )
+
+    for file in "${critical_files[@]}"; do
+        if ! vm_exec "${vm_ip}" "test -f ${file}" "Checking ${file}"; then
+            log_error "Critical configuration file missing: ${file}"
+            return 1
+        fi
+    done
+
+    log_success "Torrust Tracker Demo setup completed using 12-factor configuration approach"
     return 0
 }
 

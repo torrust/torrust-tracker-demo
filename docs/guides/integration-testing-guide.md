@@ -273,9 +273,15 @@ time make configure-local
 - Environment values applied to templates
 - **Time**: ~2 seconds
 
-**What This Creates**: Final configuration files in `infrastructure/cloud-init/`
-from templates in `infrastructure/config/templates/` using values from
-`infrastructure/config/environments/local.env`.
+**What This Creates**: Final configuration files including:
+
+- `application/.env` - Docker Compose environment file
+- `application/storage/tracker/etc/tracker.toml` - Tracker configuration
+- `application/storage/prometheus/etc/prometheus.yml` - Prometheus configuration
+- `infrastructure/cloud-init/` - VM provisioning files
+
+These files are generated from templates in `infrastructure/config/templates/` using
+values from `infrastructure/config/environments/local.env`.
 
 ### 1.7.2 Validate Generated Configuration
 

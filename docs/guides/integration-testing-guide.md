@@ -300,6 +300,76 @@ time make validate-config
 **What This Verifies**: Generated configuration files are syntactically correct
 and ready for deployment.
 
+## Step 1.8: Clean Application Storage (Optional but Recommended)
+
+⚠️ **DESTRUCTIVE OPERATION WARNING**: This step permanently deletes all
+application data including:
+
+- **Database data** (MySQL databases, user accounts, torrents)
+- **SSL certificates** (Let's Encrypt certificates, private keys)
+- **Configuration files** (tracker.toml, prometheus.yml, etc.)
+- **Application logs** and persistent data
+
+**When to use this step**:
+
+- ✅ Starting completely fresh integration test
+- ✅ Previous test left corrupted data
+- ✅ Database schema changes require clean slate
+- ✅ SSL certificate issues need reset
+- ❌ **NEVER** on production systems
+
+### 1.8.1 Remove Application Storage
+
+```bash
+# [PROJECT_ROOT] Remove all application storage (DESTRUCTIVE!)
+echo "=== WARNING: About to delete all application data ==="
+echo "This will permanently remove:"
+echo "  - Database data (MySQL)"
+echo "  - SSL certificates"
+echo "  - Configuration files"
+echo "  - Application logs"
+echo ""
+read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm
+
+if [ "$confirm" = "yes" ]; then
+    echo "Removing application storage..."
+    rm -rf application/storage/
+    echo "✅ Application storage deleted"
+else
+    echo "❌ Operation cancelled"
+fi
+```
+
+**Alternative non-interactive approach**:
+
+```bash
+# [PROJECT_ROOT] Force remove without confirmation (use carefully!)
+rm -rf application/storage/
+echo "✅ Application storage deleted"
+```
+
+### 1.8.2 Verify Storage Cleanup
+
+```bash
+# [PROJECT_ROOT] Verify storage folder is gone
+ls -la application/storage/ 2>/dev/null && \
+  echo '❌ Storage folder still exists!' || echo '✅ Storage folder removed'
+
+# [PROJECT_ROOT] Verify Docker volumes are clean (if Docker is running)
+docker volume ls | grep torrust-tracker-demo && \
+  echo '❌ Docker volumes still exist!' || echo '✅ No Docker volumes remain'
+```
+
+**Expected Output**: Both checks should show "✅" (clean state).
+
+**What This Achieves**: Ensures a completely clean application state for testing,
+preventing issues caused by:
+
+- Corrupted database data from previous tests
+- Expired or invalid SSL certificates
+- Configuration conflicts from previous deployments
+- Stale application logs affecting debugging
+
 ---
 
 ## Step 2: Deploy Fresh Virtual Machine
@@ -1240,11 +1310,10 @@ VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
 curl -s http://$VM_IP/api/health_check | jq .
 
 # Test stats (auth required)
-TOKEN="local-dev-admin-token-12345"
-curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq .
+curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq .
 
 # Test specific metrics with jq filtering
-curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq '.torrents, .seeders'
+curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq '.torrents, .seeders, .leechers'
 ```
 
 #### ✅ Monitoring Service Testing

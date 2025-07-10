@@ -318,7 +318,6 @@ make apply
 The new system uses environment-specific configuration:
 
 - `infrastructure/config/environments/local.env` - Local development
-- `infrastructure/config/environments/staging.env` - Staging environment
 - `infrastructure/config/environments/production.env` - Production environment
 
 Process configuration before deployment:
@@ -348,30 +347,6 @@ make destroy
 
 #### 4.1 Create Environment Variations
 
-**Staging configuration** (`infrastructure/config/environments/staging.env`):
-
-```bash
-# Infrastructure Configuration
-INFRASTRUCTURE_PROVIDER=hetzner
-INFRASTRUCTURE_REGION=fsn1
-INFRASTRUCTURE_INSTANCE_TYPE=cx11
-
-# Application Configuration
-TORRUST_TRACKER_MODE=private
-TORRUST_TRACKER_LOG_LEVEL=info
-TORRUST_TRACKER_DATABASE_DRIVER=sqlite3
-TORRUST_TRACKER_API_TOKEN=${TORRUST_STAGING_API_TOKEN}
-
-# Service Configuration
-GRAFANA_ADMIN_PASSWORD=${GRAFANA_STAGING_PASSWORD}
-PROMETHEUS_RETENTION_TIME=15d
-
-# Security Configuration
-SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
-DOMAIN_NAME=staging.torrust-demo.com
-SSL_EMAIL=${SSL_EMAIL}
-```
-
 **Production configuration** (`infrastructure/config/environments/production.env`):
 
 ```bash
@@ -393,7 +368,7 @@ PROMETHEUS_RETENTION_TIME=30d
 
 # Security Configuration
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
-DOMAIN_NAME=torrust-demo.com
+DOMAIN_NAME=tracker.torrust-demo.com
 SSL_EMAIL=${SSL_EMAIL}
 ```
 
@@ -498,7 +473,7 @@ direnv allow
 
 ### Week 3: Environment Support
 
-- [ ] Create staging and production configurations
+- [ ] Create production configurations
 - [ ] Implement environment-specific logic
 - [ ] Test multi-environment deployment
 - [ ] Validate configuration for all environments

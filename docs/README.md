@@ -37,6 +37,16 @@ This directory currently contains cross-cutting documentation:
 - [Phase 1: MySQL Migration](issues/12-use-mysql-instead-of-sqlite-by-default.md) -
   Detailed implementation plan for database migration from SQLite to MySQL
 
+### 🔧 [`refactoring/`](refactoring/) (Refactoring Documentation)
+
+**Major refactoring initiatives and changes** - Documentation of significant
+codebase changes, architectural improvements, and migration summaries.
+
+**Current Refactoring Documentation:**
+
+- [Integration Test Refactor Summary](refactoring/integration-test-refactor-summary.md) -
+  Summary of changes made to align integration testing with 12-factor configuration principles
+
 ### Future Categories
 
 The following directories can be created as needed:

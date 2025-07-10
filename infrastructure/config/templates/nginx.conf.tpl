@@ -1,3 +1,18 @@
+# Nginx Configuration Template for Torrust Tracker Demo
+#
+# Variable Escaping Notes:
+# - This template is processed by envsubst which substitutes all $VARIABLE patterns
+# - Nginx variables (like $proxy_add_x_forwarded_for, $host, $http_upgrade) must be escaped
+# - Use ${DOLLAR} environment variable to represent literal $ in nginx config
+# - Example: ${DOLLAR}proxy_add_x_forwarded_for becomes $proxy_add_x_forwarded_for
+#
+# TODO: Fix the commented HTTPS configuration section below
+# - The HTTPS configuration has inconsistent variable escaping
+# - Some nginx variables use literal $ (incorrect) while others should use ${DOLLAR}
+# - Line 117: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; (needs ${DOLLAR})
+# - Lines with $host, $http_upgrade, $connection_upgrade also need escaping
+# - SSL certificate paths and other static values are correct as-is
+
 server
 {
     listen 80;
@@ -11,13 +26,13 @@ server
     location /api/
     {
             proxy_pass http://tracker:1212/api/;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     }
 
     location /
     {
             proxy_pass http://tracker:7070;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     }
 
     location ~ /.well-known/acme-challenge
@@ -109,7 +124,7 @@ server
 #        #add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 #        # enable strict transport security only if you understand the implications
 #
-#    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#    proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
 #    }
 #
 #    root /var/www/html;

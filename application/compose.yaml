@@ -108,11 +108,12 @@ services:
     tty: true
     restart: unless-stopped
     environment:
-      - USER_ID=${USER_ID}
-      - TORRUST_TRACKER_DATABASE=${TORRUST_TRACKER_DATABASE:-mysql}
-      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER=${TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER:-mysql}
-      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH=${TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH:-mysql://torrust:password@mysql:3306/torrust_tracker}
-      - TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN=${TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN:-MyAccessToken}
+      - USER_ID=${USER_ID:-1000}
+      # Database connection for tracker (using Figment override pattern)
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__DRIVER=mysql
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_CORE__DATABASE__PATH=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      # Admin API token for tracker (using Figment override pattern)
+      - TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN=${TRACKER_ADMIN_TOKEN}
     networks:
       - backend_network
     ports:

@@ -1,5 +1,14 @@
 # Twelve-Factor App Refactoring Plan for Torrust Tracker Demo
 
+## ⚠️ Implementation Status
+
+**This refactoring plan is NOT YET IMPLEMENTED**. See [current-status.md](./current-status.md)
+for what's actually working now.
+
+Recent improvements have focused on integration testing workflow fixes. The core
+twelve-factor configuration management described in this document is still pending
+implementation.
+
 ## Executive Summary
 
 This document outlines a comprehensive plan to refactor the Torrust Tracker

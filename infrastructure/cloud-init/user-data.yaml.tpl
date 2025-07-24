@@ -26,13 +26,12 @@ users:
       ]
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
-    lock_passwd: false
-    # plain_text_passwd: torrust123  # Commented out - enable only for debugging/recovery
+    lock_passwd: true
     ssh_authorized_keys:
       - ${ssh_public_key}
 
-# Enable SSH password authentication for debugging
-# ssh_pwauth: true  # Commented out - enable only for debugging/recovery
+# Disable SSH password authentication for security
+ssh_pwauth: false
 
 # Package updates and installations
 package_update: true

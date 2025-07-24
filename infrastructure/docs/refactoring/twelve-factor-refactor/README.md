@@ -39,7 +39,7 @@ for multi-cloud production deployments (starting with Hetzner).
 ### Current Architecture
 
 - **VM Provisioning**: Cloud-init + OpenTofu/Terraform (local KVM/libvirt)
-- **Application Deployment**: Manual post-provisioning via `test-integration.sh`
+- **Application Deployment**: Twelve-factor workflow via `make app-deploy`
 - **Configuration**: Mixed approach with Docker containers and environment
   variables
 - **Services**: Tracker, Prometheus, Grafana via Docker Compose

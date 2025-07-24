@@ -32,9 +32,14 @@ docs/infrastructure/
 
 ```output
 tests/
-├── test-local-setup.sh             # Infrastructure deployment tests
-└── test-integration.sh             # Torrust Tracker integration tests
+├── test-unit-config.sh             # Configuration and syntax validation
+├── test-unit-scripts.sh            # Infrastructure script validation
+├── test-unit-infrastructure.sh     # Infrastructure prerequisites validation
+└── README.md                       # Infrastructure unit test documentation
 ```
+
+**Note**: End-to-end tests are located at the project root (`tests/test-e2e.sh`)
+since they test both infrastructure and application components.
 
 ### Automation
 
@@ -132,19 +137,30 @@ make destroy
 
 ## 🧪 Test Coverage
 
-### Infrastructure Tests (`test-local-setup.sh`)
+### E2E Tests (`test-e2e.sh`)
 
+✅ Complete twelve-factor deployment workflow  
+✅ Infrastructure provisioning (`make infra-apply`)  
+✅ Application deployment (`make app-deploy`)  
+✅ Health validation (`make health-check`)  
+✅ Automatic cleanup
+
+### Unit Tests
+
+**Configuration (`test-unit-config.sh`)**:  
+✅ OpenTofu/Terraform syntax validation  
+✅ Cloud-init template validation  
+✅ YAML syntax checking
+
+**Scripts (`test-unit-scripts.sh`)**:  
+✅ Shell script syntax (ShellCheck)  
+✅ Script execution permissions  
+✅ Error handling validation
+
+**Infrastructure (`test-unit-infrastructure.sh`)**:  
 ✅ Prerequisites validation (OpenTofu, KVM, libvirt)  
-✅ Configuration syntax validation  
-✅ VM deployment and connectivity  
-✅ Docker and system services  
-✅ Network and firewall configuration
-
-### Integration Tests (`test-integration.sh`)
-
-✅ Torrust Tracker repository cloning  
-✅ Docker Compose service startup  
-✅ HTTP API endpoint testing  
+✅ Storage and network configuration  
+✅ VM deployment readiness  
 ✅ Metrics endpoint validation  
 ✅ Prometheus and Grafana health checks  
 ✅ UDP tracker port verification

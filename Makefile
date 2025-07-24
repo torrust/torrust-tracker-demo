@@ -9,7 +9,8 @@
 VM_NAME ?= torrust-tracker-demo
 ENVIRONMENT ?= local
 TERRAFORM_DIR = infrastructure/terraform
-TESTS_DIR = infrastructure/tests
+INFRA_TESTS_DIR = infrastructure/tests
+TESTS_DIR = tests
 SCRIPTS_DIR = infrastructure/scripts
 
 # Help target
@@ -20,6 +21,13 @@ help: ## Show this help message
 	@echo "  1. infra-apply     - Provision infrastructure (platform setup)"
 	@echo "  2. app-deploy      - Deploy application (Build + Release + Run stages)"
 	@echo "  3. health-check    - Validate deployment"
+	@echo ""
+	@echo "=== TESTING WORKFLOW ==="
+	@echo "  1. test-syntax     - Fast syntax validation (30s)"
+	@echo "  2. test-unit       - Unit tests without deployment (1-2min)" 
+	@echo "  3. test-ci         - CI-compatible tests (syntax + config + scripts)"
+	@echo "  4. test-local      - Local-only tests (requires virtualization)"
+	@echo "  5. test            - Full E2E test with deployment (5-8min)"
 	@echo ""
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -123,13 +131,37 @@ validate-config: ## Validate configuration for all environments
 # TESTING AND QUALITY ASSURANCE
 # =============================================================================
 
-test: ## Run comprehensive test suite
-	@echo "Running comprehensive test suite..."
-	$(TESTS_DIR)/test-local-setup.sh
+test-prereq: ## Test system prerequisites for development
+	@echo "Testing prerequisites..."
+	$(INFRA_TESTS_DIR)/test-unit-infrastructure.sh vm-prereq
+
+test: ## Run comprehensive end-to-end test (follows integration guide)
+	@echo "Running comprehensive end-to-end test..."
+	$(TESTS_DIR)/test-e2e.sh $(ENVIRONMENT)
+
+test-unit: ## Run unit tests (configuration, scripts, syntax)
+	@echo "Running unit tests..."
+	@echo "1. Configuration and syntax validation..."
+	$(INFRA_TESTS_DIR)/test-unit-config.sh
+	@echo "2. Infrastructure scripts validation..."
+	$(INFRA_TESTS_DIR)/test-unit-scripts.sh
 
 test-syntax: ## Run syntax validation only
 	@echo "Running syntax validation..."
 	./scripts/lint.sh
+
+test-ci: ## Run CI-compatible tests (syntax + config + scripts)
+	@echo "Running CI-compatible tests..."
+	$(INFRA_TESTS_DIR)/test-ci.sh
+
+test-local: ## Run local-only tests (requires virtualization)
+	@echo "Running local-only tests..."
+	$(INFRA_TESTS_DIR)/test-local.sh
+
+test-legacy: ## [DEPRECATED] Legacy test scripts have been removed
+	@echo "⚠️  DEPRECATED: Legacy test scripts have been removed"
+	@echo "Use 'make test-unit' for unit tests or 'make test' for E2E tests"
+	@exit 1
 
 lint: test-syntax ## Run all linting (alias for test-syntax)
 

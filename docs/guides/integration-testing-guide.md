@@ -942,8 +942,12 @@ for better compatibility with modern compose.yaml files.
 ### 4.1 Test VM Access
 
 ```bash
-# [PROJECT_ROOT] Test basic VM connectivity
-time ./infrastructure/tests/test-integration.sh access
+# [PROJECT_ROOT] Test basic VM connectivity using SSH
+make ssh
+
+# Or test connectivity manually
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+ssh torrust@$VM_IP "echo 'VM is accessible'"
 ```
 
 **Expected Output**:
@@ -955,8 +959,14 @@ time ./infrastructure/tests/test-integration.sh access
 ### 4.2 Test Docker Installation
 
 ```bash
-# [PROJECT_ROOT] Test Docker functionality
-time ./infrastructure/tests/test-integration.sh docker
+# [PROJECT_ROOT] Test Docker functionality via health check
+make health-check
+
+# Or test Docker manually via SSH
+make ssh
+# Then inside VM:
+docker --version
+docker compose version
 ```
 
 **Expected Output**:
@@ -973,8 +983,8 @@ available and uses the appropriate command.
 ### 4.3 Setup Torrust Tracker Demo
 
 ```bash
-# [PROJECT_ROOT] Clone and setup the Torrust Tracker repository
-time ./infrastructure/tests/test-integration.sh setup
+# [PROJECT_ROOT] Deploy the application using twelve-factor workflow
+make app-deploy
 ```
 
 **Expected Output**:
@@ -989,8 +999,10 @@ configuration.
 ### 4.4 Start Torrust Tracker Services
 
 ```bash
-# [PROJECT_ROOT] Pull images and start all services
-time ./infrastructure/tests/test-integration.sh start
+# [PROJECT_ROOT] Application deployment includes starting services
+# Services are automatically started by 'make app-deploy'
+# To verify services are running:
+make health-check
 ```
 
 **Expected Output**:
@@ -1010,8 +1022,8 @@ time ./infrastructure/tests/test-integration.sh start
 ### 4.5 Test Service Endpoints
 
 ```bash
-# [PROJECT_ROOT] Test all API endpoints
-time ./infrastructure/tests/test-integration.sh endpoints
+# [PROJECT_ROOT] Test all endpoints via comprehensive health check
+make health-check
 ```
 
 **Expected Output**:
@@ -1028,8 +1040,11 @@ requirements. For manual testing, see Step 5.2 for the correct endpoint testing 
 ### 4.6 Test Monitoring Services
 
 ```bash
-# [PROJECT_ROOT] Test Prometheus and Grafana
-time ./infrastructure/tests/test-integration.sh monitoring
+# [PROJECT_ROOT] Test Prometheus and Grafana via health check
+make health-check
+
+# For detailed monitoring, connect via SSH to inspect services directly
+make ssh
 ```
 
 **Expected Output**:
@@ -1041,8 +1056,8 @@ time ./infrastructure/tests/test-integration.sh monitoring
 ### 4.7 Run Complete Integration Test Suite
 
 ```bash
-# [PROJECT_ROOT] Run all tests in sequence
-time ./infrastructure/tests/test-integration.sh full-test
+# [PROJECT_ROOT] Run complete E2E test (infrastructure + application + health)
+make test
 ```
 
 **Expected Output**:
@@ -1541,8 +1556,11 @@ time (cd "$TRACKER_DIR" && cargo run -p torrust-tracker-client --bin http_tracke
 ### 8.1 Stop Services (if needed)
 
 ```bash
-# [PROJECT_ROOT] Stop all services cleanly
-./infrastructure/tests/test-integration.sh stop
+# [PROJECT_ROOT] Stop services via SSH if needed
+make ssh
+# Then inside VM:
+cd /home/torrust/github/torrust/torrust-tracker-demo/application
+docker compose down
 ```
 
 ### 8.2 Destroy VM and Clean Up
@@ -1669,17 +1687,17 @@ curl http://$VM_IP/api/v1/stats
 curl "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345"
 ```
 
-### 9.4 Integration Test Script Limitations
+### 9.4 Health Check Limitations
 
-The automated integration test script (`./infrastructure/tests/test-integration.sh endpoints`)
-may fail because:
+The automated health check script (`make health-check`) provides comprehensive
+validation but may need tuning for specific scenarios:
 
-1. **Authentication**: Script doesn't include token for stats API
-2. **Port Assumptions**: May test internal ports instead of nginx proxy
-3. **JSON Parsing**: Doesn't use `jq` for response validation
+1. **Timeouts**: Some tests use conservative timeouts that may be slow
+2. **Test Coverage**: Focuses on connectivity rather than functional testing
+3. **Verbose Output**: Use `VERBOSE=true make health-check` for detailed results
 
-**Manual testing** (as shown in this guide) provides more reliable results and
-better insight into the actual API functionality.
+**Manual testing** (as shown in this guide) provides more detailed functional
+validation and better insight into the actual API behavior.
 
 ### 9.5 Useful Testing Commands
 
@@ -1798,7 +1816,7 @@ ls -la | grep -E "(Makefile|infrastructure|application)"
 
 - `make: *** No rule to make target 'configure-local'. Stop.`
 - `make: *** No such file or directory. Stop.`
-- `./infrastructure/tests/test-integration.sh: No such file or directory`
+- Commands like `make infra-apply` failing with file not found errors
 
 **Solution**: Always ensure you're in the project root directory before running commands.
 

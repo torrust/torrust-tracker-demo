@@ -53,7 +53,7 @@ The output should be something like:
 
 ```console
 Testing prerequisites...
-infrastructure/tests/test-local-setup.sh prerequisites
+infrastructure/tests/test-unit-infrastructure.sh prerequisites
 [INFO] Testing prerequisites...
 [SUCCESS] OpenTofu is installed: OpenTofu v1.10.1
 [SUCCESS] libvirtd service is running
@@ -196,7 +196,7 @@ Once your VM is running:
 For detailed information, see:
 
 - [Complete Setup Guide](local-testing-setup.md)
-- [Test Documentation](../tests/test-local-setup.sh)
+- [Test Documentation](../tests/README.md)
 
 ## 🧪 Test Everything
 

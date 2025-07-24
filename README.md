@@ -12,7 +12,7 @@ It's also used to track issues in production.
 
 ## 🏗️ Repository Structure
 
-This repository is organized into two main concerns:
+This repository is organized into distinct concerns:
 
 ### 📦 [`infrastructure/`](infrastructure/)
 
@@ -21,7 +21,7 @@ This repository is organized into two main concerns:
 - OpenTofu/Terraform for VM provisioning
 - cloud-init templates for system setup
 - libvirt/KVM for local testing
-- Infrastructure testing and validation
+- Infrastructure unit tests and validation
 
 ### 🚀 [`application/`](application/)
 
@@ -31,6 +31,14 @@ This repository is organized into two main concerns:
 - Torrust Tracker configuration
 - Nginx, Prometheus, Grafana setup
 - Application scripts and utilities
+
+### 🧪 [`tests/`](tests/)
+
+**End-to-end testing** - Complete system validation
+
+- E2E deployment workflow tests
+- Integration testing automation
+- System-wide validation
 
 ### 📚 [`docs/`](docs/)
 

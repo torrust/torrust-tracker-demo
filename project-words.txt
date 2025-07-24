@@ -26,6 +26,7 @@ envrc
 envsubst
 esac
 ethernets
+executability
 findtime
 fullchain
 genisoimage
@@ -47,6 +48,7 @@ misprocess
 mkisofs
 mktemp
 mysqladmin
+netcat
 netdev
 newgrp
 newtrackon

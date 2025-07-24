@@ -72,7 +72,7 @@ From the official Torrust Tracker documentation, we need to account for:
 ### Core Principles
 
 1. **Infrastructure ≠ Application**: Clean separation of concerns
-2. **Environment Parity**: Same deployment process for local/staging/production
+2. **Environment Parity**: Same deployment process for local/production
 3. **Configuration as Environment**: All config via environment variables
 4. **Immutable Infrastructure**: VMs are cattle, not pets
 5. **Deployment Pipeline**: Clear build → release → run stages
@@ -103,7 +103,7 @@ the flexibility to deploy to multiple cloud providers.
 
 #### 1.3 Environment Standardization
 
-- Standardize local, staging, and production environments
+- Standardize local and production environments
 - Create environment-specific variable files
 - Implement configuration validation
 
@@ -191,7 +191,6 @@ torrust-tracker-demo/
 │   └── config/                           # Configuration templates
 │       ├── environments/
 │       │   ├── local.env
-│       │   ├── staging.env
 │       │   └── production.env
 │       └── templates/
 │           ├── tracker.toml.tpl
@@ -200,7 +199,6 @@ torrust-tracker-demo/
 │   ├── compose/                          # Environment-specific compose files
 │   │   ├── base.yaml                     # Base services
 │   │   ├── local.yaml                    # Local overrides
-│   │   ├── staging.yaml                  # Staging overrides
 │   │   └── production.yaml               # Production overrides
 │   ├── config/                           # Application configurations
 │   │   └── templates/                    # Configuration templates
@@ -208,7 +206,6 @@ torrust-tracker-demo/
 └── docs/
     └── deployment/                       # Deployment documentation
         ├── local.md
-        ├── staging.md
         └── production.md
 ```
 
@@ -304,7 +301,6 @@ make test-services              # Health checks, endpoints
 ```bash
 # Multi-environment testing
 make test-local                 # Local environment
-make test-staging               # Staging environment
 make test-production            # Production environment (dry-run)
 ```
 

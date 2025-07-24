@@ -140,21 +140,30 @@ the flexibility to deploy to multiple cloud providers.
 
 ### Phase 2: Build/Release/Run Separation ✅🚧 (PARTIALLY COMPLETE)
 
-**Objective**: Implement clear separation of build, release, and run stages
+**Objective**: Implement clear separation of build, release, and run stages for **application deployment**
 
-#### ✅ 2.1 Build Stage (COMPLETED)
+**Important**: Infrastructure provisioning is separate from the twelve-factor methodology, which applies
+specifically to application deployment.
 
-- ✅ **Infrastructure provisioning**: VM creation, networking, base system setup
-- ✅ **Base system preparation**: Docker, UFW, SSH configuration via cloud-init
-- ✅ **Dependency installation**: All required tools installed during provisioning
+#### ✅ 2.1 Infrastructure Provisioning (COMPLETED)
 
-#### 🚧 2.2 Release Stage (PARTIALLY COMPLETE)
+- ✅ **VM creation**: Infrastructure provisioning via OpenTofu/Terraform
+- ✅ **Network setup**: UFW firewall, SSH configuration via cloud-init
+- ✅ **Base system preparation**: Docker, base tools installed during provisioning
 
-- ✅ **Application deployment**: Working deployment from local repository
+#### 🚧 2.2 Application Build Stage (PARTIALLY COMPLETE)
+
+- ✅ **Code compilation**: Application deployment from local repository
+- ❌ **Container building**: Not yet building application containers
+- ✅ **Dependency resolution**: Runtime dependencies handled via Docker services
+
+#### 🚧 2.3 Application Release Stage (PARTIALLY COMPLETE)
+
+- ✅ **Application deployment**: Working deployment mechanism
 - ❌ **Configuration injection**: Still using hardcoded configuration files
 - ✅ **Service orchestration**: Docker Compose working for all services
 
-#### ✅ 2.3 Run Stage (COMPLETED)
+#### ✅ 2.4 Application Run Stage (COMPLETED)
 
 - ✅ **Service execution**: All services running correctly
 - ✅ **Health monitoring**: Comprehensive health checks implemented

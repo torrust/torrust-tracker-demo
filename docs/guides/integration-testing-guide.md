@@ -5,10 +5,11 @@ deployment workflow on a fresh virtual machine. All commands are ready to copy a
 
 ## Overview
 
-This guide will walk you through the **Twelve-Factor App deployment process**:
+This guide will walk you through the deployment process with separated infrastructure and
+application concerns:
 
-1. **Build Stage**: Provisioning infrastructure (`make infra-apply`)
-2. **Release + Run Stages**: Deploying application (`make app-deploy`)
+1. **Infrastructure Provisioning**: Setting up the platform (`make infra-apply`)
+2. **Application Deployment**: Twelve-factor Build + Release + Run stages (`make app-deploy`)
 3. **Validation**: Health checking (`make health-check`)
 4. **Cleanup**: Resource management (`make infra-destroy`)
 
@@ -69,9 +70,9 @@ make clean
 
 ---
 
-## Step 2: Build Stage - Provision Infrastructure
+## Step 2: Infrastructure Provisioning
 
-The **Build Stage** provisions the basic infrastructure (VM) without deploying
+Infrastructure provisioning sets up the platform (VM) without deploying
 the application. This follows twelve-factor separation of concerns.
 
 ### 2.1 Initialize Infrastructure
@@ -145,7 +146,7 @@ make ssh
 
 ---
 
-## Step 3: Release + Run Stages - Deploy Application
+## Step 3: Application Deployment - Deploy Application
 
 The **Release Stage** combines the application code with environment-specific
 configuration. The **Run Stage** starts the application processes.
@@ -161,7 +162,7 @@ time make app-deploy ENVIRONMENT=local
 
 ```text
 Deploying application for local...
-[INFO] Starting application deployment (Twelve-Factor Release + Run Stages)
+[INFO] Starting application deployment (Twelve-Factor Build + Release + Run Stages)
 [INFO] Environment: local
 [SUCCESS] SSH connection established
 [INFO] === TWELVE-FACTOR RELEASE STAGE ===

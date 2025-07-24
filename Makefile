@@ -17,8 +17,8 @@ help: ## Show this help message
 	@echo "Torrust Tracker Demo - Twelve-Factor App Deployment"
 	@echo ""
 	@echo "=== TWELVE-FACTOR DEPLOYMENT WORKFLOW ==="
-	@echo "  1. infra-apply     - Provision infrastructure (Build stage)"
-	@echo "  2. app-deploy      - Deploy application (Release + Run stages)"
+	@echo "  1. infra-apply     - Provision infrastructure (platform setup)"
+	@echo "  2. app-deploy      - Deploy application (Build + Release + Run stages)"
 	@echo "  3. health-check    - Validate deployment"
 	@echo ""
 	@echo "Available targets:"
@@ -38,7 +38,7 @@ install-deps: ## Install required dependencies (Ubuntu/Debian)
 	@echo "Dependencies installed. Please log out and log back in for group changes to take effect."
 
 # =============================================================================
-# TWELVE-FACTOR INFRASTRUCTURE TARGETS (BUILD STAGE)
+# INFRASTRUCTURE PROVISIONING TARGETS (PLATFORM SETUP)
 # =============================================================================
 
 infra-init: ## Initialize infrastructure (Terraform init)
@@ -49,7 +49,7 @@ infra-plan: ## Plan infrastructure changes
 	@echo "Planning infrastructure for $(ENVIRONMENT)..."
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) plan
 
-infra-apply: ## Provision infrastructure (Twelve-Factor Build stage)
+infra-apply: ## Provision infrastructure (platform setup)
 	@echo "Provisioning infrastructure for $(ENVIRONMENT)..."
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
 
@@ -66,10 +66,10 @@ infra-refresh-state: ## Refresh Terraform state to detect IP changes
 	@cd $(TERRAFORM_DIR) && tofu refresh
 
 # =============================================================================
-# TWELVE-FACTOR APPLICATION TARGETS (RELEASE + RUN STAGES)
+# TWELVE-FACTOR APPLICATION TARGETS (BUILD + RELEASE + RUN STAGES)
 # =============================================================================
 
-app-deploy: ## Deploy application (Twelve-Factor Release + Run stages)
+app-deploy: ## Deploy application (Twelve-Factor Build + Release + Run stages)
 	@echo "Deploying application for $(ENVIRONMENT)..."
 	$(SCRIPTS_DIR)/deploy-app.sh $(ENVIRONMENT)
 

@@ -9,7 +9,7 @@
 #### Integration Testing Workflow Improvements
 
 - ✅ **Fixed local repository deployment**: `deploy-app.sh` now uses git archive instead of GitHub clone
-- ✅ **Corrected endpoint validation**: Updated health checks for nginx proxy architecture  
+- ✅ **Corrected endpoint validation**: Updated health checks for nginx proxy architecture
 - ✅ **SSH authentication fixed**: Proper key-based authentication in cloud-init and scripts
 - ✅ **Database migration**: Successfully migrated from SQLite to MySQL in local environment
 - ✅ **Health check script updated**: All 14 validation tests now pass (100% success rate)
@@ -85,12 +85,12 @@ The **core twelve-factor refactoring** described in the [original plan](./README
 
 ### Current vs Target Architecture
 
-| Component | Current State | Twelve-Factor Target |
-|-----------|---------------|----------------------|
-| Configuration | Hardcoded `.env.production` | Template-based generation |
-| Secrets | Committed to repo | Environment variables |
-| Environment management | Manual | Automated template processing |
-| Deployment | Working (local) | Working (multi-environment) |
+| Component              | Current State               | Twelve-Factor Target          |
+| ---------------------- | --------------------------- | ----------------------------- |
+| Configuration          | Hardcoded `.env.production` | Template-based generation     |
+| Secrets                | Committed to repo           | Environment variables         |
+| Environment management | Manual                      | Automated template processing |
+| Deployment             | Working (local)             | Working (multi-environment)   |
 
 ## 🔧 Testing Current Implementation
 

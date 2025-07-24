@@ -128,7 +128,7 @@ release_stage() {
     fi
 
     log_info "Copying local repository to VM..."
-    
+
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
 
@@ -152,7 +152,7 @@ release_stage() {
 
     # Verify deployment
     vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository deployment"
-    
+
     log_success "Local repository deployed successfully"
 
     # Process configuration (Release stage - combining code with config)

@@ -1,32 +1,52 @@
 # Refactoring Documentation
 
-This directory contains cross-cutting refactoring documentation. Component-specific
-refactoring documentation has been moved to appropriate locations.
+This directory contains cross-cutting refactoring documentation for the Torrust Tracker Demo project.
 
-## File Relocations (July 2025)
-
-The following files have been **moved** to better organize documentation:
-
-### Moved to `infrastructure/docs/refactoring/twelve-factor-refactor/`
-
-- `twelve-factor-implementation-status.md` → `current-status.md`
-- `twelve-factor-refactoring-completed.md` → `integration-testing-improvements.md`
-
-**Reason**: These documents are specific to infrastructure twelve-factor refactoring
-and belong with the related implementation documentation.
-
-## Current Refactoring Documentation
+## 🎯 Active Refactoring Projects
 
 ### Infrastructure Twelve-Factor Refactoring
 
-- **Location**: `infrastructure/docs/refactoring/twelve-factor-refactor/`
-- **Main Plan**: [README.md](../infrastructure/docs/refactoring/twelve-factor-refactor/README.md)
-- **Current Status**: [current-status.md](../infrastructure/docs/refactoring/twelve-factor-refactor/current-status.md)
-- **Recent Improvements**: [integration-testing-improvements.md](../infrastructure/docs/refactoring/twelve-factor-refactor/integration-testing-improvements.md)
+**Status**: 🚧 IN PROGRESS (Foundation Complete)
 
-### Integration Testing
+- **Documentation**: [Twelve-Factor Refactoring Plan](../infrastructure/docs/refactoring/twelve-factor-refactor/README.md)
+- **Current State**: Infrastructure/application separation complete, configuration management in progress
+- **Recent Achievement**: 100% reliable integration testing workflow
+- **Next Phase**: Template-based configuration management system
 
-- **Recent Improvements**: [integration-test-refactor-summary.md](./integration-test-refactor-summary.md)
+## 📋 Completed Improvements (July 2025)
+
+### ✅ Integration Testing Workflow
+
+- **Local repository deployment**: Test changes without pushing to GitHub
+- **SSH authentication**: Reliable key-based authentication
+- **Health validation**: 14/14 endpoint validation tests passing
+- **Database migration**: Local environment using MySQL (production parity)
+
+### ✅ Infrastructure/Application Separation
+
+- **Clean separation**: Infrastructure provisioning vs application deployment
+- **Twelve-factor compliance**: Proper build/release/run stage separation
+- **Backward compatibility**: Legacy commands work with deprecation warnings
+
+## 📚 Documentation Structure
+
+```text
+docs/refactoring/
+├── README.md                                      # This navigation file
+├── integration-test-refactor-summary.md           # Integration testing summary
+└── ../infrastructure/docs/refactoring/
+    └── twelve-factor-refactor/
+        ├── README.md                              # Complete twelve-factor plan
+        └── migration-guide.md                     # Implementation guide
+```
+
+## 🚀 Quick Start
+
+To understand the current state and next steps:
+
+1. **Read the main plan**: [Twelve-Factor Refactoring Plan](../infrastructure/docs/refactoring/twelve-factor-refactor/README.md)
+2. **Try the working workflow**: Follow the working commands in the plan
+3. **Contribute**: Check the "Next Steps" section for immediate priorities
 
 ## Navigation
 

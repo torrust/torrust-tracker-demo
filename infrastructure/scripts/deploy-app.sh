@@ -277,11 +277,11 @@ show_connection_info() {
     echo "SSH Access:      ssh torrust@${vm_ip}"
     echo
     echo "=== APPLICATION ENDPOINTS ==="
-    echo "Health Check:    http://${vm_ip}/health_check"
-    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=local-dev-admin-token-12345"
-    echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"
+    echo "Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
+    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=local-dev-admin-token-12345" # DevSkim: ignore DS137138
+    echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
     echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
-    echo "Grafana:         http://${vm_ip}:3100 (admin/admin)"
+    echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
     echo
     echo "=== NEXT STEPS ==="
     echo "Health Check:    make health-check ENVIRONMENT=${ENVIRONMENT}"

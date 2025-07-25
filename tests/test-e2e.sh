@@ -138,8 +138,8 @@ test_infrastructure_provisioning() {
     fi
 
     # Wait for VM to be fully ready (cloud-init completion and Docker availability)
-    if ! wait_for_vm_ready; then
-        log_error "VM not ready - cannot proceed with application deployment"
+    if ! wait_for_cloud_init_to_finish; then
+        log_error "VM not ready for application deployment - cloud-init failed or timed out"
         return 1
     fi
 
@@ -159,6 +159,12 @@ test_application_deployment() {
 
     if ! make app-deploy ENVIRONMENT="${ENVIRONMENT}"; then
         log_error "Application deployment failed"
+        return 1
+    fi
+
+    # Wait for application services to be healthy
+    if ! wait_for_app_deployment_to_finish; then
+        log_error "Application services not healthy after deployment"
         return 1
     fi
 
@@ -259,7 +265,7 @@ test_smoke_testing() {
     # Test 2: Statistics API (through nginx proxy on port 80)
     log_info "Testing statistics API through nginx proxy..."
     local stats_response
-    stats_response=$(curl -f -s "http://${vm_ip}:80/api/v1/stats?token=local-dev-admin-token-12345" 2>/dev/null || echo "")
+    stats_response=$(curl -f -s "http://${vm_ip}:80/api/v1/stats?token=local-dev-admin-token-12345" 2>/dev/null || echo "") # DevSkim: ignore DS137138
     if echo "${stats_response}" | grep -q '"torrents"'; then
         log_success "✓ Statistics API working"
     else
@@ -296,7 +302,7 @@ test_smoke_testing() {
     # Test 5: HTTP tracker through nginx proxy (health check endpoint)
     log_info "Testing HTTP tracker through nginx proxy..."
     local proxy_response
-    proxy_response=$(curl -s -w "%{http_code}" -o /dev/null "http://${vm_ip}:80/health_check" 2>/dev/null || echo "000")
+    proxy_response=$(curl -s -w "%{http_code}" -o /dev/null "http://${vm_ip}:80/health_check" 2>/dev/null || echo "000") # DevSkim: ignore DS137138
     if [[ "${proxy_response}" =~ ^[23][0-9][0-9]$ ]]; then
         log_success "✓ Nginx proxy responding (HTTP ${proxy_response})"
     else
@@ -424,8 +430,8 @@ wait_for_vm_ip() {
 }
 
 # Wait for VM to be fully ready (cloud-init completion and Docker availability)
-wait_for_vm_ready() {
-    log_info "Waiting for VM to be fully ready (cloud-init + Docker)..."
+wait_for_cloud_init_to_finish() {
+    log_info "Waiting for cloud-init to finish..."
     local max_attempts=60 # 10 minutes total
     local attempt=1
     local vm_ip=""
@@ -437,10 +443,10 @@ wait_for_vm_ready() {
         return 1
     fi
 
-    log_info "VM IP: ${vm_ip} - checking cloud-init and Docker readiness..."
+    log_info "VM IP: ${vm_ip} - checking cloud-init readiness..."
 
     while [[ ${attempt} -le ${max_attempts} ]]; do
-        log_info "Checking VM readiness (attempt ${attempt}/${max_attempts})..."
+        log_info "Checking cloud-init status (attempt ${attempt}/${max_attempts})..."
 
         # Check if SSH is available
         if ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "echo 'SSH OK'" >/dev/null 2>&1; then
@@ -460,7 +466,7 @@ wait_for_vm_ready() {
             # Check if Docker is available and working
             if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "docker --version && docker compose version" >/dev/null 2>&1; then
                 log_success "Docker is ready and available"
-                log_success "VM is fully ready for application deployment"
+                log_success "VM is ready for application deployment"
                 return 0
             else
                 log_info "Docker not ready yet, waiting 10 seconds..."
@@ -476,10 +482,71 @@ wait_for_vm_ready() {
         ((attempt++))
     done
 
-    log_error "Timeout waiting for VM to be ready after $((max_attempts * 10)) seconds"
-    log_error "You can check manually with:"
-    log_error "  ssh torrust@${vm_ip} 'cloud-init status'"
-    log_error "  ssh torrust@${vm_ip} 'docker --version'"
+    log_error "Timeout waiting for cloud-init to finish after $((max_attempts * 10)) seconds"
+    log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status'"
+    return 1
+}
+
+# Wait for application deployment to finish (healthy containers)
+wait_for_app_deployment_to_finish() {
+    log_info "Waiting for application services to become healthy..."
+    local max_attempts=15 # 2.5 minutes total
+    local attempt=1
+    local vm_ip=""
+
+    # First get the VM IP
+    vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
+    if [[ -z "${vm_ip}" ]]; then
+        log_error "VM IP not available - cannot check application health"
+        return 1
+    fi
+
+    log_info "VM IP: ${vm_ip} - checking Docker container health..."
+
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "Checking container health (attempt ${attempt}/${max_attempts})..."
+
+        local ps_output
+        if ! ps_output=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --filter status=running" 2>&1); then
+            log_warning "Could not get container status via ssh. Retrying..."
+            sleep 10
+            ((attempt++))
+            continue
+        fi
+
+        log_info "Current container status:"
+        echo "${ps_output}"
+
+        if echo "${ps_output}" | grep -q '(unhealthy)'; then
+            log_info "Unhealthy containers found, waiting 10 seconds..."
+            log_info "Unhealthy details:"
+            echo "${ps_output}" | grep '(unhealthy)'
+        else
+            # No unhealthy containers, check if required ones are healthy
+            local healthy_count=0
+            if echo "${ps_output}" | grep 'mysql' | grep -q '(healthy)'; then
+                ((healthy_count++))
+            fi
+            if echo "${ps_output}" | grep 'tracker' | grep -q '(healthy)'; then
+                ((healthy_count++))
+            fi
+
+            if [[ ${healthy_count} -ge 2 ]]; then
+                log_success "All services with healthchecks (mysql, tracker) are healthy"
+                log_success "Application deployment finished successfully"
+                return 0
+            else
+                log_info "Waiting for mysql and tracker to become healthy (${healthy_count}/2)..."
+            fi
+        fi
+
+        sleep 10
+        ((attempt++))
+    done
+
+    log_error "Timeout waiting for application services to be healthy after $((max_attempts * 10)) seconds"
+    log_info "Final container status:"
+    ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps" || true
     return 1
 }
 

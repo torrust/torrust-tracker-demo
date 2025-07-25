@@ -140,6 +140,7 @@ make destroy
 | `make test`          | Run complete test suite                      |
 | `make apply`         | Deploy VM                                    |
 | `make ssh`           | Connect to VM                                |
+| `make ssh-clean`     | Fix SSH host key verification warnings       |
 | `make destroy`       | Remove VM                                    |
 | `make status`        | Show infrastructure status                   |
 | `make refresh-state` | Refresh Terraform state to detect IP changes |
@@ -151,8 +152,9 @@ make destroy
 1. **Permission errors**: Make sure you logged out/in after `make dev-setup`
 2. **VM won't start**: Check with `sudo kvm-ok` that virtualization is enabled
 3. **SSH connection fails**: VM might still be booting, wait 2-3 minutes
-4. **libvirt file ownership errors**: Run `make fix-libvirt` to fix permissions
-5. **"No IP assigned yet" issue**: If `make status` shows no IP but VM is running:
+4. **SSH host key verification warnings**: Use `make ssh-clean` to fix automatically
+5. **libvirt file ownership errors**: Run `make fix-libvirt` to fix permissions
+6. **"No IP assigned yet" issue**: If `make status` shows no IP but VM is running:
 
    ```bash
    # Check if VM actually has an IP
@@ -171,6 +173,9 @@ make destroy
 ```bash
 # Fix libvirt permissions automatically
 make fix-libvirt
+
+# Clean SSH known_hosts (fixes host key verification warnings)
+make ssh-clean
 
 # Check test logs
 make logs

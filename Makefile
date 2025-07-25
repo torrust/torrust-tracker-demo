@@ -104,6 +104,14 @@ ssh: ## SSH into the VM
 		exit 1; \
 	fi
 
+ssh-clean: ## Clean SSH known_hosts for VM (fixes host key verification warnings)
+	@echo "Cleaning SSH known_hosts for VM..."
+	@$(SCRIPTS_DIR)/ssh-utils.sh clean
+
+ssh-prepare: ## Clean SSH known_hosts and test connectivity  
+	@echo "Preparing SSH connection to VM..."
+	@$(SCRIPTS_DIR)/ssh-utils.sh prepare
+
 console: ## Access VM console (text-based)
 	@echo "Accessing VM console..."
 	@virsh console $(VM_NAME) || echo "VM console not accessible. Try 'make vm-console' for graphical console."

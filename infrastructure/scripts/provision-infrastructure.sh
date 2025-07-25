@@ -106,6 +106,13 @@ provision_infrastructure() {
 
         log_info "Applying infrastructure changes"
         init_terraform
+
+        # Clean SSH known_hosts to prevent host key verification issues
+        log_info "Cleaning SSH known_hosts to prevent host key verification warnings"
+        if command -v "${SCRIPT_DIR}/ssh-utils.sh" >/dev/null 2>&1; then
+            "${SCRIPT_DIR}/ssh-utils.sh" clean-all || log_warning "SSH cleanup failed (non-critical)"
+        fi
+
         tofu apply -auto-approve -var-file="local.tfvars"
 
         # Get VM IP and display connection info
@@ -115,6 +122,12 @@ provision_infrastructure() {
         if [[ -n "${vm_ip}" ]]; then
             log_success "Infrastructure provisioned successfully"
             log_info "VM IP: ${vm_ip}"
+
+            # Clean specific IP from known_hosts
+            if command -v "${SCRIPT_DIR}/ssh-utils.sh" >/dev/null 2>&1; then
+                "${SCRIPT_DIR}/ssh-utils.sh" clean "${vm_ip}" || log_warning "SSH cleanup for ${vm_ip} failed (non-critical)"
+            fi
+
             log_info "SSH Access: ssh torrust@${vm_ip}"
             log_info "Next step: make app-deploy ENVIRONMENT=${ENVIRONMENT}"
         else

@@ -1,4 +1,4 @@
-# Documentation Structure
+docs/README.md# Documentation Structure
 
 This directory contains general cross-cutting documentation for the Torrust
 Tracker Demo project.
@@ -14,20 +14,10 @@ This directory currently contains cross-cutting documentation:
 
 ### 📋 [`adr/`](adr/) (Architecture Decision Records)
 
-**Current ADRs:**
+**Important architectural decisions** that affect the system structure, behavior, or
+development process.
 
-- [ADR-001: Makefile Location](adr/001-makefile-location.md) - Decision to keep
-  Makefile at repository root level
-- [ADR-002: Docker for All Services](adr/002-docker-for-all-services.md) - Decision
-  to use Docker for all services including UDP tracker
-- [ADR-003: Use MySQL Over MariaDB](adr/003-use-mysql-over-mariadb.md) - Decision
-  to use MySQL instead of MariaDB for database backend
-- [ADR-004: Configuration Approach Files vs Environment Variables]
-  (adr/004-configuration-approach-files-vs-environment-variables.md) -
-  Configuration approach decision for application settings
-- [ADR-005: Sudo Cache Management for Infrastructure Operations]
-  (adr/005-sudo-cache-management-for-infrastructure-operations.md) -
-  Proactive sudo cache management for better UX during testing
+📖 **[See ADR README](adr/README.md)** for complete list, guidelines, and best practices.
 
 ### 📅 [`plans/`](plans/) (Ongoing Plans and Roadmaps)
 
@@ -42,6 +32,30 @@ This directory currently contains cross-cutting documentation:
 
 - [Phase 1: MySQL Migration](issues/12-use-mysql-instead-of-sqlite-by-default.md) -
   Detailed implementation plan for database migration from SQLite to MySQL
+
+### 🏗️ [`infrastructure/`](infrastructure/) (Infrastructure Documentation)
+
+**Cross-cutting infrastructure documentation** - For infrastructure-related
+documentation that affects the project as a whole or provides reference materials.
+
+**Current Infrastructure Documentation:**
+
+- [SSH Host Key Verification](infrastructure/ssh-host-key-verification.md) -
+  Explains and resolves SSH host key verification warnings in VM development
+
+### 📚 [`guides/`](guides/) (User and Developer Guides)
+
+**High-level guides and end-to-end workflows** - For complete procedures
+that span multiple components.
+
+**Current Guides:**
+
+- [Integration Testing Guide](guides/integration-testing-guide.md) - Step-by-step
+  guide for running integration tests following twelve-factor methodology
+- [Quick Start Guide](guides/quick-start.md) - Fast setup guide for getting
+  started quickly
+- [Smoke Testing Guide](guides/smoke-testing-guide.md) - End-to-end testing
+  using official Torrust client tools
 
 ### 🔧 [`refactoring/`](refactoring/) (Refactoring Documentation)
 
@@ -110,3 +124,5 @@ When adding new documentation:
 - **ADRs**: Should follow standard ADR template format and affect multiple layers
 - **Theory**: Should explain concepts clearly with examples when possible
 - **Benchmarks**: Should include methodology, environment, and reproducible results
+- **Markdown Tables**: For tables exceeding line length limits, see
+  [`.markdownlint.md`](../.markdownlint.md) for proper formatting guidelines

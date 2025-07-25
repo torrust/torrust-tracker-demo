@@ -300,6 +300,8 @@ The twelve-factor **Build, Release, Run** stages apply to the application deploy
 - **Structure**: Use consistent heading hierarchy
 - **Links**: Prefer relative links for internal documentation
 - **Code blocks**: Always specify language for syntax highlighting
+- **Tables**: Tables automatically ignore line length limits (configured globally in
+  `.markdownlint.json`). No special formatting required for table line lengths.
 
 #### Automated Linting
 

@@ -1,3 +1,5 @@
+[![Testing](https://github.com/torrust/torrust-tracker-demo/actions/workflows/testing.yml/badge.svg)](https://github.com/torrust/torrust-tracker-demo/actions/workflows/testing.yml)
+
 # Torrust Tracker Demo
 
 This repo contains all the configuration needed to run the live Torrust Tracker demo.

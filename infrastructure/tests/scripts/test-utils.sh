@@ -4,33 +4,18 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
-# Logging functions
-log() {
-    echo -e "$1" | tee -a "${TEST_LOG_FILE:-/tmp/torrust-test.log}"
-}
+# Source shared shell utilities
+# shellcheck source=../../../scripts/shell-utils.sh
+source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
-log_info() {
-    log "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    log "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    log "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    log "${RED}[ERROR]${NC} $1"
-}
+# Set log file for tee output if not already set
+if [[ -z "${SHELL_UTILS_LOG_FILE:-}" ]]; then
+    export SHELL_UTILS_LOG_FILE="${TEST_LOG_FILE:-/tmp/torrust-test.log}"
+fi
 
 # Test script exists and is executable
 test_script_executable() {

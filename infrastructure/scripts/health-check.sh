@@ -15,34 +15,14 @@ ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 VERBOSE="${VERBOSE:-false}"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source shared shell utilities
+# shellcheck source=../../scripts/shell-utils.sh
+source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
 # Test results tracking
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
-
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
-}
 
 log_test_pass() {
     echo -e "${GREEN}✅ $1${NC}"

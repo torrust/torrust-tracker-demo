@@ -5,61 +5,37 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Function to print colored output
-print_status() {
-    local status=$1
-    local message=$2
-    case $status in
-    "SUCCESS")
-        echo -e "${GREEN}[SUCCESS]${NC} $message"
-        ;;
-    "ERROR")
-        echo -e "${RED}[ERROR]${NC} $message"
-        ;;
-    "WARNING")
-        echo -e "${YELLOW}[WARNING]${NC} $message"
-        ;;
-    "INFO")
-        echo -e "${YELLOW}[INFO]${NC} $message"
-        ;;
-    esac
-}
-
-# Function to check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+# Source shared shell utilities
+# shellcheck source=./shell-utils.sh
+source "${SCRIPT_DIR}/shell-utils.sh"
 
 # Function to run yamllint
 run_yamllint() {
-    print_status "INFO" "Running yamllint on YAML files..."
+    log_info "Running yamllint on YAML files..."
 
     if ! command_exists yamllint; then
-        print_status "ERROR" "yamllint not found. Install with: sudo apt-get install yamllint"
+        log_error "yamllint not found. Install with: sudo apt-get install yamllint"
         return 1
     fi
 
     # Use yamllint config if it exists
     if [ -f ".yamllint-ci.yml" ]; then
         if yamllint -c .yamllint-ci.yml .; then
-            print_status "SUCCESS" "yamllint passed"
+            log_success "yamllint passed"
             return 0
         else
-            print_status "ERROR" "yamllint failed"
+            log_error "yamllint failed"
             return 1
         fi
     else
         if yamllint .; then
-            print_status "SUCCESS" "yamllint passed"
+            log_success "yamllint passed"
             return 0
         else
-            print_status "ERROR" "yamllint failed"
+            log_error "yamllint failed"
             return 1
         fi
     fi
@@ -67,10 +43,10 @@ run_yamllint() {
 
 # Function to run ShellCheck
 run_shellcheck() {
-    print_status "INFO" "Running ShellCheck on shell scripts..."
+    log_info "Running ShellCheck on shell scripts..."
 
     if ! command_exists shellcheck; then
-        print_status "ERROR" "shellcheck not found. Install with: sudo apt-get install shellcheck"
+        log_error "shellcheck not found. Install with: sudo apt-get install shellcheck"
         return 1
     fi
 
@@ -90,43 +66,43 @@ run_shellcheck() {
     done
 
     if [ ${#shell_files[@]} -eq 0 ]; then
-        print_status "WARNING" "No shell scripts found"
+        log_warning "No shell scripts found"
         return 0
     fi
 
     # Add source-path to help shellcheck find sourced files
     if shellcheck --source-path=SCRIPTDIR "${shell_files[@]}"; then
-        print_status "SUCCESS" "shellcheck passed"
+        log_success "shellcheck passed"
         return 0
     else
-        print_status "ERROR" "shellcheck failed"
+        log_error "shellcheck failed"
         return 1
     fi
 }
 
 # Function to run markdownlint
 run_markdownlint() {
-    print_status "INFO" "Running markdownlint on Markdown files..."
+    log_info "Running markdownlint on Markdown files..."
 
     if ! command_exists markdownlint; then
-        print_status "ERROR" "markdownlint not found. Install with: npm install -g markdownlint-cli"
+        log_error "markdownlint not found. Install with: npm install -g markdownlint-cli"
         return 1
     fi
 
     # Use markdownlint with glob pattern to find markdown files
     # markdownlint can handle glob patterns and will exclude .git directories by default
     if markdownlint "**/*.md"; then
-        print_status "SUCCESS" "markdownlint passed"
+        log_success "markdownlint passed"
         return 0
     else
-        print_status "ERROR" "markdownlint failed"
+        log_error "markdownlint failed"
         return 1
     fi
 }
 
 # Main function
 main() {
-    print_status "INFO" "Starting linting process..."
+    log_info "Starting linting process..."
 
     local exit_code=0
 
@@ -152,9 +128,9 @@ main() {
     echo ""
 
     if [ $exit_code -eq 0 ]; then
-        print_status "SUCCESS" "All linting checks passed!"
+        log_success "All linting checks passed!"
     else
-        print_status "ERROR" "Some linting checks failed!"
+        log_error "Some linting checks failed!"
     fi
 
     return $exit_code

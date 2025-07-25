@@ -8,44 +8,20 @@ set -euo pipefail
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRASTRUCTURE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TEST_LOG_FILE="/tmp/torrust-unit-infrastructure-test.log"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source shared shell utilities
+# shellcheck source=../../scripts/shell-utils.sh
+source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
-# Logging functions
-log() {
-    echo -e "$1" | tee -a "${TEST_LOG_FILE}"
-}
-
-log_info() {
-    log "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    log "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    log "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    log "${RED}[ERROR]${NC} $1"
-}
+# Set log file for tee output
+export SHELL_UTILS_LOG_FILE="${TEST_LOG_FILE}"
 
 # Initialize test log
 init_test_log() {
-    {
-        echo "Unit Tests - Infrastructure Provisioning Validation"
-        echo "Started: $(date)"
-        echo "Infrastructure Root: ${INFRASTRUCTURE_ROOT}"
-        echo "================================================================="
-    } >"${TEST_LOG_FILE}"
+    init_log_file "${TEST_LOG_FILE}" "Unit Tests - Infrastructure Provisioning Validation"
+    log_info "Infrastructure Root: ${INFRASTRUCTURE_ROOT}"
 }
 
 # Test Terraform/OpenTofu syntax validation

@@ -94,7 +94,8 @@ run_shellcheck() {
         return 0
     fi
 
-    if shellcheck "${shell_files[@]}"; then
+    # Add source-path to help shellcheck find sourced files
+    if shellcheck --source-path=SCRIPTDIR "${shell_files[@]}"; then
         print_status "SUCCESS" "shellcheck passed"
         return 0
     else

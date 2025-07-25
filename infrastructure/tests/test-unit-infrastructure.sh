@@ -178,6 +178,10 @@ test_cloud_init_syntax() {
             fi
         else
             # Fallback to basic YAML parsing with Python
+            if ! command -v python3 >/dev/null 2>&1; then
+                log_warning "python3 not found, cannot validate YAML syntax"
+                return 0
+            fi
             if ! python3 -c "import yaml; yaml.safe_load(open('${file}'))" >/dev/null 2>&1; then
                 log_error "Cloud-init YAML syntax error in: ${filename}"
                 failed=1

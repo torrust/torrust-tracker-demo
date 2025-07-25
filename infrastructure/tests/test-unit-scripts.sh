@@ -1,223 +1,101 @@
 #!/bin/bash
-# Unit tests for infrastructure scripts and automation
-# Focus: Test individual script functionality without full deployment
-# Scope: Script validation, parameter handling, error conditions
+# Unit tests orchestrator for infrastructure scripts
+# Focus: Coordinate individual script test files
+# Scope: Run all script tests in organized manner
 
 set -euo pipefail
 
+# Import test utilities
+# shellcheck source=scripts/test-utils.sh
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/test-utils.sh"
+
+# Initialize paths
+get_project_paths
+
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-SCRIPTS_DIR="${PROJECT_ROOT}/infrastructure/scripts"
 TEST_LOG_FILE="/tmp/torrust-unit-scripts-test.log"
+INFRASTRUCTURE_TESTS_DIR="${PROJECT_ROOT}/infrastructure/tests"
+SCRIPTS_TEST_DIR="${INFRASTRUCTURE_TESTS_DIR}/scripts"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Logging functions
-log() {
-    echo -e "$1" | tee -a "${TEST_LOG_FILE}"
-}
-
-log_info() {
-    log "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    log "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    log "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    log "${RED}[ERROR]${NC} $1"
-}
+# Individual test files
+INDIVIDUAL_TEST_FILES=(
+    "test-provision-infrastructure.sh"
+    "test-deploy-app.sh"
+    "test-configure-env.sh"
+    "test-health-check.sh"
+    "test-validate-config.sh"
+)
 
 # Initialize test log
 init_test_log() {
     {
-        echo "Unit Tests - Infrastructure Scripts"
+        echo "Unit Tests - Infrastructure Scripts (Orchestrator)"
         echo "Started: $(date)"
         echo "================================================================="
     } >"${TEST_LOG_FILE}"
+    export TEST_LOG_FILE
 }
 
-# Test script exists and is executable
-test_script_executable() {
-    local script_path="$1"
-    local script_name
-    script_name=$(basename "${script_path}")
+# Run individual test file
+run_individual_test() {
+    local test_file="$1"
+    local test_path="${SCRIPTS_TEST_DIR}/${test_file}"
 
-    if [[ ! -f "${script_path}" ]]; then
-        log_error "Script not found: ${script_name}"
+    if [[ ! -f "${test_path}" ]]; then
+        log_error "Test file not found: ${test_path}"
         return 1
     fi
 
-    if [[ ! -x "${script_path}" ]]; then
-        log_error "Script not executable: ${script_name}"
+    if [[ ! -x "${test_path}" ]]; then
+        log_error "Test file not executable: ${test_path}"
         return 1
     fi
 
-    log_success "Script exists and is executable: ${script_name}"
-    return 0
-}
+    log_info "Running individual test: ${test_file}"
 
-# Test script help/usage functionality
-test_script_help() {
-    local script_path="$1"
-    local script_name
-    script_name=$(basename "${script_path}")
-
-    log_info "Testing help functionality for: ${script_name}"
-
-    # Try common help flags
-    local help_flags=("help" "--help" "-h")
-    local help_working=false
-
-    for flag in "${help_flags[@]}"; do
-        if "${script_path}" "${flag}" >/dev/null 2>&1; then
-            help_working=true
-            break
-        fi
-    done
-
-    if [[ "${help_working}" == "true" ]]; then
-        log_success "Help functionality works for: ${script_name}"
+    if "${test_path}" all; then
+        log_success "Individual test passed: ${test_file}"
         return 0
     else
-        log_warning "No help functionality found for: ${script_name}"
-        return 0 # Don't fail on this, just warn
+        log_error "Individual test failed: ${test_file}"
+        return 1
     fi
 }
 
 # Test provision-infrastructure.sh script
 test_provision_infrastructure_script() {
     log_info "Testing provision-infrastructure.sh script..."
-
-    local script="${SCRIPTS_DIR}/provision-infrastructure.sh"
-    local failed=0
-
-    test_script_executable "${script}" || failed=1
-
-    if [[ ${failed} -eq 0 ]]; then
-        test_script_help "${script}" || true # Don't fail on help test
-
-        # Test parameter validation (should fail with invalid parameters)
-        log_info "Testing parameter validation..."
-
-        # Test with invalid environment
-        if "${script}" "invalid-env" "init" >/dev/null 2>&1; then
-            log_warning "Script should fail with invalid environment"
-        else
-            log_success "Script properly validates environment parameter"
-        fi
-
-        # Test with invalid action
-        if "${script}" "local" "invalid-action" >/dev/null 2>&1; then
-            log_warning "Script should fail with invalid action"
-        else
-            log_success "Script properly validates action parameter"
-        fi
-    fi
-
-    return ${failed}
+    run_individual_test "test-provision-infrastructure.sh"
 }
 
 # Test deploy-app.sh script
 test_deploy_app_script() {
     log_info "Testing deploy-app.sh script..."
-
-    local script="${SCRIPTS_DIR}/deploy-app.sh"
-    local failed=0
-
-    test_script_executable "${script}" || failed=1
-
-    if [[ ${failed} -eq 0 ]]; then
-        test_script_help "${script}" || true # Don't fail on help test
-
-        # Test parameter handling
-        log_info "Testing parameter handling..."
-
-        # Note: We can't fully test deployment without infrastructure
-        # But we can test that the script handles parameters correctly
-
-        log_success "Deploy script is available for testing"
-    fi
-
-    return ${failed}
+    run_individual_test "test-deploy-app.sh"
 }
 
 # Test configure-env.sh script
 test_configure_env_script() {
     log_info "Testing configure-env.sh script..."
-
-    local script="${SCRIPTS_DIR}/configure-env.sh"
-    local failed=0
-
-    test_script_executable "${script}" || failed=1
-
-    if [[ ${failed} -eq 0 ]]; then
-        test_script_help "${script}" || true # Don't fail on help test
-
-        # Test that script can handle valid environment names
-        log_info "Testing environment parameter validation..."
-
-        log_success "Configuration script is available for testing"
-    fi
-
-    return ${failed}
+    run_individual_test "test-configure-env.sh"
 }
 
 # Test health-check.sh script
+# Test health-check.sh script
 test_health_check_script() {
     log_info "Testing health-check.sh script..."
-
-    local script="${SCRIPTS_DIR}/health-check.sh"
-    local failed=0
-
-    test_script_executable "${script}" || failed=1
-
-    if [[ ${failed} -eq 0 ]]; then
-        test_script_help "${script}" || true # Don't fail on help test
-
-        log_success "Health check script is available for testing"
-    fi
-
-    return ${failed}
+    run_individual_test "test-health-check.sh"
 }
 
 # Test validate-config.sh script
 test_validate_config_script() {
     log_info "Testing validate-config.sh script..."
-
-    local script="${SCRIPTS_DIR}/validate-config.sh"
-
-    if [[ ! -f "${script}" ]]; then
-        log_warning "validate-config.sh script not found (may not be implemented yet)"
-        return 0
-    fi
-
-    local failed=0
-    test_script_executable "${script}" || failed=1
-
-    if [[ ${failed} -eq 0 ]]; then
-        test_script_help "${script}" || true # Don't fail on help test
-
-        log_success "Config validation script is available for testing"
-    fi
-
-    return ${failed}
+    run_individual_test "test-validate-config.sh"
 }
 
 # Test all infrastructure scripts
 test_all_scripts() {
-    log_info "Testing all infrastructure scripts..."
+    log_info "Testing all infrastructure scripts via individual test files..."
 
     local failed=0
 
@@ -226,7 +104,12 @@ test_all_scripts() {
         return 1
     fi
 
-    # Test individual scripts
+    if [[ ! -d "${TESTS_DIR}" ]]; then
+        log_error "Tests directory not found: ${TESTS_DIR}"
+        return 1
+    fi
+
+    # Test individual scripts via their dedicated test files
     test_provision_infrastructure_script || failed=1
     test_deploy_app_script || failed=1
     test_configure_env_script || failed=1
@@ -236,7 +119,7 @@ test_all_scripts() {
     return ${failed}
 }
 
-# Test script directory structure
+# Test scripts directory structure
 test_scripts_directory() {
     log_info "Testing scripts directory structure..."
 
@@ -268,34 +151,39 @@ test_scripts_directory() {
     return ${failed}
 }
 
-# Test script shebang and basic structure
-test_script_structure() {
-    log_info "Testing script structure and standards..."
+# Test individual test files structure
+test_individual_test_files() {
+    log_info "Testing individual test files structure..."
 
     local failed=0
-    local scripts
 
-    # Find all shell scripts in scripts directory
-    scripts=$(find "${SCRIPTS_DIR}" -name "*.sh" -type f)
+    if [[ ! -d "${SCRIPTS_TEST_DIR}" ]]; then
+        log_error "Scripts test directory not found: ${SCRIPTS_TEST_DIR}"
+        return 1
+    fi
 
-    for script in ${scripts}; do
-        local script_name
-        script_name=$(basename "${script}")
+    for test_file in "${INDIVIDUAL_TEST_FILES[@]}"; do
+        local test_path="${SCRIPTS_TEST_DIR}/${test_file}"
 
-        # Check shebang
-        local first_line
-        first_line=$(head -n1 "${script}")
-        if [[ ! "${first_line}" =~ ^#!/bin/bash ]]; then
-            log_warning "Script ${script_name} doesn't use #!/bin/bash shebang"
+        if [[ ! -f "${test_path}" ]]; then
+            log_error "Individual test file not found: ${test_file}"
+            failed=1
+            continue
         fi
 
-        # Check for set -euo pipefail (good practice)
-        if ! grep -q "set -euo pipefail" "${script}"; then
-            log_warning "Script ${script_name} doesn't use 'set -euo pipefail'"
+        if [[ ! -x "${test_path}" ]]; then
+            log_error "Individual test file not executable: ${test_file}"
+            failed=1
+            continue
         fi
+
+        log_success "Individual test file exists and is executable: ${test_file}"
     done
 
-    log_success "Script structure validation completed"
+    if [[ ${failed} -eq 0 ]]; then
+        log_success "Individual test files structure is valid"
+    fi
+
     return ${failed}
 }
 
@@ -305,12 +193,15 @@ run_unit_tests() {
 
     init_test_log
 
-    log_info "Running infrastructure scripts unit tests..."
+    log_info "Running infrastructure scripts unit tests (orchestrator mode)..."
     log_info "Scripts directory: ${SCRIPTS_DIR}"
+    log_info "Tests directory: ${TESTS_DIR}"
 
-    # Run all unit tests
+    # Test directory structures
     test_scripts_directory || failed=1
-    test_script_structure || failed=1
+    test_individual_test_files || failed=1
+
+    # Run all script tests via individual test files
     test_all_scripts || failed=1
 
     # Final result
@@ -328,9 +219,9 @@ run_unit_tests() {
 # Help function
 show_help() {
     cat <<EOF
-Unit Tests - Infrastructure Scripts
+Unit Tests - Infrastructure Scripts (Orchestrator)
 
-Tests infrastructure scripts without deploying or running them.
+Coordinates individual script test files for comprehensive testing.
 
 Usage: $0 [COMMAND]
 
@@ -342,13 +233,23 @@ Commands:
     health          Test health-check.sh only
     validate        Test validate-config.sh only
     structure       Test scripts directory structure only
-    standards       Test script coding standards only
+    test-files      Test individual test files structure only
     help           Show this help message
+
+Individual Test Files:
+    test-provision-infrastructure.sh    Tests provision-infrastructure.sh
+    test-deploy-app.sh                  Tests deploy-app.sh
+    test-configure-env.sh               Tests configure-env.sh
+    test-health-check.sh                Tests health-check.sh
+    test-validate-config.sh             Tests validate-config.sh
 
 Examples:
     $0                    # Run all script unit tests
     $0 provision         # Test provision script only
     $0 structure         # Test directory structure only
+
+Note: This orchestrator delegates to individual test files for better
+      maintainability and scalability. Each script has its own test file.
 
 Test log: ${TEST_LOG_FILE}
 EOF
@@ -380,8 +281,8 @@ main() {
     "structure")
         init_test_log && test_scripts_directory
         ;;
-    "standards")
-        init_test_log && test_script_structure
+    "test-files")
+        init_test_log && test_individual_test_files
         ;;
     "help" | "-h" | "--help")
         show_help

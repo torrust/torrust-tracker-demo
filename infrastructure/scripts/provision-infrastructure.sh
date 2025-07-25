@@ -94,6 +94,16 @@ provision_infrastructure() {
         tofu plan -var-file="local.tfvars"
         ;;
     "apply")
+        log_info "Preparing to apply infrastructure changes"
+
+        # Ensure sudo credentials are cached for libvirt operations
+        log_warning "Infrastructure provisioning requires administrator privileges for libvirt operations"
+        if ! ensure_sudo_cached "provision libvirt infrastructure"; then
+            log_error "Cannot proceed without administrator privileges"
+            log_error "Infrastructure provisioning requires sudo access for libvirt volume management"
+            exit 1
+        fi
+
         log_info "Applying infrastructure changes"
         init_terraform
         tofu apply -auto-approve -var-file="local.tfvars"

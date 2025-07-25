@@ -60,9 +60,12 @@ nullglob
 NUXT
 opentofu
 pacman
+Passwordless
 pasteable
 pipefail
+pkexec
 plugdev
+polkit
 poweroff
 prereq
 privkey

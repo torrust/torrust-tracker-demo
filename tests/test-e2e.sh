@@ -41,6 +41,26 @@ init_test_log() {
     log_info "Environment: ${ENVIRONMENT}"
 }
 
+# Check and prepare sudo cache for infrastructure operations
+prepare_sudo_for_infrastructure() {
+    log_section "SUDO PREPARATION"
+
+    log_warning "Infrastructure provisioning requires administrator privileges"
+    log_info "This is needed for:"
+    log_info "  • Setting libvirt volume permissions during VM creation"
+    log_info "  • Configuring KVM/libvirt resources"
+
+    if ! ensure_sudo_cached "manage libvirt infrastructure"; then
+        log_error "Cannot proceed without administrator privileges"
+        log_error "Infrastructure provisioning requires sudo access for libvirt operations"
+        return 1
+    fi
+
+    log_success "Administrator privileges confirmed and cached"
+    log_info "Sudo cache will remain valid for ~15 minutes"
+    return 0
+}
+
 # Step 1: Prerequisites Validation (Following Integration Testing Guide)
 test_prerequisites() {
     log_section "STEP 1: Prerequisites Validation"
@@ -333,14 +353,12 @@ test_cleanup() {
 # Warning about password prompts
 show_password_warning() {
     log_section "⚠️  IMPORTANT PASSWORD PROMPT WARNING"
-    log_warning "This test will provision infrastructure using libvirt/KVM which may require:"
-    log_warning "• Your user password for sudo operations"
+    log_warning "This test will provision infrastructure using libvirt/KVM which requires:"
+    log_warning "• Your user password for sudo operations (administrator privileges)"
     log_warning "• SSH key passphrase (if your SSH key is encrypted)"
     log_warning ""
-    log_warning "The test process will PAUSE and wait for password input when needed."
-    log_warning "You MUST enter your password when prompted, or the test will hang indefinitely."
-    log_warning ""
-    log_warning "If you see no output for an extended period, check if there's a password prompt waiting."
+    log_info "The test will prompt for your password ONCE at the beginning to cache sudo credentials."
+    log_info "After that, infrastructure operations will run without interruption."
     log_warning ""
     log_info "Expected test duration: ~8-12 minutes (includes VM setup + Docker installation)"
     log_warning ""
@@ -468,13 +486,18 @@ run_e2e_test() {
     # Show password warning and get user confirmation
     show_password_warning
 
+    # Prepare sudo cache for infrastructure operations
+    prepare_sudo_for_infrastructure || failed=1
+
     log_section "TORRUST TRACKER DEMO - END-TO-END TWELVE-FACTOR TEST"
     log_info "Environment: ${ENVIRONMENT}"
     log_info "Following: docs/guides/integration-testing-guide.md"
     log_info "Working directory: ${PROJECT_ROOT}"
 
     # Execute test steps in sequence (matching integration testing guide)
-    test_prerequisites || failed=1
+    if [[ ${failed} -eq 0 ]]; then
+        test_prerequisites || failed=1
+    fi
 
     if [[ ${failed} -eq 0 ]]; then
         test_infrastructure_provisioning || failed=1

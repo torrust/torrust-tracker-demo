@@ -59,6 +59,7 @@ infra-plan: ## Plan infrastructure changes
 
 infra-apply: ## Provision infrastructure (platform setup)
 	@echo "Provisioning infrastructure for $(ENVIRONMENT)..."
+	@echo "⚠️  This command may prompt for your password for sudo operations"
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
 
 infra-destroy: ## Destroy infrastructure

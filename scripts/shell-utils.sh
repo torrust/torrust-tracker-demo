@@ -224,3 +224,53 @@ ${BLUE}EXAMPLES:${NC}
 
 EOF
 }
+
+# Sudo cache management functions
+
+# Check if sudo credentials are cached
+is_sudo_cached() {
+    sudo -n true 2>/dev/null
+}
+
+# Warn user about upcoming sudo operations and ensure sudo is cached
+ensure_sudo_cached() {
+    local operation_description="${1:-the operation}"
+
+    if is_sudo_cached; then
+        log_debug "Sudo credentials already cached"
+        return 0
+    fi
+
+    log_warning "The next step requires administrator privileges"
+    log_info "You may be prompted for your password to ${operation_description}"
+    echo ""
+
+    # Use a harmless sudo command to cache credentials
+    # This will prompt for password if needed, but won't actually do anything
+    if sudo -v; then
+        log_success "Administrator privileges confirmed"
+        return 0
+    else
+        log_error "Failed to obtain administrator privileges"
+        return 1
+    fi
+}
+
+# Run a command with sudo, ensuring credentials are cached first
+run_with_sudo() {
+    local description="$1"
+    shift
+
+    if ! ensure_sudo_cached "$description"; then
+        return 1
+    fi
+
+    # Now run the actual command - no password prompt expected
+    sudo "$@"
+}
+
+# Clear sudo cache (useful for testing or security)
+clear_sudo_cache() {
+    sudo -k
+    log_debug "Sudo credentials cache cleared"
+}

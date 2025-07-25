@@ -22,6 +22,12 @@ This directory currently contains cross-cutting documentation:
   to use Docker for all services including UDP tracker
 - [ADR-003: Use MySQL Over MariaDB](adr/003-use-mysql-over-mariadb.md) - Decision
   to use MySQL instead of MariaDB for database backend
+- [ADR-004: Configuration Approach Files vs Environment Variables]
+  (adr/004-configuration-approach-files-vs-environment-variables.md) -
+  Configuration approach decision for application settings
+- [ADR-005: Sudo Cache Management for Infrastructure Operations]
+  (adr/005-sudo-cache-management-for-infrastructure-operations.md) -
+  Proactive sudo cache management for better UX during testing
 
 ### 📅 [`plans/`](plans/) (Ongoing Plans and Roadmaps)
 

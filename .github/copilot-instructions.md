@@ -354,6 +354,28 @@ For verifying the functionality of the tracker from an end-user's perspective (e
 - **Guide**: [Smoke Testing Guide](../docs/guides/smoke-testing-guide.md)
 - **When to use**: After a deployment (`make infra-apply` + `make app-deploy`) or to validate that all services are working together correctly.
 
+#### Sudo Cache Management
+
+The project implements intelligent sudo cache management to improve the user experience during infrastructure provisioning:
+
+- **Automatic prompting**: Scripts will warn users before operations requiring sudo
+- **Cache preparation**: Sudo credentials are cached upfront to prevent interruptions
+- **Clean output**: Password prompts occur before main operations, not mixed with output
+- **Safe commands**: Uses `sudo -v` to cache credentials without executing privileged operations
+
+**Implementation details:**
+
+- Functions in `scripts/shell-utils.sh`: `ensure_sudo_cached()`, `is_sudo_cached()`, `run_with_sudo()`
+- Used in: `infrastructure/scripts/fix-volume-permissions.sh`, `infrastructure/scripts/provision-infrastructure.sh`, `tests/test-e2e.sh`
+- Cache duration: ~15 minutes (system default)
+
+**Testing the sudo cache:**
+
+```bash
+# Test sudo cache management functions
+./test-sudo-cache.sh
+```
+
 ### Security Guidelines
 
 #### Secrets Management

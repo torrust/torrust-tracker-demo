@@ -1,6 +1,8 @@
 #!/bin/bash
 # Monitor cloud-init progress for Torrust Tracker Demo VM
 
+set -euo pipefail
+
 VM_NAME="torrust-tracker-demo"
 SSH_KEY_PATH="$HOME/.ssh/torrust_rsa"
 echo "🔍 Monitoring cloud-init progress for $VM_NAME"

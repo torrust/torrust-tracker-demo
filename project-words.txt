@@ -26,10 +26,12 @@ envrc
 envsubst
 esac
 ethernets
+executability
 findtime
 fullchain
 genisoimage
 healthcheck
+healthchecks
 hetznercloud
 INFOHASH
 initdb
@@ -47,6 +49,7 @@ misprocess
 mkisofs
 mktemp
 mysqladmin
+netcat
 netdev
 newgrp
 newtrackon
@@ -57,9 +60,12 @@ nullglob
 NUXT
 opentofu
 pacman
+Passwordless
 pasteable
 pipefail
+pkexec
 plugdev
+polkit
 poweroff
 prereq
 privkey

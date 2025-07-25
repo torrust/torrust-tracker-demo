@@ -1,20 +1,68 @@
-# Integration Testing Guide
+# Integration Testing Guide - Twelve-Factor Deployment
 
-This guide provides step-by-step instructions for running complete integration
-tests on a fresh virtual machine. All commands are ready to copy and paste.
+This guide provides step-by-step instructions for testing the complete twelve-factor
+deployment workflow on a fresh virtual machine. All commands are ready to copy and paste.
 
 ## Overview
 
-This guide will walk you through:
+This guide will walk you through the deployment process with separated infrastructure and
+application concerns:
 
-1. Creating a fresh VM by cleaning up any existing infrastructure
-2. Deploying the VM with full Torrust Tracker configuration
-3. Waiting for cloud-init to complete (critical step!)
-4. Running comprehensive integration tests
-5. Verifying all services work correctly
-6. Cleaning up resources
+1. **Infrastructure Provisioning**: Setting up the platform (`make infra-apply`)
+2. **Application Deployment**: Twelve-factor Build + Release + Run stages (`make app-deploy`)
+3. **Validation**: Health checking (`make health-check`)
+4. **Cleanup**: Resource management (`make infra-destroy`)
 
-**Total Time**: ~8-12 minutes (improved from previous connectivity issues)
+The new workflow separates infrastructure provisioning from application deployment,
+following twelve-factor principles for better maintainability and deployment reliability.
+
+**Total Time**: ~5-8 minutes (streamlined with separated stages)
+
+---
+
+## Automated Testing Alternative
+
+**For automated testing**, you can use the end-to-end test script that implements this exact workflow:
+
+```bash
+# Run the automated version of this guide
+./tests/test-e2e.sh
+```
+
+The automated test script (`tests/test-e2e.sh`) follows the same steps described in this guide:
+
+- **Step 1**: Prerequisites validation
+- **Step 2**: Infrastructure provisioning (`make infra-apply`)
+- **Step 3**: Application deployment (`make app-deploy`)
+- **Step 4**: Health validation (`make health-check`)
+- **Step 5**: Smoke testing (basic functionality validation)
+- **Step 6**: Cleanup (`make infra-destroy`)
+
+**Benefits of the automated test**:
+
+- ✅ **Consistent execution** - No manual errors or missed steps
+- ✅ **Comprehensive logging** - All output saved to `/tmp/torrust-e2e-test.log`
+- ✅ **Smoke testing included** - Additional tracker functionality validation
+- ✅ **Time tracking** - Reports duration of each stage
+- ✅ **CI/CD integration** - Can be used in automated pipelines
+
+**When to use automated vs manual**:
+
+- **Use automated** (`./tests/test-e2e.sh`) for: CI/CD, quick validation, consistent testing
+- **Use this manual guide** for: Learning the workflow, debugging issues, understanding individual steps
+
+**Environment variables for automated testing**:
+
+```bash
+# Skip cleanup (leave infrastructure running for inspection)
+SKIP_CLEANUP=true ./tests/test-e2e.sh
+
+# Skip confirmation prompt (for CI/CD)
+SKIP_CONFIRMATION=true ./tests/test-e2e.sh
+```
+
+Continue with the manual guide below if you want to understand each step in detail
+or need to debug specific issues.
 
 ---
 
@@ -24,14 +72,14 @@ Ensure you have completed the initial setup:
 
 ```bash
 # Verify prerequisites are met
-make test-prereq
+make test-syntax
 ```
 
-**Expected Output**: All checks should pass with ✅ marks.
+**Expected Output**: All syntax validation should pass.
 
 ---
 
-## Step 1: Clean Up and Prepare Fresh Environment
+## Step 1: Prepare Environment
 
 ### 1.1 Navigate to Project Directory
 
@@ -42,77 +90,401 @@ cd /home/yourname/Documents/git/committer/me/github/torrust/torrust-tracker-demo
 ```
 
 **⚠️ CRITICAL**: All commands in this guide assume you are running from the
-**project root directory**. If you see "command not found" errors, verify you are
-in the correct directory.
+**project root directory**. The new twelve-factor workflow requires correct
+working directory for script execution.
 
 **Working Directory Indicator**: Commands will be shown with this format:
 
 ```bash
 # [PROJECT_ROOT] - Run from project root directory
 make command
-
-# [TERRAFORM_DIR] - Run from infrastructure/terraform directory
-cd infrastructure/terraform && tofu command
 ```
 
-### 1.2 Check for Existing Resources
+### 1.2 Clean Up Any Existing Infrastructure (Optional)
 
-⚠️ **WARNING**: The following commands will destroy existing VMs and remove
-data. Only proceed if you want to start with a completely clean environment.
+⚠️ **DESTRUCTIVE OPERATION**: Only run if you want to start completely fresh.
 
 ```bash
-# [PROJECT_ROOT] Check for existing VMs that might conflict
-virsh list --all | grep torrust-tracker-demo || echo "✅ No conflicting VM found"
+# [PROJECT_ROOT] Destroy any existing infrastructure
+make infra-destroy ENVIRONMENT=local
 
-# [PROJECT_ROOT] Check for existing libvirt volumes
-virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo || \
-  echo "✅ No conflicting volumes found"
-
-# [PROJECT_ROOT] Check for existing OpenTofu state
-ls -la infrastructure/terraform/terraform.tfstate* 2>/dev/null || \
-  echo "✅ No existing state files"
+# [PROJECT_ROOT] Clean up Terraform state and caches
+make clean
 ```
 
-**Expected Output**: Should show "✅" messages if no conflicts exist.
+**Expected Output**: Infrastructure cleaned up or "No infrastructure found" message.
 
-### 1.3 Clean Up Any Existing Infrastructure
+---
 
-⚠️ **DESTRUCTIVE OPERATION**: This will permanently delete VMs, volumes,
-and state files.
+## Step 2: Infrastructure Provisioning
+
+Infrastructure provisioning sets up the platform (VM) without deploying
+the application. This follows twelve-factor separation of concerns.
+
+### 2.1 Initialize Infrastructure
 
 ```bash
-# [PROJECT_ROOT] Complete cleanup - removes VMs, state files, and fixes permissions
-time make clean-and-fix
+# [PROJECT_ROOT] Initialize Terraform/OpenTofu (first time only)
+make infra-init ENVIRONMENT=local
 ```
 
 **Expected Output**:
 
-- VMs destroyed and undefined
-- OpenTofu state files removed
-- libvirt images cleaned
-- Permissions fixed
-- **Time**: ~5 seconds (actual: 5.02s)
+```text
+Initializing infrastructure for local...
+[INFO] Loading environment configuration: local
+[SUCCESS] Prerequisites validation passed
+[INFO] Terraform already initialized
+```
 
-**What This Creates**: Clean slate with no VMs or state files.
-
-### 1.4 Verify Clean State
+### 2.2 Plan Infrastructure Changes
 
 ```bash
-# [PROJECT_ROOT] Verify no conflicting resources remain
-echo "=== Verifying Clean State ==="
-
-# [PROJECT_ROOT] Check VMs
-virsh list --all | grep torrust-tracker-demo && \
-  echo '❌ VM still exists!' || echo '✅ No VM conflicts'
-
-# [PROJECT_ROOT] Check volumes in user-default pool
-virsh vol-list user-default 2>/dev/null | grep torrust-tracker-demo && \
-  echo '❌ Volumes still exist!' || echo '✅ No volume conflicts'
-
-# [PROJECT_ROOT] Check OpenTofu state
-ls infrastructure/terraform/terraform.tfstate* 2>/dev/null && \
-  echo '❌ State files still exist!' || echo '✅ No state file conflicts'
+# [PROJECT_ROOT] Review what will be created
+make infra-plan ENVIRONMENT=local
 ```
+
+**Expected Output**: Terraform plan showing VM, volumes, and network resources to be created.
+
+### 2.3 Provision Infrastructure
+
+```bash
+# [PROJECT_ROOT] Create the VM infrastructure
+time make infra-apply ENVIRONMENT=local
+```
+
+**Expected Output**:
+
+```text
+Provisioning infrastructure for local...
+[INFO] Starting infrastructure provisioning (Twelve-Factor Build Stage)
+[INFO] Environment: local, Action: apply
+[SUCCESS] Prerequisites validation passed
+[INFO] Loading environment configuration: local
+[INFO] Applying infrastructure changes
+[SUCCESS] Infrastructure provisioned successfully
+[INFO] VM IP: 192.168.122.XXX
+[INFO] SSH Access: ssh torrust@192.168.122.XXX
+[INFO] Next step: make app-deploy ENVIRONMENT=local
+```
+
+**Time**: ~2-3 minutes (VM creation and cloud-init base setup)
+
+**What This Creates**:
+
+- VM with Ubuntu 24.04
+- Basic system setup (Docker, users, firewall)
+- SSH access ready
+- **No application deployed yet**
+
+### 2.4 Verify Infrastructure
+
+```bash
+# [PROJECT_ROOT] Check infrastructure status
+make infra-status ENVIRONMENT=local
+
+# [PROJECT_ROOT] Test SSH connectivity
+make ssh
+# (type 'exit' to return)
+```
+
+**Expected Output**: VM IP address and successful SSH connection.
+
+---
+
+## Step 3: Application Deployment - Deploy Application
+
+The **Release Stage** combines the application code with environment-specific
+configuration. The **Run Stage** starts the application processes.
+
+### 3.1 Deploy Application
+
+```bash
+# [PROJECT_ROOT] Deploy application to the provisioned infrastructure
+time make app-deploy ENVIRONMENT=local
+```
+
+**Expected Output**:
+
+```text
+Deploying application for local...
+[INFO] Starting application deployment (Twelve-Factor Build + Release + Run Stages)
+[INFO] Environment: local
+[SUCCESS] SSH connection established
+[INFO] === TWELVE-FACTOR RELEASE STAGE ===
+[INFO] Deploying application with environment: local
+[INFO] Setting up application repository
+[INFO] Processing configuration for environment: local
+[INFO] Setting up application storage
+[SUCCESS] Release stage completed
+[INFO] === TWELVE-FACTOR RUN STAGE ===
+[INFO] Starting application services
+[INFO] Stopping existing services
+[INFO] Starting application services
+[INFO] Waiting for services to initialize (30 seconds)...
+[SUCCESS] Run stage completed
+[INFO] === DEPLOYMENT VALIDATION ===
+[INFO] Checking service status
+[INFO] Testing application endpoints
+✅ Health check endpoint: OK
+✅ API stats endpoint: OK
+✅ HTTP tracker endpoint: OK
+✅ All endpoints are responding
+[SUCCESS] Deployment validation passed
+[SUCCESS] Application deployment completed successfully!
+```
+
+**Time**: ~3-4 minutes (application deployment and service startup)
+
+**What This Does**:
+
+- Clones/updates application repository
+- Processes environment configuration
+- Starts Docker services
+- Validates deployment health
+
+### 3.2 Verify Application Deployment
+
+```bash
+# [PROJECT_ROOT] Get VM connection info
+make infra-status ENVIRONMENT=local
+```
+
+**Expected Output**: Shows VM IP and connection information.
+
+---
+
+## Step 4: Validation Stage - Health Checks
+
+### 4.1 Run Comprehensive Health Check
+
+```bash
+# [PROJECT_ROOT] Run full health validation
+time make health-check ENVIRONMENT=local
+```
+
+**Expected Output**:
+
+```text
+Running health check for local...
+[INFO] Starting health check for Torrust Tracker Demo
+[INFO] Environment: local
+[INFO] Target VM: 192.168.122.XXX
+[INFO] Testing SSH connectivity to 192.168.122.XXX
+✅ SSH connectivity
+[INFO] Testing Docker services
+✅ Docker daemon
+✅ Docker Compose services accessible
+✅ Services are running (6 services)
+[INFO] Testing application endpoints
+✅ Health check endpoint (port 1313)
+✅ API stats endpoint (port 1212)
+✅ HTTP tracker endpoint (port 7070)
+✅ Grafana endpoint (port 3000)
+[INFO] Testing UDP tracker connectivity
+✅ UDP tracker port 6868
+✅ UDP tracker port 6969
+[INFO] Testing storage and persistence
+✅ Storage directory exists
+✅ SQLite database file exists
+[INFO] Testing logging and monitoring
+✅ Prometheus metrics endpoint
+✅ Docker logs accessible
+
+=== HEALTH CHECK REPORT ===
+Environment:      local
+VM IP:           192.168.122.XXX
+Total Tests:     12
+Passed:          12
+Failed:          0
+Success Rate:    100%
+
+[SUCCESS] All health checks passed! Application is healthy.
+```
+
+**Time**: ~1 minute
+
+### 4.2 Manual Verification (Optional)
+
+```bash
+# [PROJECT_ROOT] SSH into VM for manual inspection
+make ssh
+
+# [VM] Check service status
+cd /home/torrust/github/torrust/torrust-tracker-demo/application
+docker compose ps
+
+# [VM] Check application logs
+docker compose logs --tail=20
+
+# [VM] Test endpoints manually
+curl http://localhost:1313/health_check
+curl http://localhost:1212/api/v1/stats
+
+# Exit back to host
+exit
+```
+
+---
+
+## Step 5: Integration Testing Results
+
+### 5.1 Expected Service Status
+
+After successful deployment, you should see these services running:
+
+| Service                  | Port       | Status     | Purpose               |
+| ------------------------ | ---------- | ---------- | --------------------- |
+| Torrust Tracker (Health) | 1313       | ✅ Running | Health check endpoint |
+| Torrust Tracker (API)    | 1212       | ✅ Running | REST API and stats    |
+| Torrust Tracker (HTTP)   | 7070       | ✅ Running | HTTP tracker protocol |
+| Torrust Tracker (UDP)    | 6868, 6969 | ✅ Running | UDP tracker protocol  |
+| Grafana                  | 3000       | ✅ Running | Monitoring dashboard  |
+| Prometheus               | 9090       | ✅ Running | Metrics collection    |
+
+### 5.2 Test Endpoints
+
+You can test these endpoints from the host machine:
+
+```bash
+# Get VM IP first
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+
+# Test endpoints (replace with actual VM IP)
+curl http://$VM_IP:1313/health_check
+curl http://$VM_IP:1212/api/v1/stats
+curl http://$VM_IP:7070
+```
+
+---
+
+## Step 6: Cleanup
+
+### 6.1 Destroy Infrastructure
+
+When you're done testing, clean up the resources:
+
+```bash
+# [PROJECT_ROOT] Destroy the entire infrastructure
+time make infra-destroy ENVIRONMENT=local
+```
+
+**Expected Output**:
+
+```text
+Destroying infrastructure for local...
+[INFO] Starting infrastructure provisioning (Twelve-Factor Build Stage)
+[INFO] Environment: local, Action: destroy
+[SUCCESS] Prerequisites validation passed
+[INFO] Loading environment configuration: local
+[INFO] Destroying infrastructure
+[SUCCESS] Infrastructure destroyed
+```
+
+**Time**: ~1 minute
+
+### 6.2 Verify Cleanup
+
+```bash
+# [PROJECT_ROOT] Verify no resources remain
+make infra-status ENVIRONMENT=local
+
+# Should show: "No infrastructure found"
+```
+
+---
+
+## Summary
+
+### Twelve-Factor Deployment Workflow
+
+This integration test demonstrates the complete twelve-factor deployment workflow:
+
+1. **Build Stage** (`make infra-apply`):
+
+   - ✅ Infrastructure provisioning only
+   - ✅ VM creation with base system
+   - ✅ No application coupling
+
+2. **Release Stage** (`make app-deploy`):
+
+   - ✅ Application code deployment
+   - ✅ Environment-specific configuration
+   - ✅ Service orchestration
+
+3. **Run Stage** (`make app-deploy`):
+
+   - ✅ Process startup
+   - ✅ Health validation
+   - ✅ Monitoring setup
+
+4. **Validation** (`make health-check`):
+   - ✅ Comprehensive health checks
+   - ✅ Endpoint testing
+   - ✅ Service verification
+
+### Total Time Breakdown
+
+| Stage          | Time         | Description                         |
+| -------------- | ------------ | ----------------------------------- |
+| Infrastructure | ~2-3 min     | VM provisioning and base setup      |
+| Application    | ~3-4 min     | Code deployment and service startup |
+| Health Check   | ~1 min       | Comprehensive validation            |
+| **Total**      | **~6-8 min** | Complete deployment cycle           |
+
+### Key Benefits
+
+- **Separation of Concerns**: Infrastructure and application are deployed independently
+- **Environment Parity**: Same process works for local, staging, and production
+- **Configuration as Code**: All configuration via environment variables
+- **Immutable Infrastructure**: VMs can be destroyed and recreated easily
+- **Health Validation**: Comprehensive testing ensures deployment quality
+
+### Next Steps
+
+- **Production Deployment**: Use `ENVIRONMENT=production` for production deployments
+- **Configuration Changes**: Modify environment files in `infrastructure/config/environments/`
+- **Application Updates**: Use `make app-redeploy` for application-only updates
+- **Monitoring**: Access Grafana at `http://VM_IP:3000` (admin/admin)
+
+### Troubleshooting
+
+If any step fails, see the troubleshooting section in each script's help:
+
+```bash
+./infrastructure/scripts/provision-infrastructure.sh help
+./infrastructure/scripts/deploy-app.sh help
+./infrastructure/scripts/health-check.sh help
+```
+
+---
+
+**✅ Integration Test Complete!**
+
+You have successfully tested the complete twelve-factor deployment workflow
+for the Torrust Tracker Demo. The application is now running and validated
+on a fresh virtual machine.
+
+## Automated Testing
+
+**Tip**: For future testing, consider using the automated version of this guide:
+
+```bash
+# Run the same workflow automatically
+./tests/test-e2e.sh
+
+# With cleanup skipped (for inspection)
+SKIP_CLEANUP=true ./tests/test-e2e.sh
+```
+
+The automated test (`tests/test-e2e.sh`) performs the exact same steps as this manual guide,
+with additional smoke testing and comprehensive logging. It's perfect for:
+
+- **CI/CD pipelines** - Automated validation
+- **Quick testing** - Consistent execution without manual errors
+- **Regression testing** - Verify changes don't break the workflow
+
+---
 
 **Expected Output**: All checks should show "✅" (no conflicts).
 
@@ -637,8 +1009,12 @@ for better compatibility with modern compose.yaml files.
 ### 4.1 Test VM Access
 
 ```bash
-# [PROJECT_ROOT] Test basic VM connectivity
-time ./infrastructure/tests/test-integration.sh access
+# [PROJECT_ROOT] Test basic VM connectivity using SSH
+make ssh
+
+# Or test connectivity manually
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+ssh torrust@$VM_IP "echo 'VM is accessible'"
 ```
 
 **Expected Output**:
@@ -650,8 +1026,14 @@ time ./infrastructure/tests/test-integration.sh access
 ### 4.2 Test Docker Installation
 
 ```bash
-# [PROJECT_ROOT] Test Docker functionality
-time ./infrastructure/tests/test-integration.sh docker
+# [PROJECT_ROOT] Test Docker functionality via health check
+make health-check
+
+# Or test Docker manually via SSH
+make ssh
+# Then inside VM:
+docker --version
+docker compose version
 ```
 
 **Expected Output**:
@@ -668,8 +1050,8 @@ available and uses the appropriate command.
 ### 4.3 Setup Torrust Tracker Demo
 
 ```bash
-# [PROJECT_ROOT] Clone and setup the Torrust Tracker repository
-time ./infrastructure/tests/test-integration.sh setup
+# [PROJECT_ROOT] Deploy the application using twelve-factor workflow
+make app-deploy
 ```
 
 **Expected Output**:
@@ -684,8 +1066,10 @@ configuration.
 ### 4.4 Start Torrust Tracker Services
 
 ```bash
-# [PROJECT_ROOT] Pull images and start all services
-time ./infrastructure/tests/test-integration.sh start
+# [PROJECT_ROOT] Application deployment includes starting services
+# Services are automatically started by 'make app-deploy'
+# To verify services are running:
+make health-check
 ```
 
 **Expected Output**:
@@ -705,8 +1089,8 @@ time ./infrastructure/tests/test-integration.sh start
 ### 4.5 Test Service Endpoints
 
 ```bash
-# [PROJECT_ROOT] Test all API endpoints
-time ./infrastructure/tests/test-integration.sh endpoints
+# [PROJECT_ROOT] Test all endpoints via comprehensive health check
+make health-check
 ```
 
 **Expected Output**:
@@ -723,8 +1107,11 @@ requirements. For manual testing, see Step 5.2 for the correct endpoint testing 
 ### 4.6 Test Monitoring Services
 
 ```bash
-# [PROJECT_ROOT] Test Prometheus and Grafana
-time ./infrastructure/tests/test-integration.sh monitoring
+# [PROJECT_ROOT] Test Prometheus and Grafana via health check
+make health-check
+
+# For detailed monitoring, connect via SSH to inspect services directly
+make ssh
 ```
 
 **Expected Output**:
@@ -736,8 +1123,8 @@ time ./infrastructure/tests/test-integration.sh monitoring
 ### 4.7 Run Complete Integration Test Suite
 
 ```bash
-# [PROJECT_ROOT] Run all tests in sequence
-time ./infrastructure/tests/test-integration.sh full-test
+# [PROJECT_ROOT] Run complete E2E test (infrastructure + application + health)
+make test
 ```
 
 **Expected Output**:
@@ -1236,8 +1623,11 @@ time (cd "$TRACKER_DIR" && cargo run -p torrust-tracker-client --bin http_tracke
 ### 8.1 Stop Services (if needed)
 
 ```bash
-# [PROJECT_ROOT] Stop all services cleanly
-./infrastructure/tests/test-integration.sh stop
+# [PROJECT_ROOT] Stop services via SSH if needed
+make ssh
+# Then inside VM:
+cd /home/torrust/github/torrust/torrust-tracker-demo/application
+docker compose down
 ```
 
 ### 8.2 Destroy VM and Clean Up
@@ -1364,17 +1754,17 @@ curl http://$VM_IP/api/v1/stats
 curl "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345"
 ```
 
-### 9.4 Integration Test Script Limitations
+### 9.4 Health Check Limitations
 
-The automated integration test script (`./infrastructure/tests/test-integration.sh endpoints`)
-may fail because:
+The automated health check script (`make health-check`) provides comprehensive
+validation but may need tuning for specific scenarios:
 
-1. **Authentication**: Script doesn't include token for stats API
-2. **Port Assumptions**: May test internal ports instead of nginx proxy
-3. **JSON Parsing**: Doesn't use `jq` for response validation
+1. **Timeouts**: Some tests use conservative timeouts that may be slow
+2. **Test Coverage**: Focuses on connectivity rather than functional testing
+3. **Verbose Output**: Use `VERBOSE=true make health-check` for detailed results
 
-**Manual testing** (as shown in this guide) provides more reliable results and
-better insight into the actual API functionality.
+**Manual testing** (as shown in this guide) provides more detailed functional
+validation and better insight into the actual API behavior.
 
 ### 9.5 Useful Testing Commands
 
@@ -1493,7 +1883,7 @@ ls -la | grep -E "(Makefile|infrastructure|application)"
 
 - `make: *** No rule to make target 'configure-local'. Stop.`
 - `make: *** No such file or directory. Stop.`
-- `./infrastructure/tests/test-integration.sh: No such file or directory`
+- Commands like `make infra-apply` failing with file not found errors
 
 **Solution**: Always ensure you're in the project root directory before running commands.
 

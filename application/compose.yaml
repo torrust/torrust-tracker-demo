@@ -20,7 +20,6 @@ services:
     container_name: proxy
     restart: unless-stopped
     networks:
-      - frontend_network
       - backend_network
     ports:
       - "80:80"
@@ -133,7 +132,6 @@ services:
       - mysql
 
 networks:
-  frontend_network: {}
   backend_network: {}
 
 volumes:

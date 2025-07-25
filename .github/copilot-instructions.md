@@ -25,10 +25,20 @@ We are migrating the tracker to a new infrastructure on Hetzner, involving:
 torrust-tracker-demo/
 ├── .github/
 │   ├── workflows/           # GitHub Actions CI/CD pipelines
+│   ├── prompts/             # AI assistant prompts and templates
 │   └── copilot-instructions.md  # This contributor guide
 ├── docs/
 │   ├── adr/                # Architecture Decision Records
 │   │   └── 001-makefile-location.md  # Makefile location decision
+│   ├── guides/             # User and developer guides
+│   │   ├── integration-testing-guide.md  # Testing guide
+│   │   ├── quick-start.md  # Fast setup guide
+│   │   └── smoke-testing-guide.md  # End-to-end testing
+│   ├── infrastructure/     # Infrastructure-specific documentation
+│   ├── issues/             # Issue documentation and analysis
+│   ├── plans/              # Project planning documentation
+│   ├── refactoring/        # Refactoring documentation
+│   ├── testing/            # Testing documentation
 │   └── README.md           # Cross-cutting documentation index
 ├── infrastructure/         # Infrastructure as Code
 │   ├── terraform/          # OpenTofu/Terraform configurations
@@ -39,34 +49,52 @@ torrust-tracker-demo/
 │   │   ├── user-data-minimal.yaml.tpl  # Debug configuration
 │   │   ├── meta-data.yaml  # VM metadata
 │   │   └── network-config.yaml    # Network setup
-│   ├── scripts/           # Infrastructure automation scripts
-│   ├── tests/             # Infrastructure validation tests
-│   ├── docs/              # Infrastructure documentation
+│   ├── config/             # Infrastructure configuration templates
+│   │   ├── environments/   # Environment-specific configs
+│   │   └── templates/      # Configuration templates
+│   ├── scripts/            # Infrastructure automation scripts
+│   │   ├── deploy-app.sh   # Application deployment script
+│   │   ├── provision-infrastructure.sh  # Infrastructure provisioning
+│   │   └── health-check.sh # Health validation script
+│   ├── tests/              # Infrastructure validation tests
+│   ├── docs/               # Infrastructure documentation
 │   │   ├── quick-start.md  # Fast setup guide
 │   │   ├── local-testing-setup.md  # Detailed setup
 │   │   ├── infrastructure-overview.md  # Architecture overview
+│   │   ├── refactoring/    # Refactoring documentation
 │   │   ├── testing/        # Testing documentation
-│   │   └── third-party/    # Third-party setup guides
-│   ├── .gitignore         # Infrastructure-specific ignores
-│   └── README.md          # Infrastructure overview
-├── application/           # Application deployment and services
+│   │   ├── third-party/    # Third-party setup guides
+│   │   └── bugs/           # Bug documentation
+│   ├── .gitignore          # Infrastructure-specific ignores
+│   └── README.md           # Infrastructure overview
+├── application/            # Application deployment and services
+│   ├── config/             # Application configuration
+│   │   └── templates/      # Configuration templates
 │   ├── share/
-│   │   ├── bin/           # Deployment and utility scripts
-│   │   ├── container/     # Docker service configurations
-│   │   ├── dev/           # Development configs
-│   │   └── grafana/       # Grafana dashboards
-│   ├── docs/              # Application documentation
+│   │   ├── bin/            # Deployment and utility scripts
+│   │   ├── container/      # Docker service configurations
+│   │   ├── dev/            # Development configs
+│   │   └── grafana/        # Grafana dashboards
+│   ├── storage/            # Persistent data storage
+│   │   ├── certbot/        # SSL certificate storage
+│   │   ├── dhparam/        # DH parameters
+│   │   ├── prometheus/     # Prometheus data
+│   │   ├── proxy/          # Nginx proxy configs
+│   │   └── tracker/        # Tracker data
+│   ├── docs/               # Application documentation
 │   │   ├── production-setup.md    # Production deployment docs
 │   │   ├── deployment.md          # Deployment procedures
 │   │   ├── firewall-requirements.md # Application firewall requirements
 │   │   ├── useful-commands.md     # Operational commands
-│   │   └── media/         # Screenshots and diagrams
-│   ├── compose.yaml       # Docker Compose for services
-│   ├── .env.production    # Production environment template
-│   ├── .gitignore         # Application-specific ignores
-│   └── README.md          # Application overview
-├── Makefile              # Main automation interface
-└── *.md                  # Project root documentation
+│   │   └── media/          # Screenshots and diagrams
+│   ├── compose.yaml        # Docker Compose for services
+│   ├── .env                # Local environment configuration
+│   ├── .gitignore          # Application-specific ignores
+│   └── README.md           # Application overview
+├── scripts/                # Project-wide utility scripts
+│   └── lint.sh             # Linting script for all file types
+├── Makefile                # Main automation interface
+└── *.md                    # Project root documentation
 ```
 
 ### Key Components
@@ -106,32 +134,119 @@ make install-deps
 # 3. Setup SSH key for VMs
 make setup-ssh-key
 
-# 4. Test infrastructure locally
-make apply        # Deploy test VM
-make ssh         # Connect to VM
-make destroy     # Cleanup
+# 4. Test twelve-factor deployment workflow locally
+make infra-apply  # Provision infrastructure (platform setup)
+make app-deploy   # Deploy application (Build + Release + Run stages)
+make health-check # Validate deployment
+make ssh          # Connect to VM
+make infra-destroy # Cleanup
 
 # 5. Run tests
-make test        # Full infrastructure test
-make test-syntax # Syntax validation only
+make test         # Full infrastructure test
+make test-syntax  # Syntax validation only
 ```
 
 ### Main Commands
 
-| Command                   | Purpose                                     |
-| ------------------------- | ------------------------------------------- |
-| `make help`               | Show all available commands                 |
-| `make install-deps`       | Install OpenTofu, libvirt, KVM, virt-viewer |
-| `make test`               | Run complete infrastructure tests           |
-| `make apply`              | Deploy VM with full configuration           |
-| `make apply-minimal`      | Deploy VM with minimal config               |
-| `make ssh`                | Connect to deployed VM                      |
-| `make console`            | Access VM console (text-based)              |
-| `make vm-console`         | Access VM graphical console (GUI)           |
-| `make destroy`            | Remove deployed VM                          |
-| `make monitor-cloud-init` | Watch VM provisioning progress              |
+#### Twelve-Factor Workflow (Recommended)
+
+| Command             | Purpose                                           |
+| ------------------- | ------------------------------------------------- |
+| `make infra-apply`  | Provision infrastructure (platform setup)         |
+| `make app-deploy`   | Deploy application (Build + Release + Run stages) |
+| `make app-redeploy` | Redeploy application (Release + Run stages only)  |
+| `make health-check` | Validate deployment health                        |
+
+#### Infrastructure Management
+
+| Command                    | Purpose                                      |
+| -------------------------- | -------------------------------------------- |
+| `make help`                | Show all available commands                  |
+| `make install-deps`        | Install OpenTofu, libvirt, KVM, virt-viewer  |
+| `make infra-init`          | Initialize infrastructure (Terraform init)   |
+| `make infra-plan`          | Plan infrastructure changes                  |
+| `make infra-destroy`       | Destroy infrastructure                       |
+| `make infra-status`        | Show infrastructure status                   |
+| `make infra-refresh-state` | Refresh Terraform state to detect IP changes |
+
+#### VM Access and Debugging
+
+| Command           | Purpose                           |
+| ----------------- | --------------------------------- |
+| `make ssh`        | Connect to deployed VM            |
+| `make console`    | Access VM console (text-based)    |
+| `make vm-console` | Access VM graphical console (GUI) |
+
+#### Testing and Validation
+
+| Command            | Purpose                                 |
+| ------------------ | --------------------------------------- |
+| `make test`        | Run complete infrastructure tests       |
+| `make test-syntax` | Run syntax validation only              |
+| `make lint`        | Run all linting (alias for test-syntax) |
+
+#### Legacy Commands (Deprecated)
+
+| Command        | New Equivalent                         |
+| -------------- | -------------------------------------- |
+| `make apply`   | `make infra-apply` + `make app-deploy` |
+| `make destroy` | `make infra-destroy`                   |
+| `make status`  | `make infra-status`                    |
 
 ## 📋 Conventions and Standards
+
+### Twelve-Factor App Principles
+
+This project implements [twelve-factor app](https://12factor.net/) methodology for application deployment, with a clear separation between infrastructure provisioning and application deployment:
+
+#### Infrastructure vs Application Deployment
+
+**Important Distinction**: The twelve-factor methodology applies specifically to **application deployment**, not infrastructure provisioning.
+
+- **Infrastructure Provisioning** (`make infra-apply`): Separate step that provisions the platform/environment
+  - Creates VMs, networks, firewall rules using Infrastructure as Code
+  - Applies cloud-init configuration
+  - Sets up the foundation where the application will run
+  - **This is NOT part of the twelve-factor Build stage**
+
+#### Twelve-Factor Application Deployment Stages
+
+The twelve-factor **Build, Release, Run** stages apply to the application deployment process (`make app-deploy`):
+
+- **Build Stage**: Transform application code into executable artifacts
+
+  - Compile source code for production
+  - Create container images (Docker)
+  - Package application dependencies
+  - Generate static assets
+
+- **Release Stage**: Combine built application with environment-specific configuration
+
+  - Apply environment variables and configuration files
+  - Combine application artifacts with runtime configuration
+  - Prepare deployment-ready releases
+
+- **Run Stage**: Execute the application in the runtime environment
+  - Start application processes (tracker binary, background jobs)
+  - Start supporting services (MySQL, Nginx, Prometheus, Grafana)
+  - Enable health checks and monitoring
+  - Make the application accessible to clients
+
+#### Benefits of This Approach
+
+- **Separation of Concerns**: Infrastructure changes don't require application redeployment
+- **Faster Iteration**: Use `make app-redeploy` to update only the application (Release + Run stages)
+- **Environment Consistency**: Same application deployment workflow for local testing and production
+- **Rollback Capability**: Infrastructure and application can be rolled back independently
+- **Testing Isolation**: Test infrastructure provisioning separately from application deployment
+
+#### Typical Development Workflow
+
+1. **Initial Setup**: `make infra-apply` → `make app-deploy`
+2. **Code Changes**: `make app-redeploy` (skips infrastructure)
+3. **Infrastructure Changes**: `make infra-apply` → `make app-redeploy`
+4. **Validation**: `make health-check`
+5. **Cleanup**: `make infra-destroy`
 
 ### Git Workflow
 
@@ -185,6 +300,8 @@ make test-syntax # Syntax validation only
 - **Structure**: Use consistent heading hierarchy
 - **Links**: Prefer relative links for internal documentation
 - **Code blocks**: Always specify language for syntax highlighting
+- **Tables**: Tables automatically ignore line length limits (configured globally in
+  `.markdownlint.json`). No special formatting required for table line lengths.
 
 #### Automated Linting
 
@@ -237,7 +354,29 @@ The project includes a comprehensive linting script that validates all file type
 For verifying the functionality of the tracker from an end-user's perspective (e.g., simulating announce/scrape requests), refer to the **Smoke Testing Guide**. This guide explains how to use the official `torrust-tracker-client` tools to perform black-box testing against a running tracker instance without needing a full BitTorrent client.
 
 - **Guide**: [Smoke Testing Guide](../docs/guides/smoke-testing-guide.md)
-- **When to use**: After a deployment (`make apply`) or to validate that all services are working together correctly.
+- **When to use**: After a deployment (`make infra-apply` + `make app-deploy`) or to validate that all services are working together correctly.
+
+#### Sudo Cache Management
+
+The project implements intelligent sudo cache management to improve the user experience during infrastructure provisioning:
+
+- **Automatic prompting**: Scripts will warn users before operations requiring sudo
+- **Cache preparation**: Sudo credentials are cached upfront to prevent interruptions
+- **Clean output**: Password prompts occur before main operations, not mixed with output
+- **Safe commands**: Uses `sudo -v` to cache credentials without executing privileged operations
+
+**Implementation details:**
+
+- Functions in `scripts/shell-utils.sh`: `ensure_sudo_cached()`, `is_sudo_cached()`, `run_with_sudo()`
+- Used in: `infrastructure/scripts/fix-volume-permissions.sh`, `infrastructure/scripts/provision-infrastructure.sh`, `tests/test-e2e.sh`
+- Cache duration: ~15 minutes (system default)
+
+**Testing the sudo cache:**
+
+```bash
+# Test sudo cache management functions
+./test-sudo-cache.sh
+```
 
 ### Security Guidelines
 
@@ -298,9 +437,10 @@ For verifying the functionality of the tracker from an end-user's perspective (e
 6. **Test a simple change**:
 
    ```bash
-   make apply        # Deploy test VM
+   make infra-apply  # Deploy test VM
+   make app-deploy   # Deploy application
    make ssh          # Verify access
-   make destroy      # Clean up
+   make infra-destroy # Clean up
    ```
 
 7. **Review existing issues**: Check [GitHub Issues](https://github.com/torrust/torrust-tracker-demo/issues) for good first contributions
@@ -310,7 +450,12 @@ For verifying the functionality of the tracker from an end-user's perspective (e
 1. **Local testing first**: Always test infrastructure changes locally
 2. **Validate syntax**: Run `make test-syntax` before committing
 3. **Document changes**: Update relevant documentation
-4. **Test end-to-end**: Ensure the full deployment pipeline works
+4. **Test twelve-factor workflow**: Ensure both infrastructure provisioning and application deployment work
+   ```bash
+   make infra-apply   # Test infrastructure provisioning
+   make app-deploy    # Test application deployment
+   make health-check  # Validate services
+   ```
 
 ### For AI Assistants
 
@@ -327,7 +472,7 @@ When providing assistance:
 
 Be mindful of the execution context for different types of commands. The project uses several command-line tools that must be run from specific directories:
 
-- **`make` commands**: (e.g., `make help`, `make status`) must be run from the project root directory.
+- **`make` commands**: (e.g., `make help`, `make infra-status`) must be run from the project root directory.
 - **OpenTofu commands**: (e.g., `tofu init`, `tofu plan`, `tofu apply`) must be run from the `infrastructure/terraform/` directory.
 - **Docker Compose commands**: (e.g., `docker compose up -d`, `docker compose ps`) are intended to be run _inside the deployed virtual machine_, typically from the `/home/torrust/github/torrust/torrust-tracker-demo/application` directory.
 
@@ -421,19 +566,22 @@ This ensures that the command is executed and its output is returned to the prim
 
 **Commit Signing Requirement**: All commits MUST be signed with GPG. When performing git commits, always use the default git commit behavior (which will trigger GPG signing) rather than `--no-gpg-sign`.
 
-**Pre-commit Linting Requirement**: ALWAYS run the linting script before committing any changes:
+**Pre-commit Testing Requirement**: ALWAYS run the CI test suite before committing any changes:
 
 ```bash
-./scripts/lint.sh
+make test-ci
 ```
 
-This script validates:
+This command runs all unit tests that don't require a virtual machine, including:
 
-- YAML files with yamllint
-- Shell scripts with ShellCheck
-- Markdown files with markdownlint
+- **Linting validation**: YAML files (yamllint), shell scripts (ShellCheck), markdown files (markdownlint)
+- **Infrastructure tests**: Terraform/OpenTofu syntax, cloud-init templates, infrastructure scripts
+- **Application tests**: Docker Compose syntax, application configuration, deployment scripts
+- **Project tests**: Makefile syntax, project structure, tool requirements, documentation structure
 
-Only commit if all linting checks pass. If linting fails, fix the issues before committing.
+Only commit if all CI tests pass. If any tests fail, fix the issues before committing.
+
+**Note**: End-to-end tests (`make test`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
 
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 

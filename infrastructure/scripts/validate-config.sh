@@ -8,37 +8,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 # Default values
 ENVIRONMENT="${1:-local}"
 VERBOSE="${VERBOSE:-false}"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Logging functions
-log() {
-    echo -e "$1"
-}
-
-log_info() {
-    log "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    log "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    log "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    log "${RED}[ERROR]${NC} $1" >&2
-}
+# Source shared shell utilities
+# shellcheck source=../../scripts/shell-utils.sh
+source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
 # Check if required tools are available
 check_dependencies() {

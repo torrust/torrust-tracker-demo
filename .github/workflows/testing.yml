@@ -7,19 +7,24 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint:
+  ci-tests:
     runs-on: ubuntu-latest
+    name: CI-Compatible Tests
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install linting tools
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y yamllint shellcheck
+          sudo apt-get install -y yamllint shellcheck docker-compose
           sudo npm install -g markdownlint-cli
 
-      - name: Run linting script
-        run: |
-          ./scripts/lint.sh
+          # Install OpenTofu
+          curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+          chmod +x install-opentofu.sh
+          sudo ./install-opentofu.sh --install-method deb
+
+      - name: Run CI test suite
+        run: make test-ci

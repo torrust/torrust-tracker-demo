@@ -14,6 +14,16 @@
 #   log_success "Operation completed successfully"
 #   log_warning "This is a warning"
 #   log_error "This is an error"
+#
+#   # Use HTTP testing:
+#   result=$(test_http_endpoint "http://example.com" "expected content")
+#   if [[ "$result" == "success" ]]; then echo "Endpoint working"; fi
+#
+#   # Use retry logic:
+#   retry_with_timeout "Testing connection" 5 2 "ping -c1 example.com >/dev/null"
+#
+#   # Time operations:
+#   time_operation "Deployment" "make deploy"
 
 # Shared shell utilities - can be sourced multiple times safely
 export SHELL_UTILS_LOADED=1
@@ -212,6 +222,14 @@ ${BLUE}ENVIRONMENT VARIABLES:${NC}
     TRACE                   Set to 'true' to enable trace logging
     DRY_RUN                 Set to 'true' to show commands without executing
 
+${BLUE}AVAILABLE FUNCTIONS:${NC}
+    Logging: log_info, log_success, log_warning, log_error, log_debug, log_trace
+    HTTP Testing: test_http_endpoint <url> [expected_content] [timeout]
+    Retry Logic: retry_with_timeout <description> <max_attempts> <sleep_interval> <command>
+    Timing: time_operation <operation_name> <command>
+    Sudo Management: ensure_sudo_cached, run_with_sudo, clear_sudo_cache
+    Utilities: command_exists, safe_cd, execute_with_log, require_env_vars
+
 ${BLUE}EXAMPLES:${NC}
     # Enable logging to file
     export SHELL_UTILS_LOG_FILE="/tmp/my-script.log"
@@ -219,8 +237,16 @@ ${BLUE}EXAMPLES:${NC}
     # Enable debug mode
     export DEBUG=true
     
-    # Dry run mode
-    export DRY_RUN=true
+    # Test HTTP endpoint
+    if [[ \$(test_http_endpoint "https://example.com" "success") == "success" ]]; then
+        log_success "Endpoint is working"
+    fi
+    
+    # Retry with timeout
+    retry_with_timeout "Testing connection" 5 2 "ping -c1 example.com >/dev/null"
+    
+    # Time an operation
+    time_operation "Deployment" "make deploy"
 
 EOF
 }
@@ -273,4 +299,74 @@ run_with_sudo() {
 clear_sudo_cache() {
     sudo -k
     log_debug "Sudo credentials cache cleared"
+}
+
+# HTTP and Network Testing Functions
+
+# Test HTTP endpoints with optional content validation
+test_http_endpoint() {
+    local url="$1"
+    local expected_content="$2"
+    local timeout="${3:-5}"
+
+    local response
+    response=$(curl -f -s --max-time "${timeout}" "${url}" 2>/dev/null || echo "")
+
+    if [[ -n "${expected_content}" ]] && echo "${response}" | grep -q "${expected_content}"; then
+        echo "success"
+    elif [[ -z "${expected_content}" ]] && [[ -n "${response}" ]]; then
+        echo "success"
+    else
+        echo "failed"
+    fi
+}
+
+# Retry Logic and Timing Functions
+
+# Execute a command with retry logic and configurable parameters
+retry_with_timeout() {
+    local description="$1"
+    local max_attempts="$2"
+    local sleep_interval="$3"
+    local test_command="$4"
+
+    local attempt=1
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "${description} (attempt ${attempt}/${max_attempts})..."
+
+        if eval "${test_command}"; then
+            return 0
+        fi
+
+        if [[ ${attempt} -eq ${max_attempts} ]]; then
+            log_error "${description} failed after ${max_attempts} attempts"
+            return 1
+        fi
+
+        sleep "${sleep_interval}"
+        ((attempt++))
+    done
+}
+
+# Time an operation and log the duration
+time_operation() {
+    local operation_name="$1"
+    local command="$2"
+
+    local start_time
+    start_time=$(date +%s)
+
+    if eval "${command}"; then
+        local end_time
+        end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        log_success "${operation_name} completed successfully in ${duration} seconds"
+        return 0
+    else
+        local end_time
+        end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        log_error "${operation_name} failed after ${duration} seconds"
+        return 1
+    fi
 }

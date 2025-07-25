@@ -66,7 +66,7 @@ get_vm_ip() {
     echo "${vm_ip}"
 }
 
-# Test SSH connectivity
+# Test SSH connectivity and wait for system readiness
 test_ssh_connection() {
     local vm_ip="$1"
     local max_attempts=5
@@ -90,6 +90,70 @@ test_ssh_connection() {
     log_error "  1. VM is running: virsh list"
     log_error "  2. SSH service is ready (may take 2-3 minutes after VM start)"
     log_error "  3. SSH key is correct"
+    exit 1
+}
+
+# Wait for cloud-init and Docker to be ready
+wait_for_system_ready() {
+    local vm_ip="$1"
+    local max_attempts=30 # 15 minutes (30 * 30 seconds) for cloud-init completion
+    local attempt=1
+
+    log_info "Waiting for system initialization (cloud-init and Docker) to complete..."
+
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "Checking system readiness (attempt ${attempt}/${max_attempts})..."
+
+        # Check if cloud-init is done
+        cloud_init_status=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cloud-init status" 2>/dev/null || echo "failed")
+
+        if [[ "${cloud_init_status}" == *"done"* ]]; then
+            log_info "Cloud-init completed: ${cloud_init_status}"
+
+            # Check if Docker is available
+            docker_available=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "docker --version >/dev/null 2>&1 && echo 'available' || echo 'not-available'" 2>/dev/null || echo "not-available")
+
+            if [[ "${docker_available}" == "available" ]]; then
+                # Check if Docker daemon is running
+                docker_running=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "docker info >/dev/null 2>&1 && echo 'running' || echo 'not-running'" 2>/dev/null || echo "not-running")
+
+                if [[ "${docker_running}" == "running" ]]; then
+                    log_success "System is ready: cloud-init done, Docker available and running"
+                    return 0
+                else
+                    log_info "Docker installed but daemon not running yet, waiting..."
+                fi
+            else
+                log_info "Docker not available yet, cloud-init may still be installing it..."
+            fi
+        else
+            log_info "Cloud-init status: ${cloud_init_status}, waiting for completion..."
+        fi
+
+        log_info "System not ready yet. Retrying in 30 seconds..."
+        sleep 30
+        ((attempt++))
+    done
+
+    log_error "Timeout waiting for system to be ready after ${max_attempts} attempts (15 minutes)"
+    log_error "Cloud-init may have failed or Docker installation encountered issues"
+
+    # Show diagnostic information
+    vm_exec "${vm_ip}" "
+        echo '=== System Diagnostic Information ==='
+        echo 'Cloud-init status:'
+        cloud-init status --long || echo 'cloud-init command failed'
+        echo ''
+        echo 'Docker version:'
+        docker --version || echo 'Docker not available'
+        echo ''
+        echo 'Docker service status:'
+        systemctl status docker || echo 'Docker service status unavailable'
+        echo ''
+        echo 'Recent cloud-init logs:'
+        tail -20 /var/log/cloud-init.log || echo 'Cloud-init logs unavailable'
+    " "Dumping diagnostic information"
+
     exit 1
 }
 
@@ -132,8 +196,31 @@ release_stage() {
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
 
-    # Remove existing directory if it exists
-    vm_exec "${vm_ip}" "test -d /home/torrust/github/torrust/torrust-tracker-demo && rm -rf /home/torrust/github/torrust/torrust-tracker-demo || true" "Removing existing repository"
+    # Check if we need to preserve storage before removing repository
+    storage_exists=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
+        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
+            echo 'true'
+        else
+            echo 'false'
+        fi
+    " 2>/dev/null || echo "false")
+
+    if [[ "${storage_exists}" == "true" ]]; then
+        log_warning "Preserving existing storage folder with persistent data"
+    fi
+
+    # Handle existing repository - preserve storage folder if it exists
+    vm_exec "${vm_ip}" "
+        if [ -d /home/torrust/github/torrust/torrust-tracker-demo ]; then
+            if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
+                # Move storage folder to temporary location
+                mv /home/torrust/github/torrust/torrust-tracker-demo/application/storage /tmp/torrust-storage-backup-\$(date +%s) || true
+            fi
+            
+            # Remove the repository directory (excluding storage)
+            rm -rf /home/torrust/github/torrust/torrust-tracker-demo
+        fi
+    " "Removing existing repository (preserving storage)"
 
     # Copy archive to VM
     if ! scp -o StrictHostKeyChecking=no "${temp_archive}" "torrust@${vm_ip}:/tmp/"; then
@@ -146,6 +233,28 @@ release_stage() {
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mkdir -p torrust-tracker-demo" "Creating repository directory"
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && tar -xzf /tmp/$(basename "${temp_archive}")" "Extracting repository"
     vm_exec "${vm_ip}" "rm -f /tmp/$(basename "${temp_archive}")" "Cleaning up temp files"
+
+    # Restore storage folder if it was backed up
+    vm_exec "${vm_ip}" "
+        storage_backup=\$(ls /tmp/torrust-storage-backup-* 2>/dev/null | head -1 || echo '')
+        if [ -n \"\$storage_backup\" ] && [ -d \"\$storage_backup\" ]; then
+            rm -rf /home/torrust/github/torrust/torrust-tracker-demo/application/storage
+            mv \"\$storage_backup\" /home/torrust/github/torrust/torrust-tracker-demo/application/storage
+        fi
+    " "Restoring preserved storage folder"
+
+    # Check if storage was restored and log appropriately
+    storage_restored=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
+        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/mysql ] || [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/tracker ]; then
+            echo 'true'
+        else
+            echo 'false'
+        fi
+    " 2>/dev/null || echo "false")
+
+    if [[ "${storage_restored}" == "true" ]]; then
+        log_info "Storage folder restored with existing persistent data"
+    fi
 
     # Clean up local temp file
     rm -f "${temp_archive}"
@@ -182,6 +291,98 @@ release_stage() {
     log_success "Release stage completed"
 }
 
+# Wait for services to become healthy
+wait_for_services() {
+    local vm_ip="$1"
+    local max_attempts=60 # 10 minutes (60 * 10 seconds) - increased for MySQL initialization
+    local attempt=1
+
+    log_info "Waiting for application services to become healthy..."
+
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "Checking container status (attempt ${attempt}/${max_attempts})..."
+
+        # Get container status with service names only
+        services=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --services" 2>/dev/null || echo "SSH_FAILED")
+
+        if [[ "${services}" == "SSH_FAILED" ]]; then
+            log_warning "SSH connection failed while checking container status. Retrying in 10 seconds..."
+            sleep 10
+            ((attempt++))
+            continue
+        fi
+
+        if [[ -z "${services}" ]]; then
+            log_warning "Could not get container status. Services might not be running yet. Retrying in 10 seconds..."
+            sleep 10
+            ((attempt++))
+            continue
+        fi
+
+        log_info "Found services: $(echo "${services}" | wc -l) services"
+
+        all_healthy=true
+        container_count=0
+
+        while IFS= read -r service_name; do
+            [[ -z "$service_name" ]] && continue # Skip empty lines
+            container_count=$((container_count + 1))
+
+            # Get the container state and health for this service
+            container_info=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps ${service_name} --format '{{.State}}'" 2>/dev/null)
+            health_status=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker inspect ${service_name} --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' 2>/dev/null" || echo "no-healthcheck")
+
+            # Clean up output
+            container_info=$(echo "${container_info}" | tr -d '\n\r' | xargs)
+            health_status=$(echo "${health_status}" | tr -d '\n\r' | xargs)
+
+            # Check if container is running
+            if [[ "${container_info}" != "running" ]]; then
+                log_info "Service '${service_name}': ${container_info} - not running yet"
+                all_healthy=false
+                continue
+            fi
+
+            # If container is running, check health status
+            case "${health_status}" in
+            "healthy")
+                log_info "Service '${service_name}': running ✓ (healthy)"
+                ;;
+            "no-healthcheck")
+                log_info "Service '${service_name}': running ✓ (no health check)"
+                ;;
+            "starting")
+                log_info "Service '${service_name}': running (health check starting) - waiting..."
+                all_healthy=false
+                ;;
+            "unhealthy")
+                log_warning "Service '${service_name}': running (unhealthy) - waiting for recovery..."
+                all_healthy=false
+                ;;
+            *)
+                log_info "Service '${service_name}': running (health: ${health_status}) - waiting..."
+                all_healthy=false
+                ;;
+            esac
+        done <<<"${services}"
+
+        log_info "Checked ${container_count} containers, all_healthy=${all_healthy}"
+
+        if ${all_healthy}; then
+            log_success "All application services are healthy and ready."
+            return 0
+        fi
+
+        log_info "Not all services are healthy. Retrying in 10 seconds..."
+        sleep 10
+        ((attempt++))
+    done
+
+    log_error "Timeout waiting for services to become healthy after ${max_attempts} attempts."
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps && docker compose logs" "Dumping logs on failure"
+    exit 1
+}
+
 # RUN STAGE: Start application processes
 run_stage() {
     local vm_ip="$1"
@@ -210,8 +411,7 @@ run_stage() {
     " "Starting application services"
 
     # Wait for services to initialize
-    log_info "Waiting for services to initialize (30 seconds)..."
-    sleep 30
+    wait_for_services "${vm_ip}"
 
     log_success "Run stage completed"
 }
@@ -222,25 +422,47 @@ validate_deployment() {
 
     log_info "=== DEPLOYMENT VALIDATION ==="
 
-    # Check service status
+    # Check service status with detailed output
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
-        echo '=== Docker Compose Services ==='
+        echo '=== Docker Compose Services (Detailed Status) ==='
+        docker compose ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
+        
+        echo ''
+        echo '=== Docker Compose Services (Default Format) ==='
         docker compose ps
         
-        echo '=== Service Logs (last 10 lines) ==='
+        echo ''
+        echo '=== Container Health Check Details ==='
+        # Show health status for each container
+        for container in \$(docker compose ps --format '{{.Name}}'); do
+            echo \"Container: \$container\"
+            state=\$(docker inspect \$container --format '{{.State.Status}}')
+            health=\$(docker inspect \$container --format '{{.State.Health.Status}}' 2>/dev/null || echo 'no-healthcheck')
+            echo \"  State: \$state\"
+            echo \"  Health: \$health\"
+            
+            # Show health check logs for problematic containers
+            if [ \"\$health\" = \"unhealthy\" ] || [ \"\$health\" = \"starting\" ]; then
+                echo \"  Health check output (last 3 attempts):\"
+                docker inspect \$container --format '{{range .State.Health.Log}}    {{.Start}}: {{.Output}}{{end}}' 2>/dev/null | tail -3 || echo \"    No health check logs available\"
+            fi
+            echo ''
+        done
+        
+        echo '=== Service Logs (last 10 lines each) ==='
         docker compose logs --tail=10
-    " "Checking service status"
+    " "Checking detailed service status"
 
     # Test application endpoints
     vm_exec "${vm_ip}" "
         echo '=== Testing Application Endpoints ==='
         
-        # Test health check endpoint (through nginx proxy)
+        # Test global health check endpoint (through nginx proxy)
         if curl -f -s http://localhost/health_check >/dev/null 2>&1; then
-            echo '✅ Health check endpoint: OK'
+            echo '✅ Global health check endpoint: OK'
         else
-            echo '❌ Health check endpoint: FAILED'
+            echo '❌ Global health check endpoint: FAILED'
             exit 1
         fi
         
@@ -299,6 +521,7 @@ main() {
     vm_ip=$(get_vm_ip)
 
     test_ssh_connection "${vm_ip}"
+    wait_for_system_ready "${vm_ip}"
     release_stage "${vm_ip}"
     run_stage "${vm_ip}"
 

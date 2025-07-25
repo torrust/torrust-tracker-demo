@@ -162,11 +162,8 @@ test_application_deployment() {
         return 1
     fi
 
-    # Wait for application services to be healthy
-    if ! wait_for_app_deployment_to_finish; then
-        log_error "Application services not healthy after deployment"
-        return 1
-    fi
+    # Note: app-deploy includes health validation via validate_deployment function
+    log_info "Application deployment completed with built-in health validation"
 
     local end_time
     end_time=$(date +%s)
@@ -375,7 +372,7 @@ show_password_warning() {
 
     # Prompt for continuation
     if [[ "${SKIP_CONFIRMATION:-false}" != "true" ]]; then
-        printf '%sDo you want to continue with the E2E test? [Y/n]: %s' "${YELLOW}" "${NC}"
+        echo -e -n "${YELLOW}Do you want to continue with the E2E test? [Y/n]: ${NC}"
         read -r response
         case "${response}" in
         [nN] | [nN][oO])
@@ -484,69 +481,6 @@ wait_for_cloud_init_to_finish() {
 
     log_error "Timeout waiting for cloud-init to finish after $((max_attempts * 10)) seconds"
     log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status'"
-    return 1
-}
-
-# Wait for application deployment to finish (healthy containers)
-wait_for_app_deployment_to_finish() {
-    log_info "Waiting for application services to become healthy..."
-    local max_attempts=15 # 2.5 minutes total
-    local attempt=1
-    local vm_ip=""
-
-    # First get the VM IP
-    vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
-    if [[ -z "${vm_ip}" ]]; then
-        log_error "VM IP not available - cannot check application health"
-        return 1
-    fi
-
-    log_info "VM IP: ${vm_ip} - checking Docker container health..."
-
-    while [[ ${attempt} -le ${max_attempts} ]]; do
-        log_info "Checking container health (attempt ${attempt}/${max_attempts})..."
-
-        local ps_output
-        if ! ps_output=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --filter status=running" 2>&1); then
-            log_warning "Could not get container status via ssh. Retrying..."
-            sleep 10
-            ((attempt++))
-            continue
-        fi
-
-        log_info "Current container status:"
-        echo "${ps_output}"
-
-        if echo "${ps_output}" | grep -q '(unhealthy)'; then
-            log_info "Unhealthy containers found, waiting 10 seconds..."
-            log_info "Unhealthy details:"
-            echo "${ps_output}" | grep '(unhealthy)'
-        else
-            # No unhealthy containers, check if required ones are healthy
-            local healthy_count=0
-            if echo "${ps_output}" | grep 'mysql' | grep -q '(healthy)'; then
-                ((healthy_count++))
-            fi
-            if echo "${ps_output}" | grep 'tracker' | grep -q '(healthy)'; then
-                ((healthy_count++))
-            fi
-
-            if [[ ${healthy_count} -ge 2 ]]; then
-                log_success "All services with healthchecks (mysql, tracker) are healthy"
-                log_success "Application deployment finished successfully"
-                return 0
-            else
-                log_info "Waiting for mysql and tracker to become healthy (${healthy_count}/2)..."
-            fi
-        fi
-
-        sleep 10
-        ((attempt++))
-    done
-
-    log_error "Timeout waiting for application services to be healthy after $((max_attempts * 10)) seconds"
-    log_info "Final container status:"
-    ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps" || true
     return 1
 }
 

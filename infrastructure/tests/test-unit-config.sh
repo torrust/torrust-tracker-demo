@@ -63,6 +63,15 @@ test_terraform_syntax() {
 
     # Test Terraform syntax
     if command -v tofu >/dev/null 2>&1; then
+        # Initialize if not already done (required for validation)
+        if [[ ! -d ".terraform" ]]; then
+            log_info "Initializing OpenTofu (required for validation)..."
+            if ! tofu init >/dev/null 2>&1; then
+                log_error "OpenTofu initialization failed"
+                return 1
+            fi
+        fi
+
         if ! tofu validate >/dev/null 2>&1; then
             log_error "OpenTofu validation failed"
             failed=1
@@ -70,6 +79,15 @@ test_terraform_syntax() {
             log_success "OpenTofu configuration is valid"
         fi
     elif command -v terraform >/dev/null 2>&1; then
+        # Initialize if not already done (required for validation)
+        if [[ ! -d ".terraform" ]]; then
+            log_info "Initializing Terraform (required for validation)..."
+            if ! terraform init >/dev/null 2>&1; then
+                log_error "Terraform initialization failed"
+                return 1
+            fi
+        fi
+
         if ! terraform validate >/dev/null 2>&1; then
             log_error "Terraform validation failed"
             failed=1

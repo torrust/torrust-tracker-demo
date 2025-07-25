@@ -71,11 +71,11 @@ test_provision_infrastructure_error_handling() {
         log_success "Script properly handles missing parameters"
     fi
 
-    # Test with insufficient parameters
-    if "${SCRIPT_PATH}" "local" >/dev/null 2>&1; then
-        log_warning "Script should fail with insufficient parameters"
+    # Test with insufficient parameters (invalid environment to avoid sudo)
+    if "${SCRIPT_PATH}" "invalid-env" >/dev/null 2>&1; then
+        log_warning "Script should fail with invalid environment"
     else
-        log_success "Script properly handles insufficient parameters"
+        log_success "Script properly handles invalid environment"
     fi
 
     return ${failed}

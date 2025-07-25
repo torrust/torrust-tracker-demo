@@ -20,6 +20,52 @@ following twelve-factor principles for better maintainability and deployment rel
 
 ---
 
+## Automated Testing Alternative
+
+**For automated testing**, you can use the end-to-end test script that implements this exact workflow:
+
+```bash
+# Run the automated version of this guide
+./tests/test-e2e.sh
+```
+
+The automated test script (`tests/test-e2e.sh`) follows the same steps described in this guide:
+
+- **Step 1**: Prerequisites validation
+- **Step 2**: Infrastructure provisioning (`make infra-apply`)
+- **Step 3**: Application deployment (`make app-deploy`)
+- **Step 4**: Health validation (`make health-check`)
+- **Step 5**: Smoke testing (basic functionality validation)
+- **Step 6**: Cleanup (`make infra-destroy`)
+
+**Benefits of the automated test**:
+
+- ✅ **Consistent execution** - No manual errors or missed steps
+- ✅ **Comprehensive logging** - All output saved to `/tmp/torrust-e2e-test.log`
+- ✅ **Smoke testing included** - Additional tracker functionality validation
+- ✅ **Time tracking** - Reports duration of each stage
+- ✅ **CI/CD integration** - Can be used in automated pipelines
+
+**When to use automated vs manual**:
+
+- **Use automated** (`./tests/test-e2e.sh`) for: CI/CD, quick validation, consistent testing
+- **Use this manual guide** for: Learning the workflow, debugging issues, understanding individual steps
+
+**Environment variables for automated testing**:
+
+```bash
+# Skip cleanup (leave infrastructure running for inspection)
+SKIP_CLEANUP=true ./tests/test-e2e.sh
+
+# Skip confirmation prompt (for CI/CD)
+SKIP_CONFIRMATION=true ./tests/test-e2e.sh
+```
+
+Continue with the manual guide below if you want to understand each step in detail
+or need to debug specific issues.
+
+---
+
 ## Prerequisites
 
 Ensure you have completed the initial setup:
@@ -418,6 +464,27 @@ If any step fails, see the troubleshooting section in each script's help:
 You have successfully tested the complete twelve-factor deployment workflow
 for the Torrust Tracker Demo. The application is now running and validated
 on a fresh virtual machine.
+
+## Automated Testing
+
+**Tip**: For future testing, consider using the automated version of this guide:
+
+```bash
+# Run the same workflow automatically
+./tests/test-e2e.sh
+
+# With cleanup skipped (for inspection)
+SKIP_CLEANUP=true ./tests/test-e2e.sh
+```
+
+The automated test (`tests/test-e2e.sh`) performs the exact same steps as this manual guide,
+with additional smoke testing and comprehensive logging. It's perfect for:
+
+- **CI/CD pipelines** - Automated validation
+- **Quick testing** - Consistent execution without manual errors
+- **Regression testing** - Verify changes don't break the workflow
+
+---
 
 **Expected Output**: All checks should show "✅" (no conflicts).
 

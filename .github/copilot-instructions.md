@@ -542,19 +542,22 @@ This ensures that the command is executed and its output is returned to the prim
 
 **Commit Signing Requirement**: All commits MUST be signed with GPG. When performing git commits, always use the default git commit behavior (which will trigger GPG signing) rather than `--no-gpg-sign`.
 
-**Pre-commit Linting Requirement**: ALWAYS run the linting script before committing any changes:
+**Pre-commit Testing Requirement**: ALWAYS run the CI test suite before committing any changes:
 
 ```bash
-./scripts/lint.sh
+make test-ci
 ```
 
-This script validates:
+This command runs all unit tests that don't require a virtual machine, including:
 
-- YAML files with yamllint
-- Shell scripts with ShellCheck
-- Markdown files with markdownlint
+- **Linting validation**: YAML files (yamllint), shell scripts (ShellCheck), markdown files (markdownlint)
+- **Infrastructure tests**: Terraform/OpenTofu syntax, cloud-init templates, infrastructure scripts
+- **Application tests**: Docker Compose syntax, application configuration, deployment scripts
+- **Project tests**: Makefile syntax, project structure, tool requirements, documentation structure
 
-Only commit if all linting checks pass. If linting fails, fix the issues before committing.
+Only commit if all CI tests pass. If any tests fail, fix the issues before committing.
+
+**Note**: End-to-end tests (`make test`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
 
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 

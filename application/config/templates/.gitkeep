@@ -1,0 +1,3 @@
+# This file ensures the templates directory is tracked by Git
+# Template files for application configuration will be stored here
+# as part of the twelve-factor app configuration management system

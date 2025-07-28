@@ -35,8 +35,10 @@ help: ## Show this help message
 	@echo "🖥️  VM ACCESS:"
 	@awk 'BEGIN {FS = ":.*?## "} /^vm-.*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "🧪 GLOBAL TESTING:"
+	@echo "🧪 TESTING (3-LAYER ARCHITECTURE):"
 	@awk 'BEGIN {FS = ":.*?## "} /^test.*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^infra-test.*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^app-test.*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "⚙️  SYSTEM SETUP:"
 	@awk 'BEGIN {FS = ":.*?## "} /^(install-deps|clean).*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -99,9 +101,10 @@ infra-test-prereq: ## Test system prerequisites for development
 	@echo "Testing prerequisites..."
 	$(INFRA_TESTS_DIR)/test-unit-infrastructure.sh vm-prereq
 
-infra-test-ci: ## Run infrastructure CI-compatible tests
-	@echo "Running infrastructure CI-compatible tests..."
-	$(INFRA_TESTS_DIR)/test-ci.sh
+infra-test-ci: ## Run infrastructure-only CI tests (no global concerns)
+	@echo "Running infrastructure-only CI tests..."
+	$(INFRA_TESTS_DIR)/test-unit-config.sh
+	$(INFRA_TESTS_DIR)/test-unit-scripts.sh
 
 infra-test-local: ## Run local-only infrastructure tests (requires virtualization)
 	@echo "Running local-only infrastructure tests..."
@@ -134,6 +137,10 @@ app-test-containers: ## Test application containers
 app-test-services: ## Test application services
 	@echo "Testing application services..."
 	$(TESTS_DIR)/test-unit-application.sh services
+
+app-test-ci: ## Run application-only CI tests (no global concerns)
+	@echo "Running application-only CI tests..."
+	application/tests/test-ci.sh
 
 # =============================================================================
 # VM ACCESS AND DEBUGGING
@@ -212,6 +219,16 @@ test-e2e: ## Run comprehensive end-to-end test (follows integration guide)
 	@echo "Running comprehensive end-to-end test..."
 	$(TESTS_DIR)/test-e2e.sh $(ENVIRONMENT)
 
+test-ci: ## Run project-wide CI tests (global concerns)
+	@echo "Running project-wide CI tests..."
+	@echo "1. Global concerns (syntax, structure, Makefile)..."
+	tests/test-ci.sh
+	@echo "2. Infrastructure layer tests..."
+	@make infra-test-ci
+	@echo "3. Application layer tests..."
+	@make app-test-ci
+	@echo "✅ All CI tests passed!"
+	
 test-unit: ## Run unit tests (configuration, scripts, syntax)
 	@echo "Running unit tests..."
 	@echo "1. Configuration and syntax validation..."
@@ -228,3 +245,4 @@ clean: ## Clean up temporary files and caches
 	@rm -rf $(TERRAFORM_DIR)/.terraform
 	@rm -f $(TERRAFORM_DIR)/terraform.tfstate.backup
 	@echo "Clean completed"
+

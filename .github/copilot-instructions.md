@@ -348,6 +348,66 @@ The project includes a comprehensive linting script that validates all file type
 - **No secrets**: Never commit SSH keys, passwords, or tokens
 - **Documentation**: Update docs for any infrastructure changes
 
+#### Three-Layer Testing Architecture
+
+**CRITICAL**: This project uses a strict three-layer testing architecture.
+**Never mix concerns across layers**:
+
+**1. Project-Wide/Global Layer** (`tests/` folder)
+
+- **Command**: `make test-ci`
+- **Scope**: Cross-cutting concerns that span all layers
+- **Responsibilities**:
+  - Global syntax validation (`make lint` / `./scripts/lint.sh`)
+  - Project structure validation (`tests/test-unit-project.sh`)
+  - Makefile validation
+  - Orchestrates infrastructure and application layer tests
+
+**2. Infrastructure Layer** (`infrastructure/` folder)
+
+- **Command**: `make infra-test-ci`
+- **Scope**: Infrastructure-specific validation ONLY
+- **Responsibilities**:
+  - Terraform/OpenTofu syntax validation
+  - Cloud-init template validation
+  - Infrastructure script validation
+  - Infrastructure configuration validation
+- **NEVER**: Call global commands like `make lint` from infrastructure tests
+
+**3. Application Layer** (`application/` folder)
+
+- **Command**: `make app-test-ci`
+- **Scope**: Application-specific validation ONLY
+- **Responsibilities**:
+  - Docker Compose syntax validation
+  - Application configuration validation
+  - Deployment script validation
+  - Grafana dashboard validation
+- **NEVER**: Call global commands like `make lint` from application tests
+
+**Testing Hierarchy:**
+
+```text
+make test-ci (Project-wide orchestrator)
+├── Global concerns (syntax, structure, Makefile)
+├── make infra-test-ci (Infrastructure layer only)
+└── make app-test-ci (Application layer only)
+```
+
+**Common Mistake to Avoid:**
+
+- ❌ Adding `make lint` calls inside `infrastructure/tests/test-ci.sh`
+- ❌ Testing application concerns from infrastructure tests
+- ❌ Testing infrastructure concerns from application tests
+- ✅ Keep each layer focused on its own responsibilities only
+- ✅ Use `make test-ci` for complete validation that orchestrates all layers
+
+**GitHub Actions Integration:**
+
+- Uses `make test-ci` (not `make infra-test-ci`) to ensure all layers are tested
+- Runs without virtualization (CI-compatible)
+- Maintains separation of concerns for maintainable testing
+
 #### End-to-End Smoke Testing
 
 For verifying the functionality of the tracker from an end-user's perspective (e.g., simulating announce/scrape requests), refer to the **Smoke Testing Guide**. This guide explains how to use the official `torrust-tracker-client` tools to perform black-box testing against a running tracker instance without needing a full BitTorrent client.
@@ -466,6 +526,27 @@ When providing assistance:
 - Test infrastructure changes locally before suggesting them
 - Provide clear explanations and documentation
 - Consider the migration to Hetzner infrastructure in suggestions
+- **CRITICAL**: Respect the three-layer testing architecture (see Testing Requirements above)
+
+#### Testing Layer Separation (CRITICAL)
+
+**NEVER** mix testing concerns across the three layers:
+
+- **Infrastructure tests** (`infrastructure/tests/`) should ONLY test infrastructure concerns
+- **Application tests** (`application/tests/`) should ONLY test application concerns
+- **Global tests** (`tests/`) handle cross-cutting concerns and orchestration
+
+**Common violations to avoid:**
+
+- ❌ Adding `make lint` calls in `infrastructure/tests/test-ci.sh`
+- ❌ Testing Docker Compose from infrastructure layer
+- ❌ Testing Terraform from application layer
+- ❌ Any layer calling commands from other layers directly
+
+**Always use the proper orchestrator:**
+
+- Use `make test-ci` for complete testing (orchestrates all layers)
+- Use layer-specific commands only when targeting that specific layer
 
 #### Command Execution Context
 

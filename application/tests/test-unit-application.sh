@@ -59,12 +59,19 @@ test_application_config() {
 
     local failed=0
     local config_files=(
-        ".env.production"
         "compose.yaml"
+    )
+
+    # Optional files (for development/local testing)
+    local optional_files=(
+        ".env"
+        ".env.production"
+        ".env.local"
     )
 
     cd "${APPLICATION_ROOT}"
 
+    # Check required configuration files
     for config_file in "${config_files[@]}"; do
         if [[ ! -f "${config_file}" ]]; then
             log_error "Required configuration file missing: ${config_file}"
@@ -73,6 +80,19 @@ test_application_config() {
             log_info "Found configuration file: ${config_file}"
         fi
     done
+
+    # Check optional configuration files (info only, no failure)
+    local env_file_found=false
+    for config_file in "${optional_files[@]}"; do
+        if [[ -f "${config_file}" ]]; then
+            log_info "Found optional configuration file: ${config_file}"
+            env_file_found=true
+        fi
+    done
+
+    if [[ "$env_file_found" = false ]]; then
+        log_info "No environment files found (normal for CI, generated during deployment)"
+    fi
 
     # Test that configuration templates exist
     local template_dir="${APPLICATION_ROOT}/config/templates"

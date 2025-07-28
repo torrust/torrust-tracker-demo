@@ -118,7 +118,6 @@ test_application_structure() {
         "compose.yaml"
         "config"
         "share"
-        "storage"
         "docs"
     )
 

@@ -33,7 +33,15 @@ users:
 # Disable SSH password authentication for security
 ssh_pwauth: false
 
-# Disk and filesystem configuration
+# Persistent data volume configuration
+# This configures the second disk (/dev/vdb) attached to the VM for persistent storage.
+# All application data that needs to survive VM destruction is stored here, including:
+# - Database data (MySQL)
+# - Application configuration files (.env, tracker.toml)
+# - SSL certificates and keys
+# - Logs and application state
+# - Prometheus metrics data
+# The volume is mounted at /var/lib/torrust and survives infrastructure recreation.
 disk_setup:
   /dev/vdb:
     table_type: gpt

@@ -14,7 +14,7 @@ MYSQL_USER=torrust
 MYSQL_PASSWORD=tracker_secret_local
 
 # Tracker API Token
-TRACKER_ADMIN_TOKEN=local-dev-admin-token-12345
+TRACKER_ADMIN_TOKEN=MyAccessToken
 
 # Grafana Admin Credentials
 GF_SECURITY_ADMIN_USER=admin

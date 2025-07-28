@@ -174,9 +174,9 @@ module "hetzner_infrastructure" {
 # Standardized outputs (regardless of provider)
 output "vm_ip" {
   value = var.infrastructure_provider == "local" ?
-    (length(module.local_infrastructure) > 0 ? 
+    (length(module.local_infrastructure) > 0 ?
      module.local_infrastructure[0].vm_ip : "No IP assigned yet") :
-    (length(module.hetzner_infrastructure) > 0 ? 
+    (length(module.hetzner_infrastructure) > 0 ?
      module.hetzner_infrastructure[0].vm_ip : "No IP assigned yet")
   description = "IP address of the created VM"
 }
@@ -190,9 +190,9 @@ output "vm_name" {
 
 output "connection_info" {
   value = var.infrastructure_provider == "local" ?
-    (length(module.local_infrastructure) > 0 ? 
+    (length(module.local_infrastructure) > 0 ?
      module.local_infrastructure[0].connection_info : "VM not created") :
-    (length(module.hetzner_infrastructure) > 0 ? 
+    (length(module.hetzner_infrastructure) > 0 ?
      module.hetzner_infrastructure[0].connection_info : "VM not created")
   description = "SSH connection command"
 }
@@ -526,7 +526,7 @@ resource "hcloud_server" "vm" {
   ssh_keys = [hcloud_ssh_key.torrust_key.id]
 
   user_data = templatefile(
-    "${path.module}/../../cloud-init/${var.use_minimal_config ? 
+    "${path.module}/../../cloud-init/${var.use_minimal_config ?
     "user-data-minimal.yaml.tpl" : "user-data.yaml.tpl"}", {
     ssh_public_key = var.ssh_public_key
   })

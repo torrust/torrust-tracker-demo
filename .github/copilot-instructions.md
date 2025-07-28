@@ -1,5 +1,26 @@
 # Torrust Tracker Demo - Contributor Guide
 
+## Table of Contents
+
+- [🎯 Project Overview](#-project-overview)
+  - [Current Major Initiative](#current-major-initiative)
+- [📁 Repository Structure](#-repository-structure)
+  - [Key Components](#key-components)
+- [🛠️ Development Workflow](#️-development-workflow)
+  - [Quick Start for Contributors](#quick-start-for-contributors)
+  - [Main Commands](#main-commands)
+- [📋 Conventions and Standards](#-conventions-and-standards)
+  - [Twelve-Factor App Principles](#twelve-factor-app-principles)
+  - [Git Workflow](#git-workflow)
+  - [Code Quality Standards](#code-quality-standards)
+  - [Testing Requirements](#testing-requirements)
+  - [Security Guidelines](#security-guidelines)
+- [🚀 Getting Started](#-getting-started)
+  - [For New Contributors](#for-new-contributors)
+  - [For Infrastructure Changes](#for-infrastructure-changes)
+  - [For AI Assistants](#for-ai-assistants)
+- [📖 Additional Resources](#-additional-resources)
+
 ## 🎯 Project Overview
 
 **Torrust Tracker Demo** is the complete production deployment configuration for running a live [Torrust Tracker](https://github.com/torrust/torrust-tracker) instance. This repository provides:

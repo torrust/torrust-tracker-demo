@@ -191,6 +191,11 @@ runcmd:
   # Set up log rotation for Docker
   - systemctl restart docker
 
+  # Create completion marker for robust cloud-init status detection
+  # This file indicates that ALL cloud-init setup tasks have completed successfully
+  - echo "Cloud-init setup completed at $(date)" > /var/lib/cloud/torrust-setup-complete
+  - chmod 644 /var/lib/cloud/torrust-setup-complete
+
 # Final message
 final_message: |
   Torrust Tracker Demo VM setup completed!

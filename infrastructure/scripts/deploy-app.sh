@@ -73,39 +73,49 @@ test_ssh_connection() {
     exit 1
 }
 
-# Wait for cloud-init and Docker to be ready
+# Wait for cloud-init to complete using robust detection method
 wait_for_system_ready() {
     local vm_ip="$1"
     local max_attempts=30 # 15 minutes (30 * 30 seconds) for cloud-init completion
     local attempt=1
 
-    log_info "Waiting for system initialization (cloud-init and Docker) to complete..."
+    log_info "Waiting for cloud-init to complete using robust detection method..."
 
     while [[ ${attempt} -le ${max_attempts} ]]; do
         log_info "Checking system readiness (attempt ${attempt}/${max_attempts})..."
 
-        # Check if cloud-init is done
+        # Primary check: Official cloud-init status
         cloud_init_status=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cloud-init status" 2>/dev/null || echo "failed")
 
         if [[ "${cloud_init_status}" == *"done"* ]]; then
             log_info "Cloud-init completed: ${cloud_init_status}"
 
-            # Check if Docker is available
-            docker_available=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "docker --version >/dev/null 2>&1 && echo 'available' || echo 'not-available'" 2>/dev/null || echo "not-available")
+            # Secondary check: Custom completion marker file
+            completion_marker_exists=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "test -f /var/lib/cloud/torrust-setup-complete && echo 'exists' || echo 'not-exists'" 2>/dev/null || echo "not-exists")
 
-            if [[ "${docker_available}" == "available" ]]; then
-                # Check if Docker daemon is running
-                docker_running=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "docker info >/dev/null 2>&1 && echo 'running' || echo 'not-running'" 2>/dev/null || echo "not-running")
+            if [[ "${completion_marker_exists}" == "exists" ]]; then
+                log_success "Setup completion marker found - all cloud-init tasks completed"
+                
+                # Tertiary check: Verify system services are ready (only if needed for deployment)
+                # Note: This check is deployment-specific, not cloud-init specific
+                systemd_ready=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "systemctl is-system-running --quiet && echo 'ready' || echo 'not-ready'" 2>/dev/null || echo "not-ready")
 
-                if [[ "${docker_running}" == "running" ]]; then
-                    log_success "System is ready: cloud-init done, Docker available and running"
+                if [[ "${systemd_ready}" == "ready" ]]; then
+                    log_success "System is fully ready for application deployment"
                     return 0
                 else
-                    log_info "Docker installed but daemon not running yet, waiting..."
+                    log_info "System services still starting up, waiting..."
                 fi
             else
-                log_info "Docker not available yet, cloud-init may still be installing it..."
+                log_info "Setup completion marker not found yet, cloud-init tasks may still be running..."
             fi
+        elif [[ "${cloud_init_status}" == *"error"* ]]; then
+            log_error "Cloud-init failed with error status: ${cloud_init_status}"
+            
+            # Show detailed error information
+            detailed_status=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cloud-init status --long" 2>/dev/null || echo "unknown")
+            log_error "Detailed cloud-init status: ${detailed_status}"
+            return 1
         else
             log_info "Cloud-init status: ${cloud_init_status}, waiting for completion..."
         fi
@@ -116,22 +126,22 @@ wait_for_system_ready() {
     done
 
     log_error "Timeout waiting for system to be ready after ${max_attempts} attempts (15 minutes)"
-    log_error "Cloud-init may have failed or Docker installation encountered issues"
+    log_error "Cloud-init may have failed or system setup encountered issues"
 
-    # Show diagnostic information
+    # Show diagnostic information using robust detection methods
     vm_exec "${vm_ip}" "
         echo '=== System Diagnostic Information ==='
         echo 'Cloud-init status:'
         cloud-init status --long || echo 'cloud-init command failed'
-        echo ''
-        echo 'Docker version:'
-        docker --version || echo 'Docker not available'
-        echo ''
-        echo 'Docker service status:'
-        systemctl status docker || echo 'Docker service status unavailable'
-        echo ''
-        echo 'Recent cloud-init logs:'
-        tail -20 /var/log/cloud-init.log || echo 'Cloud-init logs unavailable'
+        echo
+        echo 'Setup completion marker:'
+        ls -la /var/lib/cloud/torrust-setup-complete 2>/dev/null || echo 'Completion marker not found'
+        echo
+        echo 'Cloud-init logs (last 20 lines):'
+        tail -20 /var/log/cloud-init.log 2>/dev/null || echo 'Cloud-init log not available'
+        echo
+        echo 'System service status:'
+        systemctl is-system-running || echo 'System status check failed'
     " "Dumping diagnostic information"
 
     exit 1

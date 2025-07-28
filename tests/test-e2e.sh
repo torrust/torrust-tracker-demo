@@ -420,23 +420,36 @@ wait_for_cloud_init_to_finish() {
             continue
         fi
 
-        # Check if cloud-init has finished
+        # Primary check: Official cloud-init status
         local cloud_init_status
         cloud_init_status=$(ssh_to_vm "${vm_ip}" "cloud-init status" "2>/dev/null" || echo "unknown")
 
         if [[ "${cloud_init_status}" == *"done"* ]]; then
-            log_success "Cloud-init completed successfully"
+            log_success "Cloud-init reports completion: ${cloud_init_status}"
 
-            # Check if Docker is available and working
-            if ssh_to_vm "${vm_ip}" "docker --version && docker compose version"; then
-                log_success "Docker is ready and available"
-                log_success "VM is ready for application deployment"
-                return 0
+            # Secondary check: Custom completion marker file
+            if ssh_to_vm "${vm_ip}" "test -f /var/lib/cloud/torrust-setup-complete"; then
+                log_success "Setup completion marker found"
+                
+                # Tertiary check: Verify critical services are available
+                # Note: This is not tied to specific software, just basic system readiness
+                if ssh_to_vm "${vm_ip}" "systemctl is-active docker >/dev/null 2>&1"; then
+                    log_success "Critical services are active"
+                    log_success "VM is ready for application deployment"
+                    return 0
+                else
+                    log_info "Critical services not ready yet, waiting 10 seconds..."
+                fi
             else
-                log_info "Docker not ready yet, waiting 10 seconds..."
+                log_info "Setup completion marker not found yet, waiting 10 seconds..."
             fi
         elif [[ "${cloud_init_status}" == *"error"* ]]; then
-            log_error "Cloud-init failed with error status"
+            log_error "Cloud-init failed with error status: ${cloud_init_status}"
+            
+            # Try to get more detailed error information
+            local cloud_init_result
+            cloud_init_result=$(ssh_to_vm "${vm_ip}" "cloud-init status --long" "2>/dev/null" || echo "unknown")
+            log_error "Cloud-init detailed status: ${cloud_init_result}"
             return 1
         else
             log_info "Cloud-init status: ${cloud_init_status}, waiting 10 seconds..."
@@ -447,7 +460,7 @@ wait_for_cloud_init_to_finish() {
     done
 
     log_error "Timeout waiting for cloud-init to finish after $((max_attempts * 10)) seconds"
-    log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status'"
+    log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status --long'"
     return 1
 }
 

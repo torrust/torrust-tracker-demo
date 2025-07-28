@@ -653,7 +653,7 @@ time make configure-local
 - `infrastructure/cloud-init/` - VM provisioning files
 
 These files are generated from templates in `infrastructure/config/templates/` using
-values from `infrastructure/config/environments/local.env`.
+values from `infrastructure/config/environments/local.env.tpl`.
 
 ### 1.7.2 Validate Generated Configuration
 

@@ -17,6 +17,22 @@ VERBOSE="${VERBOSE:-false}"
 # shellcheck source=../../scripts/shell-utils.sh
 source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
+# Setup local environment from template
+setup_local_environment() {
+    local env_file="${CONFIG_DIR}/environments/local.env"
+    local template_file="${CONFIG_DIR}/environments/local.env.tpl"
+
+    # Always regenerate local.env from template for consistency
+    if [[ ! -f "${template_file}" ]]; then
+        log_error "Local template not found: ${template_file}"
+        exit 1
+    fi
+
+    log_info "Creating local.env from template..."
+    cp "${template_file}" "${env_file}"
+    log_success "Local environment file created from template: ${env_file}"
+}
+
 # Setup production environment from template
 setup_production_environment() {
     local env_file="${CONFIG_DIR}/environments/production.env"
@@ -55,9 +71,11 @@ setup_production_environment() {
 load_environment() {
     local env_file="${CONFIG_DIR}/environments/${ENVIRONMENT}.env"
 
-    # Special handling for production environment
+    # Special handling for template-based environments
     if [[ "${ENVIRONMENT}" == "production" ]]; then
         setup_production_environment
+    elif [[ "${ENVIRONMENT}" == "local" ]]; then
+        setup_local_environment
     fi
 
     if [[ ! -f "${env_file}" ]]; then

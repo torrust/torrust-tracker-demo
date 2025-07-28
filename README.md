@@ -59,7 +59,7 @@ clear separation between infrastructure provisioning and application deployment:
 ┌─────────────────────────────────────────────────────────────┐
 │                 Configuration Management                    │
 ├─────────────────────────────────────────────────────────────┤
-│  • Environment Templates (local.env, production.env.tpl)    │
+│  • Environment Templates (local.env.tpl, production.env.tpl)  │
 │  • Configuration Processing (configure-env.sh)              │
 │  • Template Rendering (.tpl → actual configs)               │
 └─────────────────────────────────────────────────────────────┘
@@ -87,7 +87,7 @@ clear separation between infrastructure provisioning and application deployment:
 
 - **Complete Twelve-Factor Compliance**: All 12 factors implemented
 - **Infrastructure/Application Separation**: Clean separation with `make infra-apply` and `make app-deploy`
-- **Environment-based Configuration**: Template system with `local.env` and `production.env.tpl`
+- **Environment-based Configuration**: Template system with `local.env.tpl` and `production.env.tpl`
 - **Build/Release/Run Stages**: Proper separation of configuration processing, deployment, and execution
 
 ## Demo Tracker

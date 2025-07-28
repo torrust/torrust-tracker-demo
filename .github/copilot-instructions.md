@@ -50,7 +50,7 @@ This project implements a complete twelve-factor app architecture with clear sep
 ┌─────────────────────────────────────────────────────────────┐
 │                 Configuration Management                    │
 ├─────────────────────────────────────────────────────────────┤
-│  • Environment Templates (local.env, production.env.tpl)    │
+│  • Environment Templates (local.env.tpl, production.env.tpl)  │
 │  • Configuration Processing (configure-env.sh)              │
 │  • Template Rendering (.tpl → actual configs)               │
 └─────────────────────────────────────────────────────────────┘

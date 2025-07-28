@@ -132,30 +132,30 @@ cd torrust-tracker-demo
 make install-deps
 
 # 3. Setup SSH key for VMs
-make setup-ssh-key
+make infra-config-local
 
 # 4. Test twelve-factor deployment workflow locally
 make infra-apply  # Provision infrastructure (platform setup)
 make app-deploy   # Deploy application (Build + Release + Run stages)
-make health-check # Validate deployment
-make ssh          # Connect to VM
+make app-health-check # Validate deployment
+make vm-ssh          # Connect to VM
 make infra-destroy # Cleanup
 
 # 5. Run tests
-make test         # Full infrastructure test
-make test-syntax  # Syntax validation only
+make test-e2e     # Full infrastructure test
+make lint         # Syntax validation only
 ```
 
 ### Main Commands
 
 #### Twelve-Factor Workflow (Recommended)
 
-| Command             | Purpose                                           |
-| ------------------- | ------------------------------------------------- |
-| `make infra-apply`  | Provision infrastructure (platform setup)         |
-| `make app-deploy`   | Deploy application (Build + Release + Run stages) |
-| `make app-redeploy` | Redeploy application (Release + Run stages only)  |
-| `make health-check` | Validate deployment health                        |
+| Command                 | Purpose                                           |
+| ----------------------- | ------------------------------------------------- |
+| `make infra-apply`      | Provision infrastructure (platform setup)         |
+| `make app-deploy`       | Deploy application (Build + Release + Run stages) |
+| `make app-redeploy`     | Redeploy application (Release + Run stages only)  |
+| `make app-health-check` | Validate deployment health                        |
 
 #### Infrastructure Management
 
@@ -171,19 +171,18 @@ make test-syntax  # Syntax validation only
 
 #### VM Access and Debugging
 
-| Command           | Purpose                           |
-| ----------------- | --------------------------------- |
-| `make ssh`        | Connect to deployed VM            |
-| `make console`    | Access VM console (text-based)    |
-| `make vm-console` | Access VM graphical console (GUI) |
+| Command               | Purpose                           |
+| --------------------- | --------------------------------- |
+| `make vm-ssh`         | Connect to deployed VM            |
+| `make vm-console`     | Access VM console (text-based)    |
+| `make vm-gui-console` | Access VM graphical console (GUI) |
 
 #### Testing and Validation
 
-| Command            | Purpose                                 |
-| ------------------ | --------------------------------------- |
-| `make test`        | Run complete infrastructure tests       |
-| `make test-syntax` | Run syntax validation only              |
-| `make lint`        | Run all linting (alias for test-syntax) |
+| Command            | Purpose                           |
+| ------------------ | --------------------------------- |
+| `make test-e2e`    | Run complete infrastructure tests |
+| `make lint`        | Run syntax validation only        |
 
 #### Legacy Commands (Deprecated)
 
@@ -245,7 +244,7 @@ The twelve-factor **Build, Release, Run** stages apply to the application deploy
 1. **Initial Setup**: `make infra-apply` → `make app-deploy`
 2. **Code Changes**: `make app-redeploy` (skips infrastructure)
 3. **Infrastructure Changes**: `make infra-apply` → `make app-redeploy`
-4. **Validation**: `make health-check`
+4. **Validation**: `make app-health-check`
 5. **Cleanup**: `make infra-destroy`
 
 ### Git Workflow
@@ -408,8 +407,8 @@ The project implements intelligent sudo cache management to improve the user exp
 
    ```bash
    make install-deps  # Install dependencies
-   make setup-ssh-key # Configure SSH access
-   make test-prereq   # Verify setup
+   make infra-config-local # Configure SSH access
+   make infra-test-prereq   # Verify setup
    ```
 
 3. **Install recommended VS Code extensions**:
@@ -439,7 +438,7 @@ The project implements intelligent sudo cache management to improve the user exp
    ```bash
    make infra-apply  # Deploy test VM
    make app-deploy   # Deploy application
-   make ssh          # Verify access
+   make vm-ssh          # Verify access
    make infra-destroy # Clean up
    ```
 
@@ -448,7 +447,7 @@ The project implements intelligent sudo cache management to improve the user exp
 ### For Infrastructure Changes
 
 1. **Local testing first**: Always test infrastructure changes locally
-2. **Validate syntax**: Run `make test-syntax` before committing
+2. **Validate syntax**: Run `make lint` before committing
 3. **Document changes**: Update relevant documentation
 4. **Test twelve-factor workflow**: Ensure both infrastructure provisioning and application deployment work
    ```bash
@@ -482,7 +481,7 @@ Be mindful of the execution context for different types of commands. The project
 
 When executing commands on the remote VM, be aware of limitations with interactive sessions.
 
-- **Problem**: The VS Code integrated terminal may not correctly handle commands that initiate a new interactive shell, such as `ssh torrust@<VM_IP>` or `make ssh`. The connection may succeed, but subsequent commands sent to that shell may not execute as expected, and their output may not be captured.
+- **Problem**: The VS Code integrated terminal may not correctly handle commands that initiate a new interactive shell, such as `ssh torrust@<VM_IP>` or `make vm-ssh`. The connection may succeed, but subsequent commands sent to that shell may not execute as expected, and their output may not be captured.
 
 - **Solution**: Prefer executing commands non-interactively whenever possible. Instead of opening a persistent SSH session, pass the command directly to `ssh`.
 
@@ -490,7 +489,7 @@ When executing commands on the remote VM, be aware of limitations with interacti
 
     ```bash
     # 1. Log in
-    make ssh
+    make vm-ssh
     # 2. Run command (this might fail or output won't be seen)
     df -H
     ```
@@ -569,7 +568,7 @@ This ensures that the command is executed and its output is returned to the prim
 **Pre-commit Testing Requirement**: ALWAYS run the CI test suite before committing any changes:
 
 ```bash
-make test-ci
+make infra-test-ci
 ```
 
 This command runs all unit tests that don't require a virtual machine, including:
@@ -581,7 +580,7 @@ This command runs all unit tests that don't require a virtual machine, including
 
 Only commit if all CI tests pass. If any tests fail, fix the issues before committing.
 
-**Note**: End-to-end tests (`make test`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
+**Note**: End-to-end tests (`make test-e2e`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
 
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 

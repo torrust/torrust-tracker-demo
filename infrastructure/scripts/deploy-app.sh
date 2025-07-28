@@ -522,7 +522,7 @@ show_connection_info() {
     echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
     echo
     echo "=== NEXT STEPS ==="
-    echo "Health Check:    make health-check ENVIRONMENT=${ENVIRONMENT}"
+    echo "Health Check:    make app-health-check ENVIRONMENT=${ENVIRONMENT}"
     echo "View Logs:       ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose logs'"
     echo "Stop Services:   ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose down'"
     echo

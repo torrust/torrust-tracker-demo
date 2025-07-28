@@ -37,7 +37,7 @@ show_test_summary() {
     log ""
     log_info "Next steps for full validation:"
     log_info "  1. Run 'make test-local' on a system with virtualization"
-    log_info "  2. Run 'make test' for full end-to-end testing"
+    log_info "  2. Run 'make test-e2e' for full end-to-end testing"
     log ""
     log_info "Test log saved to: ${TEST_LOG_FILE}"
 }
@@ -57,7 +57,7 @@ main() {
     # Test 1: Syntax validation (fast)
     log_section "TEST 1: SYNTAX VALIDATION"
     log_info "Running syntax validation..."
-    if ! make test-syntax; then
+    if ! make lint; then
         log_error "Syntax validation failed"
         exit 1
     fi
@@ -84,7 +84,7 @@ main() {
     # Test 4: Makefile validation
     log_section "TEST 4: MAKEFILE VALIDATION"
     log_info "Validating Makefile targets..."
-    if ! make validate-config 2>/dev/null; then
+    if ! make infra-validate-config 2>/dev/null; then
         log_warning "Makefile validation script not found (optional)"
     else
         log_success "Makefile validation passed"

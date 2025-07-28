@@ -10,7 +10,7 @@ application concerns:
 
 1. **Infrastructure Provisioning**: Setting up the platform (`make infra-apply`)
 2. **Application Deployment**: Twelve-factor Build + Release + Run stages (`make app-deploy`)
-3. **Validation**: Health checking (`make health-check`)
+3. **Validation**: Health checking (`make app-health-check`)
 4. **Cleanup**: Resource management (`make infra-destroy`)
 
 The new workflow separates infrastructure provisioning from application deployment,
@@ -34,7 +34,7 @@ The automated test script (`tests/test-e2e.sh`) follows the same steps described
 - **Step 1**: Prerequisites validation
 - **Step 2**: Infrastructure provisioning (`make infra-apply`)
 - **Step 3**: Application deployment (`make app-deploy`)
-- **Step 4**: Health validation (`make health-check`)
+- **Step 4**: Health validation (`make app-health-check`)
 - **Step 5**: Smoke testing (basic functionality validation)
 - **Step 6**: Cleanup (`make infra-destroy`)
 
@@ -184,7 +184,7 @@ Provisioning infrastructure for local...
 make infra-status ENVIRONMENT=local
 
 # [PROJECT_ROOT] Test SSH connectivity
-make ssh
+make vm-ssh
 # (type 'exit' to return)
 ```
 
@@ -260,7 +260,7 @@ make infra-status ENVIRONMENT=local
 
 ```bash
 # [PROJECT_ROOT] Run full health validation
-time make health-check ENVIRONMENT=local
+time make app-health-check ENVIRONMENT=local
 ```
 
 **Expected Output**:

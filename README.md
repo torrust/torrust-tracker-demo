@@ -78,14 +78,14 @@ make dev-setup
 # Log out and log back in for group permissions
 
 # 2. Configure SSH key
-make setup-ssh-key
+make infra-config-local
 # Edit infrastructure/terraform/local.tfvars with your SSH public key
 
 # 3. Deploy VM and application
-make apply                                    # Deploy VM
-make ssh                                     # Access VM
+make infra-apply                                    # Deploy VM
+make vm-ssh                                     # Access VM
 docker compose -f application/compose.yaml up -d  # Deploy application
-make destroy                                 # Clean up
+make infra-destroy                                 # Clean up
 ```
 
 ## 📚 Documentation
@@ -142,10 +142,10 @@ The project uses automated linting to ensure code quality and consistency:
 # Run all linting checks
 make lint
 
-# Run individual linters
-make lint-yaml        # YAML files (yamllint)
-make lint-shell       # Shell scripts (shellcheck)
-make lint-markdown    # Markdown files (markdownlint)
+# Run individual linters (use script directly)
+./scripts/lint.sh --yaml        # YAML files (yamllint)
+./scripts/lint.sh --shell       # Shell scripts (shellcheck)
+./scripts/lint.sh --markdown    # Markdown files (markdownlint)
 ```
 
 **Required tools:**

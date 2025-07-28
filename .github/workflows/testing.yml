@@ -27,4 +27,4 @@ jobs:
           sudo ./install-opentofu.sh --install-method deb
 
       - name: Run CI test suite
-        run: make test-ci
+        run: make infra-test-ci

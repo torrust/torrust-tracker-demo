@@ -6,7 +6,7 @@
 # 1. Prerequisites validation
 # 2. Infrastructure provisioning (make infra-apply)
 # 3. Application deployment (make app-deploy)
-# 4. Health validation (make health-check)
+# 4. Health validation (make app-health-check)
 # 5. Cleanup (make infra-destroy)
 
 set -euo pipefail
@@ -76,7 +76,7 @@ test_prerequisites() {
 
     cd "${PROJECT_ROOT}"
 
-    if ! make test-syntax; then
+    if ! make lint; then
         log_error "Prerequisites validation failed"
         return 1
     fi
@@ -168,7 +168,7 @@ test_health_validation() {
     # Run health check (Step 3.2 from guide)
     log_info "Running comprehensive health check..."
 
-    if ! make health-check ENVIRONMENT="${ENVIRONMENT}"; then
+    if ! make app-health-check ENVIRONMENT="${ENVIRONMENT}"; then
         log_error "Health check failed"
         return 1
     fi
@@ -515,7 +515,7 @@ run_e2e_test() {
     # Final result
     if [[ ${failed} -eq 0 ]]; then
         log_section "TEST RESULT: SUCCESS"
-        log_success "End-to-end twelve-factor deployment test passed!"
+        log_success "End-to-end test passed!"
         log_success "Total test time: ${minutes}m ${seconds}s"
         log_info "Test log: ${TEST_LOG_FILE}"
         return 0
@@ -551,10 +551,10 @@ Examples:
     SKIP_CONFIRMATION=true $0 local      # Test without confirmation prompt
 
 Test Steps (following integration testing guide):
-    1. Prerequisites validation (make test-syntax)
+    1. Prerequisites validation (make lint)
     2. Infrastructure provisioning (make infra-apply + VM readiness wait)
     3. Application deployment (make app-deploy)
-    4. Health validation (make health-check + endpoint testing)
+    4. Health validation (make app-health-check + endpoint testing)
     5. Smoke testing (mandatory tracker functionality validation)
     6. Cleanup (make infra-destroy)
 

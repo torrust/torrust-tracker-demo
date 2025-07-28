@@ -1,5 +1,26 @@
 # Torrust Tracker Demo - Contributor Guide
 
+## Table of Contents
+
+- [🎯 Project Overview](#-project-overview)
+  - [Current Major Initiative](#current-major-initiative)
+- [📁 Repository Structure](#-repository-structure)
+  - [Key Components](#key-components)
+- [🛠️ Development Workflow](#️-development-workflow)
+  - [Quick Start for Contributors](#quick-start-for-contributors)
+  - [Main Commands](#main-commands)
+- [📋 Conventions and Standards](#-conventions-and-standards)
+  - [Twelve-Factor App Principles](#twelve-factor-app-principles)
+  - [Git Workflow](#git-workflow)
+  - [Code Quality Standards](#code-quality-standards)
+  - [Testing Requirements](#testing-requirements)
+  - [Security Guidelines](#security-guidelines)
+- [🚀 Getting Started](#-getting-started)
+  - [For New Contributors](#for-new-contributors)
+  - [For Infrastructure Changes](#for-infrastructure-changes)
+  - [For AI Assistants](#for-ai-assistants)
+- [📖 Additional Resources](#-additional-resources)
+
 ## 🎯 Project Overview
 
 **Torrust Tracker Demo** is the complete production deployment configuration for running a live [Torrust Tracker](https://github.com/torrust/torrust-tracker) instance. This repository provides:
@@ -132,30 +153,30 @@ cd torrust-tracker-demo
 make install-deps
 
 # 3. Setup SSH key for VMs
-make setup-ssh-key
+make infra-config-local
 
 # 4. Test twelve-factor deployment workflow locally
 make infra-apply  # Provision infrastructure (platform setup)
 make app-deploy   # Deploy application (Build + Release + Run stages)
-make health-check # Validate deployment
-make ssh          # Connect to VM
+make app-health-check # Validate deployment
+make vm-ssh          # Connect to VM
 make infra-destroy # Cleanup
 
 # 5. Run tests
-make test         # Full infrastructure test
-make test-syntax  # Syntax validation only
+make test-e2e     # Full infrastructure test
+make lint         # Syntax validation only
 ```
 
 ### Main Commands
 
 #### Twelve-Factor Workflow (Recommended)
 
-| Command             | Purpose                                           |
-| ------------------- | ------------------------------------------------- |
-| `make infra-apply`  | Provision infrastructure (platform setup)         |
-| `make app-deploy`   | Deploy application (Build + Release + Run stages) |
-| `make app-redeploy` | Redeploy application (Release + Run stages only)  |
-| `make health-check` | Validate deployment health                        |
+| Command                 | Purpose                                           |
+| ----------------------- | ------------------------------------------------- |
+| `make infra-apply`      | Provision infrastructure (platform setup)         |
+| `make app-deploy`       | Deploy application (Build + Release + Run stages) |
+| `make app-redeploy`     | Redeploy application (Release + Run stages only)  |
+| `make app-health-check` | Validate deployment health                        |
 
 #### Infrastructure Management
 
@@ -171,19 +192,18 @@ make test-syntax  # Syntax validation only
 
 #### VM Access and Debugging
 
-| Command           | Purpose                           |
-| ----------------- | --------------------------------- |
-| `make ssh`        | Connect to deployed VM            |
-| `make console`    | Access VM console (text-based)    |
-| `make vm-console` | Access VM graphical console (GUI) |
+| Command               | Purpose                           |
+| --------------------- | --------------------------------- |
+| `make vm-ssh`         | Connect to deployed VM            |
+| `make vm-console`     | Access VM console (text-based)    |
+| `make vm-gui-console` | Access VM graphical console (GUI) |
 
 #### Testing and Validation
 
-| Command            | Purpose                                 |
-| ------------------ | --------------------------------------- |
-| `make test`        | Run complete infrastructure tests       |
-| `make test-syntax` | Run syntax validation only              |
-| `make lint`        | Run all linting (alias for test-syntax) |
+| Command         | Purpose                           |
+| --------------- | --------------------------------- |
+| `make test-e2e` | Run complete infrastructure tests |
+| `make lint`     | Run syntax validation only        |
 
 #### Legacy Commands (Deprecated)
 
@@ -245,7 +265,7 @@ The twelve-factor **Build, Release, Run** stages apply to the application deploy
 1. **Initial Setup**: `make infra-apply` → `make app-deploy`
 2. **Code Changes**: `make app-redeploy` (skips infrastructure)
 3. **Infrastructure Changes**: `make infra-apply` → `make app-redeploy`
-4. **Validation**: `make health-check`
+4. **Validation**: `make app-health-check`
 5. **Cleanup**: `make infra-destroy`
 
 ### Git Workflow
@@ -349,6 +369,66 @@ The project includes a comprehensive linting script that validates all file type
 - **No secrets**: Never commit SSH keys, passwords, or tokens
 - **Documentation**: Update docs for any infrastructure changes
 
+#### Three-Layer Testing Architecture
+
+**CRITICAL**: This project uses a strict three-layer testing architecture.
+**Never mix concerns across layers**:
+
+**1. Project-Wide/Global Layer** (`tests/` folder)
+
+- **Command**: `make test-ci`
+- **Scope**: Cross-cutting concerns that span all layers
+- **Responsibilities**:
+  - Global syntax validation (`make lint` / `./scripts/lint.sh`)
+  - Project structure validation (`tests/test-unit-project.sh`)
+  - Makefile validation
+  - Orchestrates infrastructure and application layer tests
+
+**2. Infrastructure Layer** (`infrastructure/` folder)
+
+- **Command**: `make infra-test-ci`
+- **Scope**: Infrastructure-specific validation ONLY
+- **Responsibilities**:
+  - Terraform/OpenTofu syntax validation
+  - Cloud-init template validation
+  - Infrastructure script validation
+  - Infrastructure configuration validation
+- **NEVER**: Call global commands like `make lint` from infrastructure tests
+
+**3. Application Layer** (`application/` folder)
+
+- **Command**: `make app-test-ci`
+- **Scope**: Application-specific validation ONLY
+- **Responsibilities**:
+  - Docker Compose syntax validation
+  - Application configuration validation
+  - Deployment script validation
+  - Grafana dashboard validation
+- **NEVER**: Call global commands like `make lint` from application tests
+
+**Testing Hierarchy:**
+
+```text
+make test-ci (Project-wide orchestrator)
+├── Global concerns (syntax, structure, Makefile)
+├── make infra-test-ci (Infrastructure layer only)
+└── make app-test-ci (Application layer only)
+```
+
+**Common Mistake to Avoid:**
+
+- ❌ Adding `make lint` calls inside `infrastructure/tests/test-ci.sh`
+- ❌ Testing application concerns from infrastructure tests
+- ❌ Testing infrastructure concerns from application tests
+- ✅ Keep each layer focused on its own responsibilities only
+- ✅ Use `make test-ci` for complete validation that orchestrates all layers
+
+**GitHub Actions Integration:**
+
+- Uses `make test-ci` (not `make infra-test-ci`) to ensure all layers are tested
+- Runs without virtualization (CI-compatible)
+- Maintains separation of concerns for maintainable testing
+
 #### End-to-End Smoke Testing
 
 For verifying the functionality of the tracker from an end-user's perspective (e.g., simulating announce/scrape requests), refer to the **Smoke Testing Guide**. This guide explains how to use the official `torrust-tracker-client` tools to perform black-box testing against a running tracker instance without needing a full BitTorrent client.
@@ -408,8 +488,8 @@ The project implements intelligent sudo cache management to improve the user exp
 
    ```bash
    make install-deps  # Install dependencies
-   make setup-ssh-key # Configure SSH access
-   make test-prereq   # Verify setup
+   make infra-config-local # Configure SSH access
+   make infra-test-prereq   # Verify setup
    ```
 
 3. **Install recommended VS Code extensions**:
@@ -439,7 +519,7 @@ The project implements intelligent sudo cache management to improve the user exp
    ```bash
    make infra-apply  # Deploy test VM
    make app-deploy   # Deploy application
-   make ssh          # Verify access
+   make vm-ssh          # Verify access
    make infra-destroy # Clean up
    ```
 
@@ -448,7 +528,7 @@ The project implements intelligent sudo cache management to improve the user exp
 ### For Infrastructure Changes
 
 1. **Local testing first**: Always test infrastructure changes locally
-2. **Validate syntax**: Run `make test-syntax` before committing
+2. **Validate syntax**: Run `make lint` before committing
 3. **Document changes**: Update relevant documentation
 4. **Test twelve-factor workflow**: Ensure both infrastructure provisioning and application deployment work
    ```bash
@@ -467,6 +547,27 @@ When providing assistance:
 - Test infrastructure changes locally before suggesting them
 - Provide clear explanations and documentation
 - Consider the migration to Hetzner infrastructure in suggestions
+- **CRITICAL**: Respect the three-layer testing architecture (see Testing Requirements above)
+
+#### Testing Layer Separation (CRITICAL)
+
+**NEVER** mix testing concerns across the three layers:
+
+- **Infrastructure tests** (`infrastructure/tests/`) should ONLY test infrastructure concerns
+- **Application tests** (`application/tests/`) should ONLY test application concerns
+- **Global tests** (`tests/`) handle cross-cutting concerns and orchestration
+
+**Common violations to avoid:**
+
+- ❌ Adding `make lint` calls in `infrastructure/tests/test-ci.sh`
+- ❌ Testing Docker Compose from infrastructure layer
+- ❌ Testing Terraform from application layer
+- ❌ Any layer calling commands from other layers directly
+
+**Always use the proper orchestrator:**
+
+- Use `make test-ci` for complete testing (orchestrates all layers)
+- Use layer-specific commands only when targeting that specific layer
 
 #### Command Execution Context
 
@@ -482,7 +583,7 @@ Be mindful of the execution context for different types of commands. The project
 
 When executing commands on the remote VM, be aware of limitations with interactive sessions.
 
-- **Problem**: The VS Code integrated terminal may not correctly handle commands that initiate a new interactive shell, such as `ssh torrust@<VM_IP>` or `make ssh`. The connection may succeed, but subsequent commands sent to that shell may not execute as expected, and their output may not be captured.
+- **Problem**: The VS Code integrated terminal may not correctly handle commands that initiate a new interactive shell, such as `ssh torrust@<VM_IP>` or `make vm-ssh`. The connection may succeed, but subsequent commands sent to that shell may not execute as expected, and their output may not be captured.
 
 - **Solution**: Prefer executing commands non-interactively whenever possible. Instead of opening a persistent SSH session, pass the command directly to `ssh`.
 
@@ -490,7 +591,7 @@ When executing commands on the remote VM, be aware of limitations with interacti
 
     ```bash
     # 1. Log in
-    make ssh
+    make vm-ssh
     # 2. Run command (this might fail or output won't be seen)
     df -H
     ```
@@ -569,7 +670,7 @@ This ensures that the command is executed and its output is returned to the prim
 **Pre-commit Testing Requirement**: ALWAYS run the CI test suite before committing any changes:
 
 ```bash
-make test-ci
+make infra-test-ci
 ```
 
 This command runs all unit tests that don't require a virtual machine, including:
@@ -581,7 +682,7 @@ This command runs all unit tests that don't require a virtual machine, including
 
 Only commit if all CI tests pass. If any tests fail, fix the issues before committing.
 
-**Note**: End-to-end tests (`make test`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
+**Note**: End-to-end tests (`make test-e2e`) are excluded from pre-commit requirements due to their longer execution time (~5-8 minutes), but running them before pushing is strongly recommended for comprehensive validation.
 
 **Best Practice**: Always ask "Would you like me to commit these changes?" before performing any git state-changing operations.
 

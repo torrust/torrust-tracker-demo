@@ -6,7 +6,7 @@
 # 1. Prerequisites validation
 # 2. Infrastructure provisioning (make infra-apply)
 # 3. Application deployment (make app-deploy)
-# 4. Health validation (make health-check)
+# 4. Health validation (make app-health-check)
 # 5. Cleanup (make infra-destroy)
 
 set -euo pipefail
@@ -25,11 +25,18 @@ source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 # Set log file for tee output
 export SHELL_UTILS_LOG_FILE="${TEST_LOG_FILE}"
 
-log_section() {
-    log ""
-    log "${BLUE}===============================================${NC}"
-    log "${BLUE}$1${NC}"
-    log "${BLUE}===============================================${NC}"
+# Helper function to get VM IP address from libvirt
+get_vm_ip() {
+    virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo ""
+}
+
+# Helper function for SSH connections with standard options
+ssh_to_vm() {
+    local vm_ip="$1"
+    local command="$2"
+    local output_redirect="${3:->/dev/null 2>&1}"
+
+    eval ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "\"${command}\"" "${output_redirect}"
 }
 
 # Track test start time
@@ -69,7 +76,7 @@ test_prerequisites() {
 
     cd "${PROJECT_ROOT}"
 
-    if ! make test-syntax; then
+    if ! make lint; then
         log_error "Prerequisites validation failed"
         return 1
     fi
@@ -106,18 +113,10 @@ test_infrastructure_provisioning() {
 
     # Provision infrastructure (Step 2.3 from guide)
     log_info "Provisioning infrastructure..."
-    local start_time
-    start_time=$(date +%s)
-
-    if ! make infra-apply ENVIRONMENT="${ENVIRONMENT}"; then
+    if ! time_operation "Infrastructure provisioning" "make infra-apply ENVIRONMENT=\"${ENVIRONMENT}\""; then
         log_error "Infrastructure provisioning failed"
         return 1
     fi
-
-    local end_time
-    end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    log_success "Infrastructure provisioned successfully in ${duration} seconds"
 
     # Verify infrastructure (Step 2.4 from guide)
     log_info "Verifying infrastructure status..."
@@ -149,21 +148,13 @@ test_application_deployment() {
 
     # Deploy application (Step 3.1 from guide)
     log_info "Deploying application using twelve-factor workflow..."
-    local start_time
-    start_time=$(date +%s)
-
-    if ! make app-deploy ENVIRONMENT="${ENVIRONMENT}"; then
+    if ! time_operation "Application deployment" "make app-deploy ENVIRONMENT=\"${ENVIRONMENT}\""; then
         log_error "Application deployment failed"
         return 1
     fi
 
     # Note: app-deploy includes health validation via validate_deployment function
     log_info "Application deployment completed with built-in health validation"
-
-    local end_time
-    end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    log_success "Application deployed successfully in ${duration} seconds"
 
     return 0
 }
@@ -177,7 +168,7 @@ test_health_validation() {
     # Run health check (Step 3.2 from guide)
     log_info "Running comprehensive health check..."
 
-    if ! make health-check ENVIRONMENT="${ENVIRONMENT}"; then
+    if ! make app-health-check ENVIRONMENT="${ENVIRONMENT}"; then
         log_error "Health check failed"
         return 1
     fi
@@ -187,32 +178,21 @@ test_health_validation() {
 
     # Get VM IP for direct testing
     local vm_ip
-    vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
+    vm_ip=$(get_vm_ip)
 
     if [[ -n "${vm_ip}" ]]; then
         log_info "Testing application endpoints on ${vm_ip}..."
 
         # Test tracker health endpoint (may take a moment to be ready)
-        local max_attempts=12 # 2 minutes
-        local attempt=1
-        while [[ ${attempt} -le ${max_attempts} ]]; do
-            log_info "Testing health endpoint (attempt ${attempt}/${max_attempts})..."
-            # shellcheck disable=SC2034,SC2086
-            if curl -f -s http://"${vm_ip}"/api/health_check >/dev/null 2>&1; then
-                log_success "Health endpoint responding"
-                break
-            fi
-            if [[ ${attempt} -eq ${max_attempts} ]]; then
-                log_warning "Health endpoint not responding after ${max_attempts} attempts"
-            else
-                sleep 10
-            fi
-            ((attempt++))
-        done
+        if retry_with_timeout "Testing health endpoint" 12 10 "test_http_endpoint \"http://${vm_ip}/api/health_check\" '\"status\":\"Ok\"' >/dev/null"; then # DevSkim: ignore DS137138
+            log_success "Health endpoint responding"
+        else
+            log_warning "Health endpoint not responding after 12 attempts"
+        fi
 
         # Test if basic services are running
         log_info "Checking if Docker services are running..."
-        if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --services --filter status=running" 2>/dev/null | grep -q tracker; then
+        if ssh_to_vm "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --services --filter status=running" 2>/dev/null | grep -q tracker; then
             log_success "Tracker service is running"
         else
             log_warning "Tracker service may not be running yet"
@@ -231,7 +211,7 @@ test_smoke_testing() {
 
     # Get VM IP for testing
     local vm_ip
-    vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
+    vm_ip=$(get_vm_ip)
 
     if [[ -z "${vm_ip}" ]]; then
         log_error "VM IP not available - cannot run mandatory smoke tests"
@@ -245,23 +225,19 @@ test_smoke_testing() {
 
     # Test 1: Health Check API (through nginx proxy on port 80)
     log_info "Testing health check API through nginx proxy..."
-    local health_response
-    health_response=$(curl -f -s http://"${vm_ip}":80/api/health_check 2>/dev/null || echo "")
-    if echo "${health_response}" | grep -q '"status":"Ok"'; then
+    if [[ $(test_http_endpoint "http://${vm_ip}:80/api/health_check" '"status":"Ok"') == "success" ]]; then # DevSkim: ignore DS137138
         log_success "✓ Health check API working"
     else
-        log_error "✗ Health check API failed - Response: ${health_response}"
+        log_error "✗ Health check API failed"
         ((failed_tests++))
     fi
 
     # Test 2: Statistics API (through nginx proxy on port 80)
     log_info "Testing statistics API through nginx proxy..."
-    local stats_response
-    stats_response=$(curl -f -s "http://${vm_ip}:80/api/v1/stats?token=local-dev-admin-token-12345" 2>/dev/null || echo "") # DevSkim: ignore DS137138
-    if echo "${stats_response}" | grep -q '"torrents"'; then
+    if [[ $(test_http_endpoint "http://${vm_ip}:80/api/v1/stats?token=local-dev-admin-token-12345" '"torrents"') == "success" ]]; then # DevSkim: ignore DS137138
         log_success "✓ Statistics API working"
     else
-        log_error "✗ Statistics API failed - Response: ${stats_response}"
+        log_error "✗ Statistics API failed"
         ((failed_tests++))
     fi
 
@@ -304,12 +280,10 @@ test_smoke_testing() {
 
     # Test 6: Direct tracker health check (port 1212)
     log_info "Testing direct tracker health check on port 1212..."
-    local direct_health
-    direct_health=$(curl -f -s http://"${vm_ip}":1212/api/health_check 2>/dev/null || echo "")
-    if echo "${direct_health}" | grep -q '"status":"Ok"'; then
+    if [[ $(test_http_endpoint "http://${vm_ip}:1212/api/health_check" '"status":"Ok"') == "success" ]]; then # DevSkim: ignore DS137138
         log_success "✓ Direct tracker health check working"
     else
-        log_error "✗ Direct tracker health check failed - Response: ${direct_health}"
+        log_error "✗ Direct tracker health check failed"
         ((failed_tests++))
     fi
 
@@ -399,7 +373,7 @@ wait_for_vm_ip() {
         fi
 
         # Also check libvirt directly as fallback
-        vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
+        vm_ip=$(get_vm_ip)
         if [[ -n "${vm_ip}" ]]; then
             log_success "VM IP assigned (via libvirt): ${vm_ip}"
             # Refresh terraform state to sync with actual VM state
@@ -427,7 +401,7 @@ wait_for_cloud_init_to_finish() {
     local vm_ip=""
 
     # First get the VM IP
-    vm_ip=$(virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo "")
+    vm_ip=$(get_vm_ip)
     if [[ -z "${vm_ip}" ]]; then
         log_error "VM IP not available - cannot check readiness"
         return 1
@@ -439,30 +413,43 @@ wait_for_cloud_init_to_finish() {
         log_info "Checking cloud-init status (attempt ${attempt}/${max_attempts})..."
 
         # Check if SSH is available
-        if ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "echo 'SSH OK'" >/dev/null 2>&1; then
+        if ! ssh_to_vm "${vm_ip}" "echo 'SSH OK'"; then
             log_info "SSH not ready yet, waiting 10 seconds..."
             sleep 10
             ((attempt++))
             continue
         fi
 
-        # Check if cloud-init has finished
+        # Primary check: Official cloud-init status
         local cloud_init_status
-        cloud_init_status=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "cloud-init status" 2>/dev/null || echo "unknown")
+        cloud_init_status=$(ssh_to_vm "${vm_ip}" "cloud-init status" "2>/dev/null" || echo "unknown")
 
         if [[ "${cloud_init_status}" == *"done"* ]]; then
-            log_success "Cloud-init completed successfully"
+            log_success "Cloud-init reports completion: ${cloud_init_status}"
 
-            # Check if Docker is available and working
-            if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "docker --version && docker compose version" >/dev/null 2>&1; then
-                log_success "Docker is ready and available"
-                log_success "VM is ready for application deployment"
-                return 0
+            # Secondary check: Custom completion marker file
+            if ssh_to_vm "${vm_ip}" "test -f /var/lib/cloud/torrust-setup-complete"; then
+                log_success "Setup completion marker found"
+                
+                # Tertiary check: Verify critical services are available
+                # Note: This is not tied to specific software, just basic system readiness
+                if ssh_to_vm "${vm_ip}" "systemctl is-active docker >/dev/null 2>&1"; then
+                    log_success "Critical services are active"
+                    log_success "VM is ready for application deployment"
+                    return 0
+                else
+                    log_info "Critical services not ready yet, waiting 10 seconds..."
+                fi
             else
-                log_info "Docker not ready yet, waiting 10 seconds..."
+                log_info "Setup completion marker not found yet, waiting 10 seconds..."
             fi
         elif [[ "${cloud_init_status}" == *"error"* ]]; then
-            log_error "Cloud-init failed with error status"
+            log_error "Cloud-init failed with error status: ${cloud_init_status}"
+            
+            # Try to get more detailed error information
+            local cloud_init_result
+            cloud_init_result=$(ssh_to_vm "${vm_ip}" "cloud-init status --long" "2>/dev/null" || echo "unknown")
+            log_error "Cloud-init detailed status: ${cloud_init_result}"
             return 1
         else
             log_info "Cloud-init status: ${cloud_init_status}, waiting 10 seconds..."
@@ -473,7 +460,7 @@ wait_for_cloud_init_to_finish() {
     done
 
     log_error "Timeout waiting for cloud-init to finish after $((max_attempts * 10)) seconds"
-    log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status'"
+    log_error "You can check manually with: ssh torrust@${vm_ip} 'cloud-init status --long'"
     return 1
 }
 
@@ -528,7 +515,7 @@ run_e2e_test() {
     # Final result
     if [[ ${failed} -eq 0 ]]; then
         log_section "TEST RESULT: SUCCESS"
-        log_success "End-to-end twelve-factor deployment test passed!"
+        log_success "End-to-end test passed!"
         log_success "Total test time: ${minutes}m ${seconds}s"
         log_info "Test log: ${TEST_LOG_FILE}"
         return 0
@@ -564,10 +551,10 @@ Examples:
     SKIP_CONFIRMATION=true $0 local      # Test without confirmation prompt
 
 Test Steps (following integration testing guide):
-    1. Prerequisites validation (make test-syntax)
+    1. Prerequisites validation (make lint)
     2. Infrastructure provisioning (make infra-apply + VM readiness wait)
     3. Application deployment (make app-deploy)
-    4. Health validation (make health-check + endpoint testing)
+    4. Health validation (make app-health-check + endpoint testing)
     5. Smoke testing (mandatory tracker functionality validation)
     6. Cleanup (make infra-destroy)
 

@@ -31,7 +31,7 @@ and application layers.
 1. **Complete Deployment Workflow** (`test-e2e.sh`)
    - Infrastructure provisioning (`make infra-apply`)
    - Application deployment (`make app-deploy`)
-   - Health validation (`make health-check`)
+   - Health validation (`make app-health-check`)
    - Complete system integration
    - Duration: ~5-8 minutes
 
@@ -112,7 +112,7 @@ The project tests orchestrate and validate the integration between the other lay
 1. **Prerequisites Validation** - Validates system requirements
 2. **Infrastructure Provisioning** - Deploys VM using `make infra-apply`
 3. **Application Deployment** - Deploys tracker using `make app-deploy`
-4. **Health Validation** - Validates all services using `make health-check`
+4. **Health Validation** - Validates all services using `make app-health-check`
 5. **Cleanup** - Destroys infrastructure using `make infra-destroy`
 
 **Output**: Generates detailed log at `/tmp/torrust-e2e-test.log`

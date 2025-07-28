@@ -17,13 +17,6 @@ source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 # Set log file for tee output
 export SHELL_UTILS_LOG_FILE="${TEST_LOG_FILE}"
 
-log_section() {
-    log ""
-    log "${BLUE}===============================================${NC}"
-    log "${BLUE}$1${NC}"
-    log "${BLUE}===============================================${NC}"
-}
-
 # Initialize test log
 init_test_log() {
     init_log_file "${TEST_LOG_FILE}" "Torrust Tracker Demo - Local-Only Tests"
@@ -35,7 +28,7 @@ check_ci_environment() {
     if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
         log_error "Local-only tests detected CI environment"
         log_error "These tests require virtualization support and cannot run in CI"
-        log_error "Use 'make test-ci' for CI-compatible tests"
+        log_error "Use 'make infra-test-ci' for CI-compatible tests"
         exit 1
     fi
 }
@@ -84,7 +77,7 @@ show_test_summary() {
     log_info "Total local tests completed in ${duration} seconds"
     log_success "All local-only tests passed!"
     log ""
-    log_info "For full end-to-end testing, run: make test"
+    log_info "For full end-to-end testing, run: make test-e2e"
     log ""
     log_info "Test log saved to: ${TEST_LOG_FILE}"
 }
@@ -122,7 +115,7 @@ main() {
     # Test 3: Optional - Quick infrastructure validation (without full deployment)
     log_section "INFRASTRUCTURE VALIDATION"
     log_info "Running infrastructure validation without deployment..."
-    if ! make test-prereq; then
+    if ! make infra-test-prereq; then
         log_warning "Infrastructure validation had warnings (this is usually OK)"
     else
         log_success "Infrastructure validation passed"

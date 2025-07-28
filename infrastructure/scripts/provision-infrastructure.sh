@@ -132,7 +132,7 @@ provision_infrastructure() {
             log_info "Next step: make app-deploy ENVIRONMENT=${ENVIRONMENT}"
         else
             log_warning "Infrastructure provisioned but VM IP not available yet"
-            log_info "Try: make status to check VM IP"
+            log_info "Try: make infra-status to check VM IP"
         fi
         ;;
     "destroy")

@@ -63,11 +63,12 @@ test_configure_env_error_handling() {
     # Test with invalid environment names
     log_info "Testing invalid environment handling..."
 
-    # Test with empty parameters
+    # Test with empty parameters - script should succeed with defaults
     if "${SCRIPT_PATH}" >/dev/null 2>&1; then
-        log_warning "Script should handle missing parameters gracefully"
+        log_success "Script properly handles missing parameters by using defaults"
     else
-        log_info "Script properly handles missing parameters"
+        log_error "Script failed when it should use default parameters"
+        failed=$((failed + 1))
     fi
 
     log_success "Configuration script error handling tests completed"

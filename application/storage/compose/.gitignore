@@ -1,0 +1,5 @@
+# Ignore environment files (may contain sensitive data)
+.env
+
+# Keep directory structure
+!.gitignore

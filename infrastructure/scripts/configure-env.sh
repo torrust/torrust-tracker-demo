@@ -150,9 +150,12 @@ process_templates() {
 # Generate .env file for Docker Compose
 generate_docker_env() {
     local templates_dir="${CONFIG_DIR}/templates"
-    local env_output="${PROJECT_ROOT}/application/.env"
+    local env_output="${PROJECT_ROOT}/application/storage/compose/.env"
 
     log_info "Generating Docker Compose environment file"
+
+    # Ensure the storage/compose directory exists
+    mkdir -p "$(dirname "${env_output}")"
 
     # Set generation date for template
     GENERATION_DATE="$(date)"

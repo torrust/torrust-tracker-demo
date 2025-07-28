@@ -142,19 +142,23 @@ test_application_endpoints() {
 
     # Test API stats endpoint (via nginx proxy with auth)
     ((TOTAL_TESTS++))
-    if vm_exec "${vm_ip}" "curl -f -s 'http://localhost/api/v1/stats?token=local-dev-admin-token-12345' >/dev/null 2>&1"; then
+    local api_response
+    local api_http_code
+    api_response=$(vm_exec "${vm_ip}" "curl -s -w '\\n%{http_code}' 'http://localhost/api/v1/stats?token=MyAccessToken'" || echo "")
+    api_http_code=$(echo "${api_response}" | tail -n1)
+    api_response=$(echo "${api_response}" | head -n -1)
+
+    if [[ "${api_http_code}" == "200" ]]; then
         log_test_pass "API stats endpoint (nginx proxy)"
 
         # Get stats if verbose
         if [[ "${VERBOSE}" == "true" ]]; then
-            local stats
-            stats=$(vm_exec "${vm_ip}" "curl -s 'http://localhost/api/v1/stats?token=local-dev-admin-token-12345'" || echo "")
-            if [[ -n "${stats}" ]]; then
-                echo "  Stats: ${stats}"
-            fi
+            echo "  Stats: ${api_response}"
         fi
     else
         log_test_fail "API stats endpoint (nginx proxy)"
+        echo "  HTTP Code: ${api_http_code}"
+        echo "  Response: ${api_response}"
     fi
 
     # Test HTTP tracker endpoint (via nginx proxy - expects 404 for root)

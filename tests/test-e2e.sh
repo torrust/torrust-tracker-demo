@@ -234,7 +234,7 @@ test_smoke_testing() {
 
     # Test 2: Statistics API (through nginx proxy on port 80)
     log_info "Testing statistics API through nginx proxy..."
-    if [[ $(test_http_endpoint "http://${vm_ip}:80/api/v1/stats?token=local-dev-admin-token-12345" '"torrents"') == "success" ]]; then # DevSkim: ignore DS137138
+    if [[ $(test_http_endpoint "http://${vm_ip}:80/api/v1/stats?token=MyAccessToken" '"torrents"') == "success" ]]; then # DevSkim: ignore DS137138
         log_success "✓ Statistics API working"
     else
         log_error "✗ Statistics API failed"
@@ -521,7 +521,7 @@ run_e2e_test() {
         return 0
     else
         log_section "TEST RESULT: FAILURE"
-        log_error "End-to-end twelve-factor deployment test failed!"
+        log_error "End-to-end test failed!"
         log_error "Total test time: ${minutes}m ${seconds}s"
         log_error "Check test log for details: ${TEST_LOG_FILE}"
         return 1

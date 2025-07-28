@@ -483,12 +483,21 @@ validate_deployment() {
         fi
         
         # Test API stats endpoint (through nginx proxy, requires auth)
-        if curl -f -s "http://localhost/api/v1/stats?token=local-dev-admin-token-12345" >/dev/null 2>&1; then
+        # Save response to temp file and get HTTP status code
+        api_http_code=\$(curl -s -o /tmp/api_response.json -w '%{http_code}' \"http://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
+        api_response_body=\$(cat /tmp/api_response.json 2>/dev/null || echo \"No response\")
+        
+        # Check if HTTP status is 200 (success)
+        if [ \"\$api_http_code\" -eq 200 ] 2>/dev/null; then
             echo '✅ API stats endpoint: OK'
         else
             echo '❌ API stats endpoint: FAILED'
+            echo \"  HTTP Code: \$api_http_code\"
+            echo \"  Response: \$api_response_body\"
+            rm -f /tmp/api_response.json
             exit 1
         fi
+        rm -f /tmp/api_response.json
         
         # Test HTTP tracker endpoint (through nginx proxy - expects 404 for root)
         if curl -s -w '%{http_code}' http://localhost/ -o /dev/null | grep -q '404'; then
@@ -516,7 +525,7 @@ show_connection_info() {
     echo
     echo "=== APPLICATION ENDPOINTS ==="
     echo "Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
-    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=local-dev-admin-token-12345" # DevSkim: ignore DS137138
+    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
     echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
     echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
     echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138

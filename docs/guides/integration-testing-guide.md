@@ -1199,7 +1199,7 @@ curl -s http://$VM_IP/api/health_check | jq .
 
 # [PROJECT_ROOT] Test stats API (requires authentication token)
 # Note: Get the token from the .env file in the VM
-TOKEN="local-dev-admin-token-12345"
+TOKEN="MyAccessToken"
 curl -s "http://$VM_IP/api/v1/stats?token=$TOKEN" | jq .
 ```
 
@@ -1289,7 +1289,7 @@ curl http://$VM_IP/prometheus/                # Prometheus UI
 ssh torrust@$VM_IP \
   "grep TRACKER_ADMIN_TOKEN /home/torrust/github/torrust/torrust-tracker-demo/application/.env"
 
-# Should output: TRACKER_ADMIN_TOKEN=local-dev-admin-token-12345
+# Should output: TRACKER_ADMIN_TOKEN=MyAccessToken
 ```
 
 #### 5.2.5 Advanced Testing with jq
@@ -1700,10 +1700,10 @@ VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
 curl -s http://$VM_IP/api/health_check | jq .
 
 # Test stats (auth required)
-curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq .
+curl -s "http://$VM_IP/api/v1/stats?token=MyAccessToken" | jq .
 
 # Test specific metrics with jq filtering
-curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq '.torrents, .seeders, .leechers'
+curl -s "http://$VM_IP/api/v1/stats?token=MyAccessToken" | jq '.torrents, .seeders, .leechers'
 ```
 
 #### ✅ Monitoring Service Testing
@@ -1751,7 +1751,7 @@ curl http://$VM_IP/api/v1/stats
 **Correct**: Including authentication token:
 
 ```bash
-curl "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345"
+curl "http://$VM_IP/api/v1/stats?token=MyAccessToken"
 ```
 
 ### 9.4 Health Check Limitations
@@ -2054,7 +2054,7 @@ During the most recent testing cycle, the following components were validated su
 
 - **Health Check API**: `/api/health_check` - No authentication required
 - **Stats API**: `/api/v1/stats` - **Requires authentication token**
-- **Admin Token**: `local-dev-admin-token-12345` (from `.env` file)
+- **Admin Token**: `MyAccessToken` (from `.env` file)
 
 #### Correct API Testing Examples
 
@@ -2063,7 +2063,7 @@ During the most recent testing cycle, the following components were validated su
 curl -s http://$VM_IP/api/health_check | jq .
 
 # Stats API (auth required)
-curl -s "http://$VM_IP/api/v1/stats?token=local-dev-admin-token-12345" | jq .
+curl -s "http://$VM_IP/api/v1/stats?token=MyAccessToken" | jq .
 ```
 
 #### Network Architecture

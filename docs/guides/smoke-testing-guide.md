@@ -267,7 +267,7 @@ The statistics API is available through the nginx proxy on port 80:
 ```bash
 # Test statistics API through nginx proxy (requires admin token)
 echo "=== Testing Statistics API ==="
-curl -s "http://$TARGET_SERVER:80/api/v1/stats?token=local-dev-admin-token-12345" | jq
+curl -s "http://$TARGET_SERVER:80/api/v1/stats?token=MyAccessToken" | jq
 ```
 
 **Expected Output:**

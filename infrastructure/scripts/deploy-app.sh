@@ -46,6 +46,66 @@ get_vm_ip() {
     echo "${vm_ip}"
 }
 
+# Check git repository status and warn about uncommitted changes
+check_git_status() {
+    log_info "Checking git repository status..."
+    
+    cd "${PROJECT_ROOT}"
+    
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        log_warning "Not in a git repository - deployment will use current directory state"
+        return 0
+    fi
+    
+    # Check for uncommitted changes in configuration templates
+    local config_changes
+    config_changes=$(git status --porcelain infrastructure/config/environments/ 2>/dev/null || echo "")
+    
+    if [[ -n "${config_changes}" ]]; then
+        log_warning "==============================================="
+        log_warning "⚠️  UNCOMMITTED CONFIGURATION CHANGES DETECTED"
+        log_warning "==============================================="
+        log_warning "The following configuration template files have uncommitted changes:"
+        echo "${config_changes}" | while IFS= read -r line; do
+            log_warning "  ${line}"
+        done
+        log_warning ""
+        log_warning "IMPORTANT: Deployment uses 'git archive' which only includes committed files."
+        log_warning "Your uncommitted changes will NOT be deployed to the VM."
+        log_warning ""
+        log_warning "To include these changes in deployment:"
+        log_warning "  1. git add infrastructure/config/environments/"
+        log_warning "  2. git commit -m 'update: configuration templates'"
+        log_warning "  3. Re-run deployment"
+        log_warning ""
+        log_warning "To continue without committing (deployment will use last committed version):"
+        log_warning "  Press ENTER to continue or Ctrl+C to abort"
+        log_warning "==============================================="
+        read -r
+    fi
+    
+    # Check for any other uncommitted changes (informational)
+    local all_changes
+    all_changes=$(git status --porcelain 2>/dev/null | wc -l)
+    
+    if [[ "${all_changes}" -gt 0 ]]; then
+        local git_status
+        git_status=$(git status --short 2>/dev/null || echo "")
+        log_info "Repository has ${all_changes} uncommitted changes (git archive will use committed version)"
+        if [[ "${all_changes}" -le 10 ]]; then
+            log_info "Uncommitted files:"
+            echo "${git_status}" | while IFS= read -r line; do
+                log_info "  ${line}"
+            done
+        else
+            log_info "Run 'git status' to see all uncommitted changes"
+        fi
+    else
+        log_success "Repository working tree is clean - deployment will match current state"
+    fi
+}
+
 # Test SSH connectivity and wait for system readiness
 test_ssh_connection() {
     local vm_ip="$1"
@@ -541,6 +601,9 @@ show_connection_info() {
 main() {
     log_info "Starting application deployment (Twelve-Factor Release + Run Stages)"
     log_info "Environment: ${ENVIRONMENT}"
+
+    # Check git status and warn about uncommitted changes
+    check_git_status
 
     local vm_ip
     vm_ip=$(get_vm_ip)

@@ -5,9 +5,9 @@ services:
     image: certbot/certbot
     container_name: certbot
     volumes:
-      - ./storage/proxy/webroot:/var/www/html
-      - ./storage/certbot/etc:/etc/letsencrypt
-      - ./storage/certbot/lib:/var/lib/letsencrypt
+      - /var/lib/torrust/proxy/webroot:/var/www/html
+      - /var/lib/torrust/certbot/etc:/etc/letsencrypt
+      - /var/lib/torrust/certbot/lib:/var/lib/letsencrypt
     logging:
       options:
         max-size: "10m"
@@ -25,11 +25,11 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./storage/proxy/webroot:/var/www/html
-      - ./storage/proxy/etc/nginx-conf:/etc/nginx/conf.d
-      - ./storage/certbot/etc:/etc/letsencrypt
-      - ./storage/certbot/lib:/var/lib/letsencrypt
-      - ./storage/dhparam:/etc/ssl/certs
+      - /var/lib/torrust/proxy/webroot:/var/www/html
+      - /var/lib/torrust/proxy/etc/nginx-conf:/etc/nginx/conf.d
+      - /var/lib/torrust/certbot/etc:/etc/letsencrypt
+      - /var/lib/torrust/certbot/lib:/var/lib/letsencrypt
+      - /var/lib/torrust/dhparam:/etc/ssl/certs
     logging:
       options:
         max-size: "10m"
@@ -64,7 +64,7 @@ services:
     ports:
       - "9090:9090"  # This port should not be exposed to the internet
     volumes:
-      - ./storage/prometheus/etc:/etc/prometheus:Z
+      - /var/lib/torrust/prometheus/etc:/etc/prometheus:Z
     logging:
       options:
         max-size: "10m"
@@ -87,12 +87,13 @@ services:
       - "3306:3306"  # Only for debugging, remove in production
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./storage/mysql/init:/docker-entrypoint-initdb.d:ro
+      - /var/lib/torrust/mysql/init:/docker-entrypoint-initdb.d:ro
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-p${MYSQL_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -121,9 +122,9 @@ services:
       - 7070:7070
       - 1212:1212
     volumes:
-      - ./storage/tracker/lib:/var/lib/torrust/tracker:Z
-      - ./storage/tracker/log:/var/log/torrust/tracker:Z
-      - ./storage/tracker/etc:/etc/torrust/tracker:Z
+      - /var/lib/torrust/tracker/lib:/var/lib/torrust/tracker:Z
+      - /var/lib/torrust/tracker/log:/var/log/torrust/tracker:Z
+      - /var/lib/torrust/tracker/etc:/etc/torrust/tracker:Z
     logging:
       options:
         max-size: "10m"

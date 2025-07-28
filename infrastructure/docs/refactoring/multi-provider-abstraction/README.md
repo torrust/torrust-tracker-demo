@@ -81,7 +81,8 @@ infrastructure/
 
 The new architecture introduces a clear separation between:
 
-1. **Provider-Agnostic Orchestration**: Main Terraform configuration that selects the appropriate provider module
+1. **Provider-Agnostic Orchestration**: Main Terraform configuration that selects the
+   appropriate provider module
 2. **Provider-Specific Modules**: Self-contained modules for each cloud provider
 3. **Standardized Interfaces**: Common variables and outputs across all providers
 4. **Enhanced Configuration**: Environment-based provider selection and settings
@@ -173,8 +174,10 @@ module "hetzner_infrastructure" {
 # Standardized outputs (regardless of provider)
 output "vm_ip" {
   value = var.infrastructure_provider == "local" ?
-    (length(module.local_infrastructure) > 0 ? module.local_infrastructure[0].vm_ip : "No IP assigned yet") :
-    (length(module.hetzner_infrastructure) > 0 ? module.hetzner_infrastructure[0].vm_ip : "No IP assigned yet")
+    (length(module.local_infrastructure) > 0 ? 
+     module.local_infrastructure[0].vm_ip : "No IP assigned yet") :
+    (length(module.hetzner_infrastructure) > 0 ? 
+     module.hetzner_infrastructure[0].vm_ip : "No IP assigned yet")
   description = "IP address of the created VM"
 }
 
@@ -187,8 +190,10 @@ output "vm_name" {
 
 output "connection_info" {
   value = var.infrastructure_provider == "local" ?
-    (length(module.local_infrastructure) > 0 ? module.local_infrastructure[0].connection_info : "VM not created") :
-    (length(module.hetzner_infrastructure) > 0 ? module.hetzner_infrastructure[0].connection_info : "VM not created")
+    (length(module.local_infrastructure) > 0 ? 
+     module.local_infrastructure[0].connection_info : "VM not created") :
+    (length(module.hetzner_infrastructure) > 0 ? 
+     module.hetzner_infrastructure[0].connection_info : "VM not created")
   description = "SSH connection command"
 }
 ```
@@ -271,7 +276,8 @@ USER_ID=1000
 # Extract infrastructure provider from environment
 get_infrastructure_provider() {
     if [[ -f "${CONFIG_DIR}/environments/${ENVIRONMENT}.env" ]]; then
-        INFRASTRUCTURE_PROVIDER=$(grep "INFRASTRUCTURE_PROVIDER=" "${CONFIG_DIR}/environments/${ENVIRONMENT}.env" | cut -d'=' -f2)
+        INFRASTRUCTURE_PROVIDER=$(grep "INFRASTRUCTURE_PROVIDER=" \
+            "${CONFIG_DIR}/environments/${ENVIRONMENT}.env" | cut -d'=' -f2)
     fi
 
     if [[ -z "${INFRASTRUCTURE_PROVIDER}" ]]; then
@@ -519,7 +525,9 @@ resource "hcloud_server" "vm" {
 
   ssh_keys = [hcloud_ssh_key.torrust_key.id]
 
-  user_data = templatefile("${path.module}/../../cloud-init/${var.use_minimal_config ? "user-data-minimal.yaml.tpl" : "user-data.yaml.tpl"}", {
+  user_data = templatefile(
+    "${path.module}/../../cloud-init/${var.use_minimal_config ? 
+    "user-data-minimal.yaml.tpl" : "user-data.yaml.tpl"}", {
     ssh_public_key = var.ssh_public_key
   })
 
@@ -668,29 +676,29 @@ output "hetzner_datacenter" {
 ```makefile
 # Enhanced commands that work with any provider
 infra-apply: ## Provision infrastructure (works with any provider)
-	@echo "Provisioning infrastructure for $(ENVIRONMENT)..."
-	@echo "⚠️  This command may prompt for your password for provider-specific operations"
-	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
+    @echo "Provisioning infrastructure for $(ENVIRONMENT)..."
+    @echo "⚠️  This command may prompt for your password for provider-specific operations"
+    $(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
 
 # Provider-specific configuration commands
 infra-config-hetzner: ## Generate Hetzner environment configuration
-	@echo "Configuring Hetzner environment..."
-	$(SCRIPTS_DIR)/configure-env.sh hetzner
+    @echo "Configuring Hetzner environment..."
+    $(SCRIPTS_DIR)/configure-env.sh hetzner
 
 # Provider validation
 infra-test-prereq: ## Test system prerequisites for environment
-	@echo "Testing prerequisites for $(ENVIRONMENT)..."
-	$(INFRA_TESTS_DIR)/test-unit-infrastructure.sh prerequisites $(ENVIRONMENT)
+    @echo "Testing prerequisites for $(ENVIRONMENT)..."
+    $(INFRA_TESTS_DIR)/test-unit-infrastructure.sh prerequisites $(ENVIRONMENT)
 
 # Provider-specific help
 infra-providers: ## Show supported infrastructure providers
-	@echo "Supported Infrastructure Providers:"
-	@echo "  local    - KVM/libvirt for local testing"
-	@echo "  hetzner  - Hetzner Cloud for production"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make infra-apply ENVIRONMENT=local    # Local testing"
-	@echo "  make infra-apply ENVIRONMENT=hetzner  # Hetzner production"
+    @echo "Supported Infrastructure Providers:"
+    @echo "  local    - KVM/libvirt for local testing"
+    @echo "  hetzner  - Hetzner Cloud for production"
+    @echo ""
+    @echo "Usage:"
+    @echo "  make infra-apply ENVIRONMENT=local    # Local testing"
+    @echo "  make infra-apply ENVIRONMENT=hetzner  # Hetzner production"
 ```
 
 ## 🚀 Benefits After Implementation

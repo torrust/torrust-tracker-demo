@@ -343,7 +343,7 @@ release_stage() {
         fi
     " "Processing configuration for environment: ${ENVIRONMENT}"
 
-    # Ensure proper permissions
+    # Set up persistent data volume and directory structure
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo
         
@@ -352,9 +352,22 @@ release_stage() {
             sudo ./infrastructure/scripts/fix-volume-permissions.sh
         fi
         
-        # Ensure storage directories exist
-        mkdir -p application/storage/{tracker/lib/database,prometheus/data}
-    " "Setting up application storage"
+        # Ensure persistent storage directories exist
+        sudo mkdir -p /var/lib/torrust/{tracker/{lib/database,log,etc},prometheus/{data,etc},proxy/{webroot,etc/nginx-conf},certbot/{etc,lib},dhparam,mysql/init,compose}
+        
+        # Copy .env file to persistent storage if it doesn't exist
+        if [ -f application/.env ] && [ ! -f /var/lib/torrust/compose/.env ]; then
+            sudo cp application/.env /var/lib/torrust/compose/.env
+        elif [ ! -f /var/lib/torrust/compose/.env ]; then
+            # Create default .env from template if none exists
+            if [ -f .env.production ]; then
+                sudo cp .env.production /var/lib/torrust/compose/.env
+            fi
+        fi
+        
+        # Ensure torrust user owns all persistent data
+        sudo chown -R torrust:torrust /var/lib/torrust
+    " "Setting up persistent data volume directory structure"
 
     log_success "Release stage completed"
 }
@@ -371,7 +384,7 @@ wait_for_services() {
         log_info "Checking container status (attempt ${attempt}/${max_attempts})..."
 
         # Get container status with service names only
-        services=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --services" 2>/dev/null || echo "SSH_FAILED")
+        services=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps --services" 2>/dev/null || echo "SSH_FAILED")
 
         if [[ "${services}" == "SSH_FAILED" ]]; then
             log_warning "SSH connection failed while checking container status. Retrying in 10 seconds..."
@@ -397,7 +410,7 @@ wait_for_services() {
             container_count=$((container_count + 1))
 
             # Get the container state and health for this service
-            container_info=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps ${service_name} --format '{{.State}}'" 2>/dev/null)
+            container_info=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps ${service_name} --format '{{.State}}'" 2>/dev/null)
             health_status=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker inspect ${service_name} --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' 2>/dev/null" || echo "no-healthcheck")
 
             # Clean up output
@@ -447,7 +460,7 @@ wait_for_services() {
     done
 
     log_error "Timeout waiting for services to become healthy after ${max_attempts} attempts."
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps && docker compose logs" "Dumping logs on failure"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps && docker compose --env-file /var/lib/torrust/compose/.env logs" "Dumping logs on failure"
     exit 1
 }
 
@@ -463,7 +476,7 @@ run_stage() {
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
         if [ -f compose.yaml ]; then
-            docker compose down --remove-orphans || true
+            docker compose --env-file /var/lib/torrust/compose/.env down --remove-orphans || true
         fi
     " "Stopping existing services"
 
@@ -474,7 +487,7 @@ run_stage() {
         
         # Pull images with progress output
         echo 'Starting Docker image pull...'
-        docker compose pull
+        docker compose --env-file /var/lib/torrust/compose/.env pull
         echo 'Docker image pull completed'
     " 600 "Pulling Docker images with 10-minute timeout"
 
@@ -483,7 +496,7 @@ run_stage() {
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
         # Start services
-        docker compose up -d
+        docker compose --env-file /var/lib/torrust/compose/.env up -d
     " "Starting application services"
 
     # Wait for services to initialize
@@ -502,16 +515,16 @@ validate_deployment() {
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         echo '=== Docker Compose Services (Detailed Status) ==='
-        docker compose ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
+        docker compose --env-file storage/compose/.env ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
         
         echo ''
         echo '=== Docker Compose Services (Default Format) ==='
-        docker compose ps
+        docker compose --env-file storage/compose/.env ps
         
         echo ''
         echo '=== Container Health Check Details ==='
         # Show health status for each container
-        for container in \$(docker compose ps --format '{{.Name}}'); do
+        for container in \$(docker compose --env-file storage/compose/.env ps --format '{{.Name}}'); do
             echo \"Container: \$container\"
             state=\$(docker inspect \$container --format '{{.State.Status}}')
             health=\$(docker inspect \$container --format '{{.State.Health.Status}}' 2>/dev/null || echo 'no-healthcheck')
@@ -527,7 +540,7 @@ validate_deployment() {
         done
         
         echo '=== Service Logs (last 10 lines each) ==='
-        docker compose logs --tail=10
+        docker compose --env-file /var/lib/torrust/compose/.env logs --tail=10
     " "Checking detailed service status"
 
     # Test application endpoints
@@ -592,8 +605,8 @@ show_connection_info() {
     echo
     echo "=== NEXT STEPS ==="
     echo "Health Check:    make app-health-check ENVIRONMENT=${ENVIRONMENT}"
-    echo "View Logs:       ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose logs'"
-    echo "Stop Services:   ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose down'"
+    echo "View Logs:       ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env logs'"
+    echo "Stop Services:   ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env down'"
     echo
 }
 

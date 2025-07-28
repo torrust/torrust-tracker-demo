@@ -10,12 +10,32 @@ This document outlines the deployment process for the Torrust Tracker demo appli
 
 ## 2. Deployment Steps
 
+The Torrust Tracker Demo now uses a **twelve-factor app deployment workflow**
+that separates infrastructure provisioning from application deployment.
+
+### From Local Machine (Recommended)
+
+Use the automated deployment workflow from your local development machine:
+
+```bash
+# Deploy infrastructure and application (complete workflow)
+make infra-apply ENVIRONMENT=production
+make app-deploy ENVIRONMENT=production
+
+# Validate deployment
+make app-health-check ENVIRONMENT=production
+```
+
+### Manual Deployment on Server (Legacy)
+
+If you need to manually deploy on the server:
+
 1. **SSH into the server**.
 
 2. **Navigate to the application directory**:
 
    ```bash
-   cd /home/torrust/github/torrust/torrust-tracker-demo
+   cd /home/torrust/github/torrust/torrust-tracker-demo/application
    ```
 
 3. **Pull the latest changes** from the repository:
@@ -24,17 +44,14 @@ This document outlines the deployment process for the Torrust Tracker demo appli
    git pull
    ```
 
-4. **Run the deployment script**:
+4. **Deploy using Docker Compose**:
 
    ```bash
-   ./share/bin/deploy-torrust-tracker-demo.com.sh
+   # Use the persistent volume environment file
+   docker compose --env-file /var/lib/torrust/compose/.env pull
+   docker compose --env-file /var/lib/torrust/compose/.env down
+   docker compose --env-file /var/lib/torrust/compose/.env up -d
    ```
-
-   This script handles:
-
-   - Stopping services
-   - Rebuilding containers
-   - Starting services
 
 ## 3. Verification and Smoke Testing
 
@@ -45,7 +62,12 @@ After deployment, verify that all services are running correctly.
 Check the status of all Docker containers:
 
 ```bash
-docker compose ps
+# From local machine
+make app-health-check ENVIRONMENT=production
+
+# Or manually on server
+cd /home/torrust/github/torrust/torrust-tracker-demo/application
+docker compose --env-file /var/lib/torrust/compose/.env ps
 ```
 
 ### Application Logs

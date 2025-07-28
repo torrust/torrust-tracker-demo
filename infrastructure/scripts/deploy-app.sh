@@ -12,9 +12,6 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 
 # Default values
 ENVIRONMENT="${1:-local}"
-# Get script configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
 
@@ -152,6 +149,24 @@ vm_exec() {
 
     if ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 torrust@"${vm_ip}" "${command}"; then
         log_error "Failed to execute command on VM: ${command}"
+        exit 1
+    fi
+}
+
+# Execute command on VM via SSH with timeout
+vm_exec_with_timeout() {
+    local vm_ip="$1"
+    local command="$2"
+    local timeout="${3:-300}"  # Default 5 minutes
+    local description="${4:-}"
+
+    if [[ -n "${description}" ]]; then
+        log_info "${description}"
+    fi
+
+    # Use timeout command to limit execution time
+    if ! timeout "${timeout}" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 torrust@"${vm_ip}" "${command}"; then
+        log_error "Failed to execute command on VM (timeout: ${timeout}s): ${command}"
         exit 1
     fi
 }
@@ -382,12 +397,20 @@ run_stage() {
         fi
     " "Stopping existing services"
 
-    # Pull latest images and start services
-    vm_exec "${vm_ip}" "
+    # Pull latest images with timeout (10 minutes for large images)
+    log_info "Pulling Docker images (this may take several minutes for large images)..."
+    vm_exec_with_timeout "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
-        # Pull latest images
+        # Pull images with progress output
+        echo 'Starting Docker image pull...'
         docker compose pull
+        echo 'Docker image pull completed'
+    " 600 "Pulling Docker images with 10-minute timeout"
+
+    # Start services
+    vm_exec "${vm_ip}" "
+        cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
         # Start services
         docker compose up -d

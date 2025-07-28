@@ -25,13 +25,6 @@ source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 # Set log file for tee output
 export SHELL_UTILS_LOG_FILE="${TEST_LOG_FILE}"
 
-log_section() {
-    log ""
-    log "${BLUE}===============================================${NC}"
-    log "${BLUE}$1${NC}"
-    log "${BLUE}===============================================${NC}"
-}
-
 # Helper function to get VM IP address from libvirt
 get_vm_ip() {
     virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo ""

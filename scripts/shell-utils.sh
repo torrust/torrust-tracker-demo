@@ -14,6 +14,7 @@
 #   log_success "Operation completed successfully"
 #   log_warning "This is a warning"
 #   log_error "This is an error"
+#   log_section "Major Section Title"
 #
 #   # Use HTTP testing:
 #   result=$(test_http_endpoint "http://example.com" "expected content")
@@ -76,6 +77,14 @@ log_trace() {
     if [[ "${TRACE:-false}" == "true" ]]; then
         log "${MAGENTA}[TRACE]${NC} $1"
     fi
+}
+
+# Section header logging - displays a prominent section separator
+log_section() {
+    log ""
+    log "${BLUE}===============================================${NC}"
+    log "${BLUE}$1${NC}"
+    log "${BLUE}===============================================${NC}"
 }
 
 # Additional utility functions

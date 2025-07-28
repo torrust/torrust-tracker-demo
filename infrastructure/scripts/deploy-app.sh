@@ -287,31 +287,13 @@ release_stage() {
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
 
-    # Check if we need to preserve storage before removing repository
-    storage_exists=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
-        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
-            echo 'true'
-        else
-            echo 'false'
-        fi
-    " 2>/dev/null || echo "false")
-
-    if [[ "${storage_exists}" == "true" ]]; then
-        log_warning "Preserving existing storage folder with persistent data"
-    fi
-
-    # Handle existing repository - preserve storage folder if it exists
+    # Handle existing repository  
     vm_exec "${vm_ip}" "
         if [ -d /home/torrust/github/torrust/torrust-tracker-demo ]; then
-            if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
-                # Move storage folder to temporary location
-                mv /home/torrust/github/torrust/torrust-tracker-demo/application/storage /tmp/torrust-storage-backup-\$(date +%s) || true
-            fi
-            
-            # Remove the repository directory (excluding storage)
+            # Remove the repository directory
             rm -rf /home/torrust/github/torrust/torrust-tracker-demo
         fi
-    " "Removing existing repository (preserving storage)"
+    " "Removing existing repository"
 
     # Copy archive to VM
     if ! scp -o StrictHostKeyChecking=no "${temp_archive}" "torrust@${vm_ip}:/tmp/"; then
@@ -320,69 +302,11 @@ release_stage() {
         exit 1
     fi
 
-    # Also copy generated configuration files (not in git archive)
-    log_info "Copying generated configuration files to VM..."
-    
-    # Create a temporary archive of just the generated files
-    local config_archive
-    config_archive="/tmp/torrust-config-$(date +%s).tar.gz"
-    
-    if [[ -d "application/storage" ]]; then
-        tar -czf "${config_archive}" -C "${PROJECT_ROOT}" application/storage/ 2>/dev/null || true
-        
-        # Copy configuration archive to VM
-        if scp -o StrictHostKeyChecking=no "${config_archive}" "torrust@${vm_ip}:/tmp/" 2>/dev/null; then
-            log_info "Configuration files copied successfully"
-        else
-            log_warning "No configuration files to copy (this is normal for first deployment)"
-        fi
-        
-        # Clean up local config archive
-        rm -f "${config_archive}"
-    else
-        log_warning "No application/storage directory found - configuration will be generated on VM"
-    fi
-
     # Extract archive on VM
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mkdir -p torrust-tracker-demo" "Creating repository directory"
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && tar -xzf /tmp/$(basename "${temp_archive}")" "Extracting repository"
     
-    # Extract configuration files if they were copied
-    vm_exec "${vm_ip}" "
-        config_archive=\$(ls /tmp/torrust-config-*.tar.gz 2>/dev/null | head -1 || echo '')
-        if [ -n \"\$config_archive\" ] && [ -f \"\$config_archive\" ]; then
-            cd /home/torrust/github/torrust/torrust-tracker-demo
-            tar -xzf \"\$config_archive\"
-            rm -f \"\$config_archive\"
-            echo 'Configuration files extracted successfully'
-        else
-            echo 'No configuration archive found - will generate on VM'
-        fi
-    " "Extracting configuration files"
-    
     vm_exec "${vm_ip}" "rm -f /tmp/$(basename "${temp_archive}")" "Cleaning up temp files"
-
-    # Restore storage folder if it was backed up
-    vm_exec "${vm_ip}" "
-        storage_backup=\$(ls /tmp/torrust-storage-backup-* 2>/dev/null | head -1 || echo '')
-        if [ -n \"\$storage_backup\" ] && [ -d \"\$storage_backup\" ]; then
-            rm -rf /home/torrust/github/torrust/torrust-tracker-demo/application/storage
-            mv \"\$storage_backup\" /home/torrust/github/torrust/torrust-tracker-demo/application/storage
-        fi
-    " "Restoring preserved storage folder"
-
-    # Check if storage was restored and log appropriately
-    storage_restored=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
-        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/mysql ] || [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/tracker ]; then
-            echo 'true'
-        else
-            echo 'false'
-        fi
-    " 2>/dev/null || echo "false")
-
-    if [[ "${storage_restored}" == "true" ]]; then
-        log_info "Storage folder restored with existing persistent data"
-    fi
 
     # Clean up local temp file
     rm -f "${temp_archive}"
@@ -392,7 +316,7 @@ release_stage() {
 
     log_success "Local repository deployed successfully"
 
-    # Set up persistent data volume and directory structure (using locally generated files)
+    # Set up persistent data volume and copy locally generated configuration files directly
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo
         
@@ -404,31 +328,44 @@ release_stage() {
         # Ensure persistent storage directories exist
         sudo mkdir -p /var/lib/torrust/{tracker/{lib/database,log,etc},prometheus/{data,etc},proxy/{webroot,etc/nginx-conf},certbot/{etc,lib},dhparam,mysql/init,compose}
         
-        # Copy generated configuration files to persistent storage
-        # These files are generated locally and need to be in the persistent volume
-        if [ -f application/storage/tracker/etc/tracker.toml ]; then
-            sudo cp application/storage/tracker/etc/tracker.toml /var/lib/torrust/tracker/etc/
-        fi
-        if [ -f application/storage/prometheus/etc/prometheus.yml ]; then
-            sudo cp application/storage/prometheus/etc/prometheus.yml /var/lib/torrust/prometheus/etc/
-        fi
-        if [ -f application/storage/proxy/etc/nginx-conf/nginx.conf ]; then
-            sudo cp application/storage/proxy/etc/nginx-conf/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/
-        fi
-        
-        # Copy .env file to persistent storage 
-        # This file is generated locally and needs to be in the persistent volume
-        if [ -f application/storage/compose/.env ]; then
-            sudo cp application/storage/compose/.env /var/lib/torrust/compose/.env
-        else
-            echo 'ERROR: No .env file found at application/storage/compose/.env'
-            echo 'Configuration should have been generated locally before deployment'
-            exit 1
-        fi
-        
-        # Ensure torrust user owns all persistent data
+        # Ensure torrust user owns all persistent data directories
         sudo chown -R torrust:torrust /var/lib/torrust
     " "Setting up persistent data volume directory structure"
+
+    # Copy locally generated configuration files directly to persistent volume
+    log_info "Copying locally generated configuration files to persistent volume..."
+    
+    # Copy tracker configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/tracker/etc/tracker.toml" ]]; then
+        log_info "Copying tracker configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/tracker/etc/tracker.toml" "torrust@${vm_ip}:/tmp/tracker.toml"
+        vm_exec "${vm_ip}" "sudo mv /tmp/tracker.toml /var/lib/torrust/tracker/etc/tracker.toml && sudo chown torrust:torrust /var/lib/torrust/tracker/etc/tracker.toml"
+    fi
+    
+    # Copy prometheus configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/prometheus/etc/prometheus.yml" ]]; then
+        log_info "Copying prometheus configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/prometheus/etc/prometheus.yml" "torrust@${vm_ip}:/tmp/prometheus.yml"
+        vm_exec "${vm_ip}" "sudo mv /tmp/prometheus.yml /var/lib/torrust/prometheus/etc/prometheus.yml && sudo chown torrust:torrust /var/lib/torrust/prometheus/etc/prometheus.yml"
+    fi
+    
+    # Copy nginx configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" ]]; then
+        log_info "Copying nginx configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" "torrust@${vm_ip}:/tmp/nginx.conf"
+        vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf && sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    fi
+    
+    # Copy Docker Compose .env file
+    if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then
+        log_info "Copying Docker Compose environment file..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/compose/.env" "torrust@${vm_ip}:/tmp/compose.env"
+        vm_exec "${vm_ip}" "sudo mv /tmp/compose.env /var/lib/torrust/compose/.env && sudo chown torrust:torrust /var/lib/torrust/compose/.env"
+    else
+        log_error "No .env file found at ${PROJECT_ROOT}/application/storage/compose/.env"
+        log_error "Configuration should have been generated locally before deployment"
+        exit 1
+    fi
 
     log_success "Release stage completed"
 }

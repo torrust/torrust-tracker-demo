@@ -179,10 +179,10 @@ make lint         # Syntax validation only
 
 #### Testing and Validation
 
-| Command            | Purpose                           |
-| ------------------ | --------------------------------- |
-| `make test-e2e`    | Run complete infrastructure tests |
-| `make lint`        | Run syntax validation only        |
+| Command         | Purpose                           |
+| --------------- | --------------------------------- |
+| `make test-e2e` | Run complete infrastructure tests |
+| `make lint`     | Run syntax validation only        |
 
 #### Legacy Commands (Deprecated)
 

@@ -58,6 +58,14 @@ check_git_status() {
         return 0
     fi
     
+    # Determine deployment approach based on environment
+    local deployment_approach
+    if [[ "${ENVIRONMENT}" == "local" ]]; then
+        deployment_approach="working tree (includes uncommitted changes)"
+    else
+        deployment_approach="git archive (committed changes only)"
+    fi
+    
     # Check for uncommitted changes in configuration templates
     local config_changes
     config_changes=$(git status --porcelain infrastructure/config/environments/ 2>/dev/null || echo "")
@@ -71,18 +79,24 @@ check_git_status() {
             log_warning "  ${line}"
         done
         log_warning ""
-        log_warning "IMPORTANT: Deployment uses 'git archive' which only includes committed files."
-        log_warning "Your uncommitted changes will NOT be deployed to the VM."
-        log_warning ""
-        log_warning "To include these changes in deployment:"
-        log_warning "  1. git add infrastructure/config/environments/"
-        log_warning "  2. git commit -m 'update: configuration templates'"
-        log_warning "  3. Re-run deployment"
-        log_warning ""
-        log_warning "To continue without committing (deployment will use last committed version):"
-        log_warning "  Press ENTER to continue or Ctrl+C to abort"
+        
+        if [[ "${ENVIRONMENT}" == "local" ]]; then
+            log_info "ℹ️  LOCAL TESTING: Uncommitted changes WILL be deployed (using working tree)"
+            log_info "This includes your configuration changes and any other uncommitted modifications."
+        else
+            log_warning "IMPORTANT: Production deployment uses 'git archive' which only includes committed files."
+            log_warning "Your uncommitted changes will NOT be deployed to the VM."
+            log_warning ""
+            log_warning "To include these changes in deployment:"
+            log_warning "  1. git add infrastructure/config/environments/"
+            log_warning "  2. git commit -m 'update: configuration templates'"
+            log_warning "  3. Re-run deployment"
+            log_warning ""
+            log_warning "To continue without committing (deployment will use last committed version):"
+            log_warning "  Press ENTER to continue or Ctrl+C to abort"
+            read -r
+        fi
         log_warning "==============================================="
-        read -r
     fi
     
     # Check for any other uncommitted changes (informational)
@@ -92,7 +106,9 @@ check_git_status() {
     if [[ "${all_changes}" -gt 0 ]]; then
         local git_status
         git_status=$(git status --short 2>/dev/null || echo "")
-        log_info "Repository has ${all_changes} uncommitted changes (git archive will use committed version)"
+        log_info "Repository has ${all_changes} uncommitted changes"
+        log_info "Deployment approach: ${deployment_approach}"
+        
         if [[ "${all_changes}" -le 10 ]]; then
             log_info "Uncommitted files:"
             echo "${git_status}" | while IFS= read -r line; do
@@ -264,15 +280,106 @@ generate_configuration_locally() {
     fi
 }
 
-# RELEASE STAGE: Deploy application code and configuration
-release_stage() {
+# Generate and deploy nginx HTTP configuration from template
+generate_nginx_http_config() {
     local vm_ip="$1"
+    
+    log_info "Generating nginx HTTP configuration from template..."
+    
+    # Template and output paths
+    local template_file="${PROJECT_ROOT}/infrastructure/config/templates/nginx-http.conf.tpl"
+    local output_file
+    output_file="/tmp/nginx-http-$(date +%s).conf"
+    
+    # Check if template exists
+    if [[ ! -f "${template_file}" ]]; then
+        log_error "Nginx HTTP template not found: ${template_file}"
+        exit 1
+    fi
+    
+    # Load environment variables from the generated config
+    local env_file="${PROJECT_ROOT}/infrastructure/config/environments/${ENVIRONMENT}.env"
+    if [[ -f "${env_file}" ]]; then
+        log_info "Loading environment variables from ${env_file}"
+        # Export variables for envsubst, filtering out comments and empty lines
+        set -a  # automatically export all variables
+        # shellcheck source=/dev/null
+        source "${env_file}"
+        set +a  # stop auto-exporting
+    else
+        log_error "Environment file not found: ${env_file}"
+        log_error "Run 'make infra-config ENVIRONMENT=${ENVIRONMENT}' first"
+        exit 1
+    fi
+    
+    # Ensure required variables are set
+    if [[ -z "${DOMAIN_NAME:-}" ]]; then
+        log_error "DOMAIN_NAME not set in environment"
+        exit 1
+    fi
+    
+    # Set DOLLAR variable for nginx variables (needed by envsubst to escape $)
+    export DOLLAR='$'
+    
+    # Process template using envsubst
+    log_info "Processing template with DOMAIN_NAME=${DOMAIN_NAME}"
+    envsubst < "${template_file}" > "${output_file}"
+    
+    # Copy generated configuration to VM
+    log_info "Copying nginx HTTP configuration to VM..."
+    scp -o StrictHostKeyChecking=no "${output_file}" "torrust@${vm_ip}:/tmp/nginx.conf"
+    
+    # Deploy configuration to proper location on VM
+    vm_exec "${vm_ip}" "sudo mkdir -p /var/lib/torrust/proxy/etc/nginx-conf"
+    vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    vm_exec "${vm_ip}" "sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    
+    # Cleanup local temporary file
+    rm -f "${output_file}"
+    
+    log_success "Nginx HTTP configuration deployed"
+}
 
-    log_info "=== TWELVE-FACTOR RELEASE STAGE ==="
-    log_info "Deploying application with environment: ${ENVIRONMENT}"
+# Deploy local working tree (includes uncommitted and untracked files) for local testing
+deploy_local_working_tree() {
+    local vm_ip="$1"
+    
+    log_info "Deploying local working tree (includes uncommitted and untracked files) for testing..."
+    
+    # Create target directory structure
+    vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
+    
+    # Handle existing repository  
+    vm_exec "${vm_ip}" "
+        if [ -d /home/torrust/github/torrust/torrust-tracker-demo ]; then
+            # Remove the repository directory
+            rm -rf /home/torrust/github/torrust/torrust-tracker-demo
+        fi
+    " "Removing existing repository"
+    
+    # Create target directory
+    vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust/torrust-tracker-demo" "Creating repository directory"
+    
+    # Use rsync to copy working tree, including uncommitted and untracked files (but respecting .gitignore)
+    log_info "Using rsync to copy working tree (committed + uncommitted + untracked files)..."
+    
+    cd "${PROJECT_ROOT}"
+    
+    # Use rsync with --filter to respect .gitignore while including untracked files
+    # This copies all files in working tree except those explicitly ignored by git
+    if ! rsync -avz --filter=':- .gitignore' --exclude='.git/' ./ "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"; then
+        log_error "Failed to rsync working tree to VM"
+        exit 1
+    fi
+    
+    log_success "Local working tree deployed successfully (includes uncommitted and untracked files)"
+}
 
-    # Deploy local repository using git archive (testing local changes)
-    log_info "Creating git archive of local repository..."
+# Deploy using git archive (committed changes only) for production
+deploy_git_archive() {
+    local vm_ip="$1"
+    
+    log_info "Deploying using git archive (committed changes only)..."
     local temp_archive
     temp_archive="/tmp/torrust-tracker-demo-$(date +%s).tar.gz"
 
@@ -282,7 +389,7 @@ release_stage() {
         exit 1
     fi
 
-    log_info "Copying local repository to VM..."
+    log_info "Copying git archive to VM..."
 
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
@@ -311,10 +418,22 @@ release_stage() {
     # Clean up local temp file
     rm -f "${temp_archive}"
 
-    # Verify deployment
-    vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository deployment"
+    log_success "Git archive deployed successfully (committed changes only)"
+}
 
-    log_success "Local repository deployed successfully"
+# RELEASE STAGE: Deploy application code and configuration
+release_stage() {
+    local vm_ip="$1"
+
+    log_info "=== TWELVE-FACTOR RELEASE STAGE ==="
+    log_info "Deploying application with environment: ${ENVIRONMENT}"
+
+    # Choose deployment method based on environment
+    if [[ "${ENVIRONMENT}" == "local" ]]; then
+        deploy_local_working_tree "${vm_ip}"
+    else
+        deploy_git_archive "${vm_ip}"
+    fi
 
     # Set up persistent data volume and copy locally generated configuration files directly
     vm_exec "${vm_ip}" "
@@ -349,12 +468,8 @@ release_stage() {
         vm_exec "${vm_ip}" "sudo mv /tmp/prometheus.yml /var/lib/torrust/prometheus/etc/prometheus.yml && sudo chown torrust:torrust /var/lib/torrust/prometheus/etc/prometheus.yml"
     fi
     
-    # Copy nginx configuration
-    if [[ -f "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" ]]; then
-        log_info "Copying nginx configuration..."
-        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" "torrust@${vm_ip}:/tmp/nginx.conf"
-        vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf && sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
-    fi
+    # Generate and copy nginx HTTP configuration
+    generate_nginx_http_config "${vm_ip}"
     
     # Copy Docker Compose .env file
     if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then

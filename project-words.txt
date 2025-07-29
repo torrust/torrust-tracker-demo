@@ -18,6 +18,7 @@ dialout
 direnv
 dmacvicar
 dnsmasq
+dnsserver
 domifaddr
 dominfo
 domstate
@@ -37,6 +38,7 @@ genisoimage
 healthcheck
 healthchecks
 hetznercloud
+HSTS
 INFOHASH
 initdb
 journalctl
@@ -53,19 +55,23 @@ minica
 misprocess
 mkisofs
 mktemp
+myip
 mysqladmin
 netcat
 netdev
+networkor
 newgrp
 newtrackon
 nmap
 noatime
+NONCEREJECT
 NOPASSWD
 NOSLEEP
 nosniff
 nslookup
 nullglob
 NUXT
+OCSP
 opentofu
 pacman
 Passwordless
@@ -96,6 +102,7 @@ testpass
 testuser
 tfstate
 tfvars
+tlsalpn
 tlsv
 tulpn
 UEFI

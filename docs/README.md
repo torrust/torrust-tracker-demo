@@ -52,8 +52,12 @@ that span multiple components.
 
 - [Integration Testing Guide](guides/integration-testing-guide.md) - Step-by-step
   guide for running integration tests following twelve-factor methodology
-- [Quick Start Guide](guides/quick-start.md) - Fast setup guide for getting
-  started quickly
+- [Infrastructure Quick Start Guide](../infrastructure/docs/quick-start.md) - Fast
+  setup guide for getting started quickly with local development
+- [Cloud Deployment Guide](guides/cloud-deployment-guide.md) - Complete deployment
+  guide for local development and planned cloud deployment
+- [Grafana Setup Guide](guides/grafana-setup-guide.md) - Manual setup and
+  configuration of Grafana monitoring dashboards
 - [Smoke Testing Guide](guides/smoke-testing-guide.md) - End-to-end testing
   using official Torrust client tools
 

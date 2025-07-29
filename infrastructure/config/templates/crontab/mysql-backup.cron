@@ -1,0 +1,6 @@
+# MySQL Database Backup Crontab Entry
+# Runs daily at 3:00 AM as torrust user
+# Output is logged to /var/log/mysql-backup.log
+# Requires: torrust user in docker group (already configured via cloud-init)
+
+0 3 * * * /home/torrust/github/torrust/torrust-tracker-demo/application/share/bin/mysql-backup.sh >> /var/log/mysql-backup.log 2>&1

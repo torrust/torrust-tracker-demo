@@ -20,6 +20,20 @@ TRACKER_ADMIN_TOKEN=REPLACE_WITH_SECURE_ADMIN_TOKEN
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=REPLACE_WITH_SECURE_GRAFANA_PASSWORD
 
+# === SSL CERTIFICATE CONFIGURATION ===
+# Domain name for SSL certificates (required for production)
+DOMAIN_NAME=REPLACE_WITH_YOUR_DOMAIN
+# Email for Let's Encrypt certificate registration (required for production)
+CERTBOT_EMAIL=REPLACE_WITH_YOUR_EMAIL
+# Enable SSL certificates (true for production, false for testing)
+ENABLE_SSL=true
+
+# === BACKUP CONFIGURATION ===
+# Enable daily database backups (true/false)
+ENABLE_DB_BACKUPS=true
+# Backup retention period in days
+BACKUP_RETENTION_DAYS=7
+
 # === DOCKER CONFIGURATION ===
 
 # User ID for file permissions (match host user)

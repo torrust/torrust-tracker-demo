@@ -5,7 +5,7 @@ GENERATION_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 # Template processing variables
 DOLLAR=$
 
-# === SECRETS (Only these variables will be in Docker environment) ===
+# === SECRETS (DOCKER SERVICES) ===
 
 # Database Secrets
 MYSQL_ROOT_PASSWORD=root_secret_local
@@ -33,6 +33,11 @@ ENABLE_SSL=false
 ENABLE_DB_BACKUPS=false
 # Backup retention period in days
 BACKUP_RETENTION_DAYS=3
+
+# === DEPLOYMENT AUTOMATION CONFIGURATION ===
+# These variables control deployment scripts and automation, not service configuration.
+# They are consumed by infrastructure scripts (deploy-app.sh, SSL generation, backup automation)
+# rather than individual Docker services. This follows 12-factor principles for deployment automation.
 
 # === DOCKER CONFIGURATION ===
 

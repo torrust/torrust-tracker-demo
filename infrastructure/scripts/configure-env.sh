@@ -54,11 +54,11 @@ setup_production_environment() {
     fi
 
     # Validate that placeholder values have been replaced
-    if grep -q "REPLACE_WITH_SECURE" "${env_file}"; then
+    if grep -q "REPLACE_WITH_SECURE\|REPLACE_WITH_YOUR" "${env_file}"; then
         log_error "Production environment file contains placeholder values!"
-        log_error "Please edit ${env_file} and replace all 'REPLACE_WITH_SECURE_*' values with actual secrets."
+        log_error "Please edit ${env_file} and replace all 'REPLACE_WITH_SECURE_*' and 'REPLACE_WITH_YOUR_*' values with actual secrets."
         log_error "Found placeholder values:"
-        grep "REPLACE_WITH_SECURE" "${env_file}" | while read -r line; do
+        grep "REPLACE_WITH_SECURE\|REPLACE_WITH_YOUR" "${env_file}" | while read -r line; do
             log_error "  ${line}"
         done
         exit 1
@@ -101,6 +101,7 @@ validate_environment() {
         "GF_SECURITY_ADMIN_PASSWORD"
     )
 
+    # Validate core required variables
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             log_error "Required environment variable not set: ${var}"
@@ -108,7 +109,106 @@ validate_environment() {
         fi
     done
 
+    # Validate SSL configuration variables
+    validate_ssl_configuration
+
+    # Validate backup configuration variables
+    validate_backup_configuration
+
     log_success "Environment validation passed"
+}
+
+# Validate SSL certificate configuration
+validate_ssl_configuration() {
+    # Check if DOMAIN_NAME is set and not a placeholder
+    if [[ -z "${DOMAIN_NAME:-}" ]]; then
+        log_error "SSL configuration: DOMAIN_NAME is not set"
+        exit 1
+    fi
+    
+    if [[ "${DOMAIN_NAME}" == "REPLACE_WITH_YOUR_DOMAIN" ]]; then
+        log_error "SSL configuration: DOMAIN_NAME contains placeholder value 'REPLACE_WITH_YOUR_DOMAIN'"
+        log_error "Please edit your environment file and set a real domain name"
+        exit 1
+    fi
+
+    # Check if CERTBOT_EMAIL is set and not a placeholder
+    if [[ -z "${CERTBOT_EMAIL:-}" ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL is not set"
+        exit 1
+    fi
+    
+    if [[ "${CERTBOT_EMAIL}" == "REPLACE_WITH_YOUR_EMAIL" ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL contains placeholder value 'REPLACE_WITH_YOUR_EMAIL'"
+        log_error "Please edit your environment file and set a real email address"
+        exit 1
+    fi
+
+    # Validate email format (basic validation)
+    if [[ ! "${CERTBOT_EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL '${CERTBOT_EMAIL}' is not a valid email format"
+        exit 1
+    fi
+
+    # Check if ENABLE_SSL is a valid boolean
+    if [[ -z "${ENABLE_SSL:-}" ]]; then
+        log_error "SSL configuration: ENABLE_SSL is not set"
+        exit 1
+    fi
+    
+    if [[ "${ENABLE_SSL}" != "true" && "${ENABLE_SSL}" != "false" ]]; then
+        log_error "SSL configuration: ENABLE_SSL must be 'true' or 'false', got '${ENABLE_SSL}'"
+        exit 1
+    fi
+
+    # Log SSL configuration validation result
+    if [[ "${ENABLE_SSL}" == "true" ]]; then
+        log_info "SSL configuration: Enabled for domain '${DOMAIN_NAME}' with email '${CERTBOT_EMAIL}'"
+    else
+        log_info "SSL configuration: Disabled (ENABLE_SSL=false)"
+    fi
+}
+
+# Validate backup configuration
+validate_backup_configuration() {
+    # Check if ENABLE_DB_BACKUPS is a valid boolean
+    if [[ -z "${ENABLE_DB_BACKUPS:-}" ]]; then
+        log_error "Backup configuration: ENABLE_DB_BACKUPS is not set"
+        exit 1
+    fi
+    
+    if [[ "${ENABLE_DB_BACKUPS}" != "true" && "${ENABLE_DB_BACKUPS}" != "false" ]]; then
+        log_error "Backup configuration: ENABLE_DB_BACKUPS must be 'true' or 'false', got '${ENABLE_DB_BACKUPS}'"
+        exit 1
+    fi
+
+    # Validate BACKUP_RETENTION_DAYS is numeric and reasonable
+    if [[ -z "${BACKUP_RETENTION_DAYS:-}" ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS is not set"
+        exit 1
+    fi
+    
+    if ! [[ "${BACKUP_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS must be a positive integer, got '${BACKUP_RETENTION_DAYS}'"
+        exit 1
+    fi
+    
+    if [[ "${BACKUP_RETENTION_DAYS}" -lt 1 ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS must be at least 1 day, got '${BACKUP_RETENTION_DAYS}'"
+        exit 1
+    fi
+    
+    if [[ "${BACKUP_RETENTION_DAYS}" -gt 365 ]]; then
+        log_warning "Backup configuration: BACKUP_RETENTION_DAYS is very high (${BACKUP_RETENTION_DAYS} days)"
+        log_warning "This may consume significant disk space"
+    fi
+
+    # Log backup configuration validation result
+    if [[ "${ENABLE_DB_BACKUPS}" == "true" ]]; then
+        log_info "Backup configuration: Enabled with ${BACKUP_RETENTION_DAYS} days retention"
+    else
+        log_info "Backup configuration: Disabled (ENABLE_DB_BACKUPS=false)"
+    fi
 }
 
 # Process configuration templates

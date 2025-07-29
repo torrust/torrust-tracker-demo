@@ -197,7 +197,7 @@ All Pebble testing infrastructure is working correctly:
 - ✅ **Challenge Test Server**: Properly configured to direct HTTP-01 challenges to nginx on port 80
 - ✅ **Nginx Proxy**: Serving ACME challenge files from /var/lib/torrust/certbot/webroot
 - ✅ **Docker Compose Test Stack**: All services running without port conflicts
-- ✅ **Local DNS Setup**: Test domains (*.test.local) configured in /etc/hosts
+- ✅ **Local DNS Setup**: Test domains (\*.test.local) configured in /etc/hosts
 - ✅ **SSL Scripts**: All scripts deployed and executable on VM
 
 **Architecture Decision for Tomorrow (2025-07-30)**: 🎯 **PRE-GENERATED CERTIFICATES**
@@ -206,18 +206,21 @@ Based on complexity analysis of the Pebble testing environment, we have decided 
 **Option 1: Pre-generated Test Certificates** for faster iteration and simpler testing:
 
 **Decision Rationale**:
+
 1. **Complexity**: Full Pebble integration requires managing separate Docker Compose stacks and port conflicts
 2. **Testing Focus**: The goal is to test nginx HTTPS configuration, not certificate generation validation
 3. **Development Speed**: Pre-generated certificates allow immediate testing of SSL scripts without external dependencies
 4. **Reliability**: No DNS, network, or certificate authority dependencies for testing
 
 **Implementation Plan for 2025-07-30**:
+
 1. **Create Simple Certificate Generator**: Script to generate self-signed certificates for testing
 2. **Test Nginx HTTPS Configuration**: Use pre-generated certs to validate nginx template system
 3. **Validate SSL Setup Scripts**: Test the complete SSL activation workflow with known-good certificates
 4. **Keep Pebble Environment**: Maintain current Pebble setup for comprehensive integration testing (optional)
 
 **Benefits of This Approach**:
+
 - ✅ **Fast Iteration**: Instant certificate generation for testing
 - ✅ **No External Dependencies**: Testing works offline and without DNS setup
 - ✅ **Focused Testing**: Tests nginx configuration and SSL script workflow specifically
@@ -225,6 +228,7 @@ Based on complexity analysis of the Pebble testing environment, we have decided 
 - ✅ **Reliable**: No network failures, rate limits, or external service dependencies
 
 **Next Session Goals**:
+
 1. Create `ssl-generate-test-certs.sh` script for self-signed certificate generation
 2. Test nginx HTTPS configuration with pre-generated certificates
 3. Validate complete SSL activation workflow (dns-validation → cert-generation → nginx-config → renewal)
@@ -427,7 +431,7 @@ All Pebble testing infrastructure is working correctly:
 - ✅ **Challenge Test Server**: Properly configured to direct HTTP-01 challenges to nginx on port 80
 - ✅ **Nginx Proxy**: Serving ACME challenge files from /var/lib/torrust/certbot/webroot
 - ✅ **Docker Compose Test Stack**: All services running without port conflicts
-- ✅ **Local DNS Setup**: Test domains (*.test.local) configured in /etc/hosts
+- ✅ **Local DNS Setup**: Test domains (\*.test.local) configured in /etc/hosts
 - ✅ **SSL Scripts**: All scripts deployed and executable on VM
 
 **Architecture Decision for Tomorrow (2025-07-30)**: 🎯 **PRE-GENERATED CERTIFICATES**
@@ -436,18 +440,21 @@ Based on complexity analysis of the Pebble testing environment, we have decided 
 **Option 1: Pre-generated Test Certificates** for faster iteration and simpler testing:
 
 **Decision Rationale**:
+
 1. **Complexity**: Full Pebble integration requires managing separate Docker Compose stacks and port conflicts
 2. **Testing Focus**: The goal is to test nginx HTTPS configuration, not certificate generation validation
 3. **Development Speed**: Pre-generated certificates allow immediate testing of SSL scripts without external dependencies
 4. **Reliability**: No DNS, network, or certificate authority dependencies for testing
 
 **Implementation Plan for 2025-07-30**:
+
 1. **Create Simple Certificate Generator**: Script to generate self-signed certificates for testing
 2. **Test Nginx HTTPS Configuration**: Use pre-generated certs to validate nginx template system
 3. **Validate SSL Setup Scripts**: Test the complete SSL activation workflow with known-good certificates
 4. **Keep Pebble Environment**: Maintain current Pebble setup for comprehensive integration testing (optional)
 
 **Benefits of This Approach**:
+
 - ✅ **Fast Iteration**: Instant certificate generation for testing
 - ✅ **No External Dependencies**: Testing works offline and without DNS setup
 - ✅ **Focused Testing**: Tests nginx configuration and SSL script workflow specifically
@@ -455,10 +462,12 @@ Based on complexity analysis of the Pebble testing environment, we have decided 
 - ✅ **Reliable**: No network failures, rate limits, or external service dependencies
 
 **Next Session Goals**:
+
 1. Create `ssl-generate-test-certs.sh` script for self-signed certificate generation
 2. Test nginx HTTPS configuration with pre-generated certificates
 3. Validate complete SSL activation workflow (dns-validation → cert-generation → nginx-config → renewal)
 4. Document simplified SSL testing approach in guides
+
 ````
 
 ## Current State Analysis
@@ -1092,7 +1101,7 @@ echo "$(date): SSL renewal check completed" >> "$LOG_FILE"
 
 #### 2.1 Create MySQL Backup Script ✅ **IMPLEMENTED**
 
-**Status**: ✅ **COMPLETED** - The script `application/share/bin/mysql-backup.sh` has been  
+**Status**: ✅ **COMPLETED** - The script `application/share/bin/mysql-backup.sh` has been
 implemented and fully tested.
 
 **Implementation Details**:
@@ -2036,3 +2045,4 @@ docker compose restart nginx
 - 🤖 **Fully Automated**: Certificate generation, nginx configuration, renewal setup
 - 👤 **Manual Required**: DNS configuration, domain/email environment variables
 - ⏱️ **One-time Setup**: SSL configuration persists across application redeployments
+````

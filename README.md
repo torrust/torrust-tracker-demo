@@ -50,6 +50,46 @@ This repository is organized into distinct concerns:
 - Security and auditing information
 - Cross-cutting concerns
 
+## 🏗️ Twelve-Factor Architecture
+
+This project implements a complete [twelve-factor app](https://12factor.net/) architecture with
+clear separation between infrastructure provisioning and application deployment:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                 Configuration Management                    │
+├─────────────────────────────────────────────────────────────┤
+│  • Environment Templates (local.env.tpl, production.env.tpl)  │
+│  • Configuration Processing (configure-env.sh)              │
+│  • Template Rendering (.tpl → actual configs)               │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Infrastructure Layer                    │
+├─────────────────────────────────────────────────────────────┤
+│  • VM Provisioning (provision-infrastructure.sh)            │
+│  • Environment-specific Setup (templated cloud-init)        │
+│  • Provider Abstraction (local implemented, cloud planned)  │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Application Layer                        │
+├─────────────────────────────────────────────────────────────┤
+│  • Environment-aware Deployment (templated configs)         │
+│  • Dynamic Service Configuration                            │
+│  • Comprehensive Health Validation                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Features
+
+- **Complete Twelve-Factor Compliance**: All 12 factors implemented
+- **Infrastructure/Application Separation**: Clean separation with `make infra-apply` and `make app-deploy`
+- **Environment-based Configuration**: Template system with `local.env.tpl` and `production.env.tpl`
+- **Build/Release/Run Stages**: Proper separation of configuration processing, deployment, and execution
+
 ## Demo Tracker
 
 - **HTTP Tracker**: <https://tracker.torrust-demo.com/announce>
@@ -70,22 +110,28 @@ For detailed setup instructions, see the specific documentation:
 - **Infrastructure**: [Infrastructure Quick Start](infrastructure/docs/quick-start.md)
 - **Application**: [Application README](application/README.md)
 
-### Complete Development Setup
+### Complete Development Setup (Twelve-Factor Workflow)
 
 ```bash
 # 1. Setup infrastructure dependencies
 make dev-setup
 # Log out and log back in for group permissions
 
-# 2. Configure SSH key
+# 2. Configure local environment
 make infra-config-local
 # Edit infrastructure/terraform/local.tfvars with your SSH public key
 
-# 3. Deploy VM and application
-make infra-apply                                    # Deploy VM
-make vm-ssh                                     # Access VM
-docker compose -f application/compose.yaml up -d  # Deploy application
-make infra-destroy                                 # Clean up
+# 3. Deploy infrastructure and application (twelve-factor workflow)
+make infra-apply ENVIRONMENT=local      # Deploy VM (infrastructure only)
+make app-deploy ENVIRONMENT=local       # Deploy application (Build + Release + Run)
+make app-health-check ENVIRONMENT=local # Validate deployment
+
+# 4. Access VM and check status
+make vm-ssh                             # Access VM
+make infra-destroy ENVIRONMENT=local   # Clean up
+
+# Alternative: Complete workflow in one command
+make dev-deploy ENVIRONMENT=local      # Does all steps 3-4
 ```
 
 ## 📚 Documentation

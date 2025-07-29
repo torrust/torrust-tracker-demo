@@ -19,9 +19,7 @@ application/
 │       ├── torrust-tracker-grafana-dashboard.png
 │       └── do-firewall-configuration.png
 ├── share/                     # Application resources
-│   ├── bin/                  # Deployment and utility scripts
-│   │   ├── deploy-torrust-tracker-demo.com.sh
-│   │   ├── install.sh
+│   ├── bin/                  # Utility scripts
 │   │   ├── ssl_renew.sh
 │   │   ├── time-running.sh
 │   │   ├── tracker-db-backup.sh

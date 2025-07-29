@@ -54,6 +54,7 @@ netdev
 newgrp
 newtrackon
 nmap
+noatime
 NOPASSWD
 nosniff
 nullglob

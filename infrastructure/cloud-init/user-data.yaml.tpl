@@ -33,6 +33,30 @@ users:
 # Disable SSH password authentication for security
 ssh_pwauth: false
 
+# Persistent data volume configuration
+# This configures the second disk (/dev/vdb) attached to the VM for persistent storage.
+# All application data that needs to survive VM destruction is stored here, including:
+# - Database data (MySQL)
+# - Application configuration files (.env, tracker.toml)
+# - SSL certificates and keys
+# - Logs and application state
+# - Prometheus metrics data
+# The volume is mounted at /var/lib/torrust and survives infrastructure recreation.
+disk_setup:
+  /dev/vdb:
+    table_type: gpt
+    layout: true
+    overwrite: false
+
+fs_setup:
+  - label: torrust-data
+    filesystem: ext4
+    device: /dev/vdb1
+    overwrite: false
+
+mounts:
+  - ["/dev/vdb1", "/var/lib/torrust", "ext4", "defaults,noatime", "0", "2"]
+
 # Package updates and installations
 package_update: true
 package_upgrade: true
@@ -109,6 +133,10 @@ write_files:
 
 # Commands to run after package installation
 runcmd:
+  # Set up persistent data volume and directory structure
+  - mkdir -p /var/lib/torrust
+  - chown -R torrust:torrust /var/lib/torrust
+
   # Create torrust user directories
   - mkdir -p /home/torrust/github/torrust
   - chown -R torrust:torrust /home/torrust/github

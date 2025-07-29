@@ -118,7 +118,6 @@ test_application_structure() {
         "compose.yaml"
         "config"
         "share"
-        "storage"
         "docs"
     )
 
@@ -150,25 +149,27 @@ test_deployment_scripts() {
         return 0
     fi
 
-    # Check for key deployment scripts
+    # Check for key utility scripts
     local key_scripts=(
-        "deploy-torrust-tracker-demo.com.sh"
+        "ssl_renew.sh"
+        "tracker-db-backup.sh"
+        "tracker-filtered-logs.sh"
     )
 
     for script in "${key_scripts[@]}"; do
         local script_path="${scripts_dir}/${script}"
         if [[ -f "${script_path}" ]]; then
             if [[ -x "${script_path}" ]]; then
-                log_info "Found executable deployment script: ${script}"
+                log_info "Found executable utility script: ${script}"
             else
-                log_warning "Deployment script exists but is not executable: ${script}"
+                log_warning "Utility script exists but is not executable: ${script}"
             fi
         else
-            log_warning "Deployment script not found: ${script}"
+            log_warning "Utility script not found: ${script}"
         fi
     done
 
-    log_success "Deployment scripts validation completed"
+    log_success "Utility scripts validation completed"
     return ${failed}
 }
 

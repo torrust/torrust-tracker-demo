@@ -14,7 +14,6 @@ terraform.tfplan.*
 config/environments/production.env
 config/environments/*.env
 !config/environments/*.env.tpl
-!config/environments/local.env
 
 # Cloud-init generated files
 user-data.yaml

@@ -40,6 +40,48 @@ We are migrating the tracker to a new infrastructure on Hetzner, involving:
 - Migrating the database from SQLite to MySQL
 - Implementing Infrastructure as Code for reproducible deployments
 
+## 🏗️ Twelve-Factor Architecture
+
+This project implements a complete twelve-factor app architecture with clear separation between infrastructure provisioning and application deployment:
+
+### Current Working Architecture (Twelve-Factor Compliant)
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                 Configuration Management                    │
+├─────────────────────────────────────────────────────────────┤
+│  • Environment Templates (local.env.tpl, production.env.tpl)  │
+│  • Configuration Processing (configure-env.sh)              │
+│  • Template Rendering (.tpl → actual configs)               │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Infrastructure Layer                    │
+├─────────────────────────────────────────────────────────────┤
+│  • VM Provisioning (provision-infrastructure.sh)            │
+│  • Environment-specific Setup (templated cloud-init)        │
+│  • Provider Abstraction (local implemented, cloud planned)  │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Application Layer                        │
+├─────────────────────────────────────────────────────────────┤
+│  • Environment-aware Deployment (templated configs)         │
+│  • Dynamic Service Configuration                            │
+│  • Comprehensive Health Validation                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Implementation Features
+
+- **Complete Twelve-Factor Compliance**: All 12 factors implemented and operational
+- **Infrastructure/Application Separation**: Clean separation with `make infra-apply` and `make app-deploy`
+- **Environment-based Configuration**: Template system with environment switching
+- **Build/Release/Run Stages**: Proper separation of configuration processing, deployment, and execution
+- **Multi-environment Support**: Local development with production parity
+
 ## 📁 Repository Structure
 
 ```text

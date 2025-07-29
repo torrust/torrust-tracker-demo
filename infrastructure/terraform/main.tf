@@ -53,6 +53,12 @@ variable "vm_disk_size" {
   default     = 20
 }
 
+variable "persistent_data_size" {
+  description = "Persistent data volume size in GB"
+  type        = number
+  default     = 20
+}
+
 variable "base_image_url" {
   description = "URL for the base Ubuntu cloud image"
   type        = string
@@ -78,6 +84,19 @@ resource "libvirt_volume" "vm_disk" {
   base_volume_id = libvirt_volume.base_image.id
   size           = var.vm_disk_size * 1024 * 1024 * 1024  # Convert GB to bytes
   pool           = "user-default"
+
+  # Fix permissions after creation
+  provisioner "local-exec" {
+    command = "${path.module}/../scripts/fix-volume-permissions.sh"
+  }
+}
+
+# Create persistent data volume for application storage
+resource "libvirt_volume" "persistent_data" {
+  name   = "${var.vm_name}-data.qcow2"
+  format = "qcow2"
+  size   = var.persistent_data_size * 1024 * 1024 * 1024  # Convert GB to bytes
+  pool   = "user-default"
 
   # Fix permissions after creation
   provisioner "local-exec" {
@@ -115,6 +134,11 @@ resource "libvirt_domain" "vm" {
 
   disk {
     volume_id = libvirt_volume.vm_disk.id
+  }
+
+  # Attach persistent data volume as second disk
+  disk {
+    volume_id = libvirt_volume.persistent_data.id
   }
 
   network_interface {

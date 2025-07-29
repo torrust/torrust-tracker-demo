@@ -46,6 +46,66 @@ get_vm_ip() {
     echo "${vm_ip}"
 }
 
+# Check git repository status and warn about uncommitted changes
+check_git_status() {
+    log_info "Checking git repository status..."
+    
+    cd "${PROJECT_ROOT}"
+    
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        log_warning "Not in a git repository - deployment will use current directory state"
+        return 0
+    fi
+    
+    # Check for uncommitted changes in configuration templates
+    local config_changes
+    config_changes=$(git status --porcelain infrastructure/config/environments/ 2>/dev/null || echo "")
+    
+    if [[ -n "${config_changes}" ]]; then
+        log_warning "==============================================="
+        log_warning "⚠️  UNCOMMITTED CONFIGURATION CHANGES DETECTED"
+        log_warning "==============================================="
+        log_warning "The following configuration template files have uncommitted changes:"
+        echo "${config_changes}" | while IFS= read -r line; do
+            log_warning "  ${line}"
+        done
+        log_warning ""
+        log_warning "IMPORTANT: Deployment uses 'git archive' which only includes committed files."
+        log_warning "Your uncommitted changes will NOT be deployed to the VM."
+        log_warning ""
+        log_warning "To include these changes in deployment:"
+        log_warning "  1. git add infrastructure/config/environments/"
+        log_warning "  2. git commit -m 'update: configuration templates'"
+        log_warning "  3. Re-run deployment"
+        log_warning ""
+        log_warning "To continue without committing (deployment will use last committed version):"
+        log_warning "  Press ENTER to continue or Ctrl+C to abort"
+        log_warning "==============================================="
+        read -r
+    fi
+    
+    # Check for any other uncommitted changes (informational)
+    local all_changes
+    all_changes=$(git status --porcelain 2>/dev/null | wc -l)
+    
+    if [[ "${all_changes}" -gt 0 ]]; then
+        local git_status
+        git_status=$(git status --short 2>/dev/null || echo "")
+        log_info "Repository has ${all_changes} uncommitted changes (git archive will use committed version)"
+        if [[ "${all_changes}" -le 10 ]]; then
+            log_info "Uncommitted files:"
+            echo "${git_status}" | while IFS= read -r line; do
+                log_info "  ${line}"
+            done
+        else
+            log_info "Run 'git status' to see all uncommitted changes"
+        fi
+    else
+        log_success "Repository working tree is clean - deployment will match current state"
+    fi
+}
+
 # Test SSH connectivity and wait for system readiness
 test_ssh_connection() {
     local vm_ip="$1"
@@ -181,6 +241,29 @@ vm_exec_with_timeout() {
     fi
 }
 
+# Generate configuration locally (Build/Release stage)
+generate_configuration_locally() {
+    log_info "Generating configuration locally (Build/Release stage)"
+    
+    cd "${PROJECT_ROOT}"
+    
+    if [[ -f "infrastructure/scripts/configure-env.sh" ]]; then
+        log_info "Running configure-env.sh for environment: ${ENVIRONMENT}"
+        ./infrastructure/scripts/configure-env.sh "${ENVIRONMENT}"
+        
+        # Verify that the .env file was generated
+        if [[ -f "application/storage/compose/.env" ]]; then
+            log_success "Configuration files generated successfully"
+        else
+            log_error "Failed to generate .env file at application/storage/compose/.env"
+            exit 1
+        fi
+    else
+        log_warning "Configuration script not found at infrastructure/scripts/configure-env.sh"
+        log_warning "Using existing configuration files"
+    fi
+}
+
 # RELEASE STAGE: Deploy application code and configuration
 release_stage() {
     local vm_ip="$1"
@@ -204,31 +287,13 @@ release_stage() {
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
 
-    # Check if we need to preserve storage before removing repository
-    storage_exists=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
-        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
-            echo 'true'
-        else
-            echo 'false'
-        fi
-    " 2>/dev/null || echo "false")
-
-    if [[ "${storage_exists}" == "true" ]]; then
-        log_warning "Preserving existing storage folder with persistent data"
-    fi
-
-    # Handle existing repository - preserve storage folder if it exists
+    # Handle existing repository  
     vm_exec "${vm_ip}" "
         if [ -d /home/torrust/github/torrust/torrust-tracker-demo ]; then
-            if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]; then
-                # Move storage folder to temporary location
-                mv /home/torrust/github/torrust/torrust-tracker-demo/application/storage /tmp/torrust-storage-backup-\$(date +%s) || true
-            fi
-            
-            # Remove the repository directory (excluding storage)
+            # Remove the repository directory
             rm -rf /home/torrust/github/torrust/torrust-tracker-demo
         fi
-    " "Removing existing repository (preserving storage)"
+    " "Removing existing repository"
 
     # Copy archive to VM
     if ! scp -o StrictHostKeyChecking=no "${temp_archive}" "torrust@${vm_ip}:/tmp/"; then
@@ -240,29 +305,8 @@ release_stage() {
     # Extract archive on VM
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust && mkdir -p torrust-tracker-demo" "Creating repository directory"
     vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo && tar -xzf /tmp/$(basename "${temp_archive}")" "Extracting repository"
+    
     vm_exec "${vm_ip}" "rm -f /tmp/$(basename "${temp_archive}")" "Cleaning up temp files"
-
-    # Restore storage folder if it was backed up
-    vm_exec "${vm_ip}" "
-        storage_backup=\$(ls /tmp/torrust-storage-backup-* 2>/dev/null | head -1 || echo '')
-        if [ -n \"\$storage_backup\" ] && [ -d \"\$storage_backup\" ]; then
-            rm -rf /home/torrust/github/torrust/torrust-tracker-demo/application/storage
-            mv \"\$storage_backup\" /home/torrust/github/torrust/torrust-tracker-demo/application/storage
-        fi
-    " "Restoring preserved storage folder"
-
-    # Check if storage was restored and log appropriately
-    storage_restored=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "
-        if [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/mysql ] || [ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage/tracker ]; then
-            echo 'true'
-        else
-            echo 'false'
-        fi
-    " 2>/dev/null || echo "false")
-
-    if [[ "${storage_restored}" == "true" ]]; then
-        log_info "Storage folder restored with existing persistent data"
-    fi
 
     # Clean up local temp file
     rm -f "${temp_archive}"
@@ -272,18 +316,7 @@ release_stage() {
 
     log_success "Local repository deployed successfully"
 
-    # Process configuration (Release stage - combining code with config)
-    vm_exec "${vm_ip}" "
-        cd /home/torrust/github/torrust/torrust-tracker-demo
-        
-        if [ -f infrastructure/scripts/configure-env.sh ]; then
-            ./infrastructure/scripts/configure-env.sh ${ENVIRONMENT}
-        else
-            echo 'Configuration script not found, using defaults'
-        fi
-    " "Processing configuration for environment: ${ENVIRONMENT}"
-
-    # Ensure proper permissions
+    # Set up persistent data volume and copy locally generated configuration files directly
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo
         
@@ -292,9 +325,47 @@ release_stage() {
             sudo ./infrastructure/scripts/fix-volume-permissions.sh
         fi
         
-        # Ensure storage directories exist
-        mkdir -p application/storage/{tracker/lib/database,prometheus/data}
-    " "Setting up application storage"
+        # Ensure persistent storage directories exist
+        sudo mkdir -p /var/lib/torrust/{tracker/{lib/database,log,etc},prometheus/{data,etc},proxy/{webroot,etc/nginx-conf},certbot/{etc,lib},dhparam,mysql/init,compose}
+        
+        # Ensure torrust user owns all persistent data directories
+        sudo chown -R torrust:torrust /var/lib/torrust
+    " "Setting up persistent data volume directory structure"
+
+    # Copy locally generated configuration files directly to persistent volume
+    log_info "Copying locally generated configuration files to persistent volume..."
+    
+    # Copy tracker configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/tracker/etc/tracker.toml" ]]; then
+        log_info "Copying tracker configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/tracker/etc/tracker.toml" "torrust@${vm_ip}:/tmp/tracker.toml"
+        vm_exec "${vm_ip}" "sudo mv /tmp/tracker.toml /var/lib/torrust/tracker/etc/tracker.toml && sudo chown torrust:torrust /var/lib/torrust/tracker/etc/tracker.toml"
+    fi
+    
+    # Copy prometheus configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/prometheus/etc/prometheus.yml" ]]; then
+        log_info "Copying prometheus configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/prometheus/etc/prometheus.yml" "torrust@${vm_ip}:/tmp/prometheus.yml"
+        vm_exec "${vm_ip}" "sudo mv /tmp/prometheus.yml /var/lib/torrust/prometheus/etc/prometheus.yml && sudo chown torrust:torrust /var/lib/torrust/prometheus/etc/prometheus.yml"
+    fi
+    
+    # Copy nginx configuration
+    if [[ -f "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" ]]; then
+        log_info "Copying nginx configuration..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" "torrust@${vm_ip}:/tmp/nginx.conf"
+        vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf && sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    fi
+    
+    # Copy Docker Compose .env file
+    if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then
+        log_info "Copying Docker Compose environment file..."
+        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/compose/.env" "torrust@${vm_ip}:/tmp/compose.env"
+        vm_exec "${vm_ip}" "sudo mv /tmp/compose.env /var/lib/torrust/compose/.env && sudo chown torrust:torrust /var/lib/torrust/compose/.env"
+    else
+        log_error "No .env file found at ${PROJECT_ROOT}/application/storage/compose/.env"
+        log_error "Configuration should have been generated locally before deployment"
+        exit 1
+    fi
 
     log_success "Release stage completed"
 }
@@ -311,7 +382,7 @@ wait_for_services() {
         log_info "Checking container status (attempt ${attempt}/${max_attempts})..."
 
         # Get container status with service names only
-        services=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps --services" 2>/dev/null || echo "SSH_FAILED")
+        services=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps --services" 2>/dev/null || echo "SSH_FAILED")
 
         if [[ "${services}" == "SSH_FAILED" ]]; then
             log_warning "SSH connection failed while checking container status. Retrying in 10 seconds..."
@@ -337,7 +408,7 @@ wait_for_services() {
             container_count=$((container_count + 1))
 
             # Get the container state and health for this service
-            container_info=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps ${service_name} --format '{{.State}}'" 2>/dev/null)
+            container_info=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps ${service_name} --format '{{.State}}'" 2>/dev/null)
             health_status=$(ssh -n -o StrictHostKeyChecking=no -o ConnectTimeout=10 "torrust@${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker inspect ${service_name} --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' 2>/dev/null" || echo "no-healthcheck")
 
             # Clean up output
@@ -387,7 +458,7 @@ wait_for_services() {
     done
 
     log_error "Timeout waiting for services to become healthy after ${max_attempts} attempts."
-    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose ps && docker compose logs" "Dumping logs on failure"
+    vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env ps && docker compose --env-file /var/lib/torrust/compose/.env logs" "Dumping logs on failure"
     exit 1
 }
 
@@ -403,7 +474,7 @@ run_stage() {
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
         if [ -f compose.yaml ]; then
-            docker compose down --remove-orphans || true
+            docker compose --env-file /var/lib/torrust/compose/.env down --remove-orphans || true
         fi
     " "Stopping existing services"
 
@@ -414,7 +485,7 @@ run_stage() {
         
         # Pull images with progress output
         echo 'Starting Docker image pull...'
-        docker compose pull
+        docker compose --env-file /var/lib/torrust/compose/.env pull
         echo 'Docker image pull completed'
     " 600 "Pulling Docker images with 10-minute timeout"
 
@@ -423,7 +494,7 @@ run_stage() {
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
         # Start services
-        docker compose up -d
+        docker compose --env-file /var/lib/torrust/compose/.env up -d
     " "Starting application services"
 
     # Wait for services to initialize
@@ -442,16 +513,16 @@ validate_deployment() {
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         echo '=== Docker Compose Services (Detailed Status) ==='
-        docker compose ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
+        docker compose --env-file /var/lib/torrust/compose/.env ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
         
         echo ''
         echo '=== Docker Compose Services (Default Format) ==='
-        docker compose ps
+        docker compose --env-file /var/lib/torrust/compose/.env ps
         
         echo ''
         echo '=== Container Health Check Details ==='
         # Show health status for each container
-        for container in \$(docker compose ps --format '{{.Name}}'); do
+        for container in \$(docker compose --env-file /var/lib/torrust/compose/.env ps --format '{{.Name}}'); do
             echo \"Container: \$container\"
             state=\$(docker inspect \$container --format '{{.State.Status}}')
             health=\$(docker inspect \$container --format '{{.State.Health.Status}}' 2>/dev/null || echo 'no-healthcheck')
@@ -467,7 +538,7 @@ validate_deployment() {
         done
         
         echo '=== Service Logs (last 10 lines each) ==='
-        docker compose logs --tail=10
+        docker compose --env-file /var/lib/torrust/compose/.env logs --tail=10
     " "Checking detailed service status"
 
     # Test application endpoints
@@ -483,12 +554,21 @@ validate_deployment() {
         fi
         
         # Test API stats endpoint (through nginx proxy, requires auth)
-        if curl -f -s "http://localhost/api/v1/stats?token=local-dev-admin-token-12345" >/dev/null 2>&1; then
+        # Save response to temp file and get HTTP status code
+        api_http_code=\$(curl -s -o /tmp/api_response.json -w '%{http_code}' \"http://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
+        api_response_body=\$(cat /tmp/api_response.json 2>/dev/null || echo \"No response\")
+        
+        # Check if HTTP status is 200 (success)
+        if [ \"\$api_http_code\" -eq 200 ] 2>/dev/null; then
             echo '✅ API stats endpoint: OK'
         else
             echo '❌ API stats endpoint: FAILED'
+            echo \"  HTTP Code: \$api_http_code\"
+            echo \"  Response: \$api_response_body\"
+            rm -f /tmp/api_response.json
             exit 1
         fi
+        rm -f /tmp/api_response.json
         
         # Test HTTP tracker endpoint (through nginx proxy - expects 404 for root)
         if curl -s -w '%{http_code}' http://localhost/ -o /dev/null | grep -q '404'; then
@@ -516,15 +596,15 @@ show_connection_info() {
     echo
     echo "=== APPLICATION ENDPOINTS ==="
     echo "Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
-    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=local-dev-admin-token-12345" # DevSkim: ignore DS137138
+    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
     echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
     echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
     echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
     echo
     echo "=== NEXT STEPS ==="
     echo "Health Check:    make app-health-check ENVIRONMENT=${ENVIRONMENT}"
-    echo "View Logs:       ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose logs'"
-    echo "Stop Services:   ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose down'"
+    echo "View Logs:       ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env logs'"
+    echo "Stop Services:   ssh torrust@${vm_ip} 'cd torrust-tracker-demo/application && docker compose --env-file /var/lib/torrust/compose/.env down'"
     echo
 }
 
@@ -532,6 +612,12 @@ show_connection_info() {
 main() {
     log_info "Starting application deployment (Twelve-Factor Release + Run Stages)"
     log_info "Environment: ${ENVIRONMENT}"
+
+    # Check git status and warn about uncommitted changes
+    check_git_status
+
+    # LOCAL: Generate configuration (Build/Release stage)
+    generate_configuration_locally
 
     local vm_ip
     vm_ip=$(get_vm_ip)

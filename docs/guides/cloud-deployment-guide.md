@@ -332,7 +332,7 @@ make app-deploy ENVIRONMENT=local
 # - HTTP only (no SSL certificates)
 # - Local domain names (tracker.local)
 # - Basic monitoring
-# - SQLite database (for faster setup)
+# - MySQL database (same as production)
 ```
 
 ### Production Environment Setup
@@ -341,52 +341,68 @@ Before deploying to production, you must configure secure secrets and environmen
 
 #### Step 1: Generate Secure Secrets
 
-Production deployment requires several secure random secrets. Generate them using GPG:
+Production deployment requires several secure random secrets. Use the built-in secret generator:
 
 ```bash
-# Generate secure secrets (40 characters each)
-echo "MYSQL_ROOT_PASSWORD=$(gpg --armor --gen-random 1 40)"
-echo "MYSQL_PASSWORD=$(gpg --armor --gen-random 1 40)"
-echo "TRACKER_ADMIN_TOKEN=$(gpg --armor --gen-random 1 40)"
-echo "GF_SECURITY_ADMIN_PASSWORD=$(gpg --armor --gen-random 1 40)"
+# Generate secure secrets using the built-in helper
+./infrastructure/scripts/configure-env.sh generate-secrets
 ```
 
 **Example output**:
 
 ```bash
+=== TORRUST TRACKER PRODUCTION SECRETS ===
+
+Copy these values into: infrastructure/config/environments/production.env
+
+# === GENERATED SECRETS ===
 MYSQL_ROOT_PASSWORD=jcrmbzlGyeP7z53TUQtXmtltMb5TubsIE9e0DPLnS4Ih29JddQw5JA==
 MYSQL_PASSWORD=kLp9nReY4vXqA7mZ8wB3QcG6FsE1oNtH5jUiD2fK0zRyS9CxT8V1Mq==
 TRACKER_ADMIN_TOKEN=nP6rL2gKbY8xW5zA9mQ4jE3vC7sR1tH0oB9fN6dK5uI8eT2yV1nX4q==
 GF_SECURITY_ADMIN_PASSWORD=wQ9tR4nM7bX2zA8kY6pL5sG1oE3vN0cF9eT8jU4dK7hB6rW5iQ2nM==
+
+# === DOMAIN CONFIGURATION (REPLACE WITH YOUR VALUES) ===
+DOMAIN_NAME=your-domain.com
+CERTBOT_EMAIL=admin@your-domain.com
 ```
 
 #### Step 2: Configure Production Environment
 
-Edit the production environment template with your secure secrets:
+**Note**: The project now uses a unified configuration template approach following twelve-factor
+principles. This eliminates synchronization issues between multiple template files.
+
+Generate the production configuration template:
 
 ```bash
-# Copy production template
-cp infrastructure/config/environments/production.env.tpl infrastructure/config/environments/production.env
+# Generate production configuration template with placeholders
+make infra-config-production
+```
 
-# Edit with your secure secrets and domain configuration
+This will create `infrastructure/config/environments/production.env` with secure placeholder
+values that need to be replaced with your actual configuration.
+
+#### Step 3: Replace Placeholder Values
+
+Edit the generated production environment file with your secure secrets and domain configuration:
+
+```bash
+# Edit the production configuration
 vim infrastructure/config/environments/production.env
 ```
 
-**Required Configuration**:
+**Replace these placeholder values with your actual configuration**:
 
 ```bash
-# Replace these placeholder values with your actual configuration:
-
-# === DOMAIN CONFIGURATION ===
-DOMAIN_NAME=your-domain.com                    # Your actual domain
-CERTBOT_EMAIL=admin@your-domain.com            # Your email for Let's Encrypt
-
 # === SECURE SECRETS ===
 # Replace with secrets generated above
 MYSQL_ROOT_PASSWORD=jcrmbzlGyeP7z53TUQtXmtltMb5TubsIE9e0DPLnS4Ih29JddQw5JA==
 MYSQL_PASSWORD=kLp9nReY4vXqA7mZ8wB3QcG6FsE1oNtH5jUiD2fK0zRyS9CxT8V1Mq==
 TRACKER_ADMIN_TOKEN=nP6rL2gKbY8xW5zA9mQ4jE3vC7sR1tH0oB9fN6dK5uI8eT2yV1nX4q==
 GF_SECURITY_ADMIN_PASSWORD=wQ9tR4nM7bX2zA8kY6pL5sG1oE3vN0cF9eT8jU4dK7hB6rW5iQ2nM==
+
+# === DOMAIN CONFIGURATION ===
+DOMAIN_NAME=your-domain.com                    # Your actual domain
+CERTBOT_EMAIL=admin@your-domain.com            # Your email for Let's Encrypt
 
 # === BACKUP CONFIGURATION ===
 ENABLE_DB_BACKUPS=true
@@ -396,12 +412,12 @@ BACKUP_RETENTION_DAYS=7
 **⚠️ Security Note**: The `production.env` file contains sensitive secrets and is git-ignored.
 Never commit this file to version control.
 
-#### Step 3: Validate Configuration
+#### Step 4: Validate Configuration
 
 Validate your production configuration before deployment:
 
 ```bash
-# Validate configuration
+# Validate configuration (will work only after secrets are configured)
 make infra-config-production
 
 # Expected output:

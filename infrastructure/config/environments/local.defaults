@@ -1,0 +1,27 @@
+# Local Development Environment Default Values
+# These values are used to generate local.env from the base template
+# Safe default values for local development and testing
+
+ENVIRONMENT_DESCRIPTION="Local Development Environment Configuration"
+ENVIRONMENT_INSTRUCTIONS="Generated from base template for local development and testing"
+ENVIRONMENT="local"
+TEMPLATE_PROCESSING_VARS="
+# Template processing variables
+DOLLAR=\$"
+SECRETS_DESCRIPTION=""
+MYSQL_ROOT_PASSWORD="root_secret_local"
+MYSQL_PASSWORD="tracker_secret_local"
+TRACKER_TOKEN_DESCRIPTION=""
+TRACKER_ADMIN_TOKEN="MyAccessToken"
+GF_SECURITY_ADMIN_PASSWORD="admin_secret_local"
+DOMAIN_NAME_DESCRIPTION=" (local testing with fake domains)"
+DOMAIN_NAME="test.local"
+CERTBOT_EMAIL_DESCRIPTION="certificate registration (test email for local)"
+CERTBOT_EMAIL="test@test.local"
+ENABLE_SSL_DESCRIPTION=" (false for local testing)"
+ENABLE_SSL="false"
+BACKUP_DESCRIPTION=" (disabled for local testing)"
+ENABLE_DB_BACKUPS="false"
+BACKUP_RETENTION_DAYS="3"
+USER_ID_DESCRIPTION=""
+USER_ID="1000"

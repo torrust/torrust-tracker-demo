@@ -1,12 +1,30 @@
-# Environment Configuration Templates
+# Environment Configuration
 
-This directory contains environment-specific configuration templates that are processed
-during deployment to generate the final configuration files.
+This directory contains the environment configuration system for the Torrust Tracker Demo.
 
-## Files
+## Files Overview
 
-- `local.env.tpl` - Local development environment template
-- `production.env.tpl` - Production environment template (requires manual setup)
+### Templates and Configuration
+
+- **`base.env.tpl`** - Single base template for all environments (uses variable substitution)
+- **`local.defaults`** - Default values for local development environment
+- **`production.defaults`** - Default values for production environment template
+
+### Generated Files (Git-Ignored)
+
+- **`local.env`** - Generated local environment configuration (regenerated automatically)
+- **`production.env`** - Generated production environment configuration (manual secrets required)
+
+## How It Works
+
+### Twelve-Factor Compliance
+
+This system follows twelve-factor app principles by:
+
+1. **Single Source of Truth**: One base template (`base.env.tpl`) for all environments
+2. **Environment-Specific Configuration**: Default files define environment-specific values
+3. **Separation of Concerns**: Configuration (defaults) separated from code (scripts)
+4. **Version Control**: Default files are tracked, generated files with secrets are ignored
 
 ## Template Processing
 
@@ -193,6 +211,50 @@ but this is actually a good practice that ensures:
    ```bash
    ssh torrust@$VM_IP 'cd torrust-tracker-demo && cat application/.env'
    ```
+
+## Default Files System (New Approach)
+
+### Configuration Architecture
+
+The environment configuration system now uses a single base template with external default files:
+
+- **`base.env.tpl`**: Single template with variable placeholders (`${VARIABLE_NAME}`)
+- **`local.defaults`**: Default values for local development
+- **`production.defaults`**: Default placeholder values for production
+
+### Benefits
+
+1. **DRY Principle**: Single source of truth for all environment variables
+2. **Maintainability**: Add variables once in base template, define values in defaults
+3. **Version Control**: Default values are tracked and can be customized
+4. **Consistency**: Same template processing logic for all environments
+
+### Usage
+
+```bash
+# Generate local environment (uses local.defaults)
+./infrastructure/scripts/configure-env.sh local
+
+# Generate production template (uses production.defaults)
+./infrastructure/scripts/configure-env.sh production
+
+# Generate secure production secrets
+./infrastructure/scripts/configure-env.sh generate-secrets
+```
+
+### Customizing Defaults
+
+Edit the `.defaults` files to change environment-specific values:
+
+```bash
+# Change local development domain
+vim infrastructure/config/environments/local.defaults
+
+# Change production backup retention
+vim infrastructure/config/environments/production.defaults
+```
+
+The next time you run configuration generation, your changes will be applied.
 
 ## Security Notes
 

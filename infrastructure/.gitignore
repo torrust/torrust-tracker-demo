@@ -10,10 +10,11 @@
 terraform.tfplan
 terraform.tfplan.*
 
-# Environment files with secrets (keep templates)
+# Environment files with secrets (keep templates and defaults)
 config/environments/production.env
 config/environments/*.env
 !config/environments/*.env.tpl
+!config/environments/*.defaults
 
 # Cloud-init generated files
 user-data.yaml

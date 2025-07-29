@@ -38,6 +38,7 @@ selective use of environment variables:
 - External IP addresses
 - Domain names
 - Infrastructure-specific settings
+- **Deployment automation configuration** (SSL automation, backup settings)
 
 ## Rationale
 
@@ -116,6 +117,19 @@ USER_ID=1000
 MYSQL_DATABASE=torrust_tracker
 ```
 
+#### 4. Deployment Automation Configuration
+
+```bash
+# SSL certificate automation
+DOMAIN_NAME=tracker.example.com
+CERTBOT_EMAIL=admin@example.com
+ENABLE_SSL=true
+
+# Database backup automation
+ENABLE_DB_BACKUPS=true
+BACKUP_RETENTION_DAYS=7
+```
+
 ## Implementation Examples
 
 ### **File-based Configuration** (`tracker.toml`)
@@ -183,6 +197,13 @@ MYSQL_USER=torrust
 # Grafana admin
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=admin_password
+
+# Deployment automation
+DOMAIN_NAME=tracker.example.com
+CERTBOT_EMAIL=admin@example.com
+ENABLE_SSL=true
+ENABLE_DB_BACKUPS=true
+BACKUP_RETENTION_DAYS=7
 ```
 
 ## Benefits
@@ -248,6 +269,34 @@ This is an acceptable exception because:
 - Prometheus config files are not typically edited by administrators
 - The token is only for internal monitoring within the Docker network
 - The configuration is regenerated when environment changes
+
+### **Deployment Automation Configuration**
+
+Deployment automation settings that control the infrastructure provisioning and application
+deployment process are stored as environment variables, even though they are not secrets:
+
+```bash
+# SSL certificate automation
+DOMAIN_NAME=tracker.example.com
+CERTBOT_EMAIL=admin@example.com
+ENABLE_SSL=true
+
+# Database backup automation
+ENABLE_DB_BACKUPS=true
+BACKUP_RETENTION_DAYS=7
+```
+
+This is an acceptable exception because:
+
+- These variables control **deployment scripts and automation**, not service configuration
+- They don't belong to any specific service in the Docker Compose stack
+- They are used by infrastructure scripts (`deploy-app.sh`, SSL generation, backup automation)
+- They are environment-specific values that vary between local/production deployments
+- They follow 12-factor principles for deployment automation configuration
+
+**Rationale**: These variables configure the deployment process itself rather than any
+individual service, making environment variables the appropriate choice as they're consumed
+by shell scripts and automation tools rather than application config files.
 
 ## Consequences
 

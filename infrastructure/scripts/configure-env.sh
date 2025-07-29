@@ -9,6 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_DIR="${PROJECT_ROOT}/infrastructure/config"
 
+# Source utilities
+# shellcheck source=../../scripts/shell-utils.sh
+source "${PROJECT_ROOT}/scripts/shell-utils.sh"
+
 # Default values
 ENVIRONMENT="${1:-local}"
 VERBOSE="${VERBOSE:-false}"
@@ -17,50 +21,112 @@ VERBOSE="${VERBOSE:-false}"
 # shellcheck source=../../scripts/shell-utils.sh
 source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
-# Setup local environment from template
-setup_local_environment() {
-    local env_file="${CONFIG_DIR}/environments/local.env"
-    local template_file="${CONFIG_DIR}/environments/local.env.tpl"
+# Generate environment-specific configuration from base template
+generate_environment_config() {
+    local environment="$1"
+    local env_file="${CONFIG_DIR}/environments/${environment}.env"
+    local base_template="${CONFIG_DIR}/environments/base.env.tpl"
 
-    # Always regenerate local.env from template for consistency
-    if [[ ! -f "${template_file}" ]]; then
-        log_error "Local template not found: ${template_file}"
+    if [[ ! -f "${base_template}" ]]; then
+        log_error "Base template not found: ${base_template}"
         exit 1
     fi
 
-    log_info "Creating local.env from template..."
-    cp "${template_file}" "${env_file}"
-    log_success "Local environment file created from template: ${env_file}"
+    log_info "Generating ${environment}.env from base template..."
+    
+    # Generate environment-specific variables
+    case "${environment}" in
+        "local")
+            generate_local_config "${base_template}" "${env_file}"
+            ;;
+        "production")
+            generate_production_config "${base_template}" "${env_file}"
+            ;;
+        *)
+            log_error "Unsupported environment: ${environment}"
+            exit 1
+            ;;
+    esac
+
+    log_success "${environment^} environment file generated: ${env_file}"
 }
 
-# Setup production environment from template
-setup_production_environment() {
-    local env_file="${CONFIG_DIR}/environments/production.env"
-    local template_file="${CONFIG_DIR}/environments/production.env.tpl"
+# Generate local development configuration
+generate_local_config() {
+    local template_file="$1"
+    local output_file="$2"
+    local defaults_file="${CONFIG_DIR}/environments/local.defaults"
 
-    if [[ ! -f "${env_file}" ]]; then
-        if [[ ! -f "${template_file}" ]]; then
-            log_error "Production template not found: ${template_file}"
-            exit 1
-        fi
-
-        log_info "Creating production.env from template..."
-        cp "${template_file}" "${env_file}"
-        log_warning "Production environment file created from template: ${env_file}"
-        log_warning "IMPORTANT: You must edit this file and replace placeholder values with secure secrets!"
-        log_warning "File location: ${env_file}"
-        log_error "Aborting: Please configure production secrets first, then run this script again."
+    if [[ ! -f "${defaults_file}" ]]; then
+        log_error "Local defaults file not found: ${defaults_file}"
         exit 1
     fi
 
-    # Validate that placeholder values have been replaced
-    if grep -q "REPLACE_WITH_SECURE" "${env_file}"; then
-        log_error "Production environment file contains placeholder values!"
-        log_error "Please edit ${env_file} and replace all 'REPLACE_WITH_SECURE_*' values with actual secrets."
-        log_error "Found placeholder values:"
-        grep "REPLACE_WITH_SECURE" "${env_file}" | while read -r line; do
-            log_error "  ${line}"
-        done
+    log_info "Loading local environment defaults from: ${defaults_file}"
+    
+    # Export all variables from defaults file for envsubst
+    set -a # automatically export all variables
+    # shellcheck source=/dev/null
+    source "${defaults_file}"
+    set +a # stop automatically exporting
+
+    # Generate the configuration file
+    envsubst < "${template_file}" > "${output_file}"
+}
+
+# Generate production configuration with secure defaults
+generate_production_config() {
+    local template_file="$1"
+    local output_file="$2"
+    local defaults_file="${CONFIG_DIR}/environments/production.defaults"
+
+    # Check if production.env already exists and has real secrets
+    if [[ -f "${output_file}" ]] && ! grep -q "REPLACE_WITH_SECURE\|REPLACE_WITH_YOUR" "${output_file}"; then
+        log_info "Production environment file exists and appears configured"
+        log_info "Skipping regeneration to preserve existing secrets"
+        return 0
+    fi
+
+    if [[ ! -f "${defaults_file}" ]]; then
+        log_error "Production defaults file not found: ${defaults_file}"
+        exit 1
+    fi
+
+    log_info "Loading production environment defaults from: ${defaults_file}"
+    
+    # Export all variables from defaults file for envsubst
+    set -a # automatically export all variables
+    # shellcheck source=/dev/null
+    source "${defaults_file}"
+    set +a # stop automatically exporting
+
+    # Generate the configuration file
+    envsubst < "${template_file}" > "${output_file}"
+
+    log_warning "Production environment file created from template: ${output_file}"
+    log_warning "IMPORTANT: You must edit this file and replace placeholder values with secure secrets!"
+    log_warning "File location: ${output_file}"
+}
+
+# Setup local environment from base template
+setup_local_environment() {
+    local env_file="${CONFIG_DIR}/environments/local.env"
+
+    # Always regenerate local.env from base template for consistency
+    generate_environment_config "local"
+    log_success "Local environment file created from base template: ${env_file}"
+}
+
+# Setup production environment from base template  
+setup_production_environment() {
+    local env_file="${CONFIG_DIR}/environments/production.env"
+
+    # Generate production template or use existing if configured
+    generate_environment_config "production"
+
+    # If file was just generated with placeholders, abort for manual configuration
+    if grep -q "REPLACE_WITH_SECURE\|REPLACE_WITH_YOUR" "${env_file}"; then
+        log_error "Aborting: Please configure production secrets first, then run this script again."
         exit 1
     fi
 
@@ -101,6 +167,7 @@ validate_environment() {
         "GF_SECURITY_ADMIN_PASSWORD"
     )
 
+    # Validate core required variables
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             log_error "Required environment variable not set: ${var}"
@@ -108,7 +175,106 @@ validate_environment() {
         fi
     done
 
+    # Validate SSL configuration variables
+    validate_ssl_configuration
+
+    # Validate backup configuration variables
+    validate_backup_configuration
+
     log_success "Environment validation passed"
+}
+
+# Validate SSL certificate configuration
+validate_ssl_configuration() {
+    # Check if DOMAIN_NAME is set and not a placeholder
+    if [[ -z "${DOMAIN_NAME:-}" ]]; then
+        log_error "SSL configuration: DOMAIN_NAME is not set"
+        exit 1
+    fi
+    
+    if [[ "${DOMAIN_NAME}" == "REPLACE_WITH_YOUR_DOMAIN" ]]; then
+        log_error "SSL configuration: DOMAIN_NAME contains placeholder value 'REPLACE_WITH_YOUR_DOMAIN'"
+        log_error "Please edit your environment file and set a real domain name"
+        exit 1
+    fi
+
+    # Check if CERTBOT_EMAIL is set and not a placeholder
+    if [[ -z "${CERTBOT_EMAIL:-}" ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL is not set"
+        exit 1
+    fi
+    
+    if [[ "${CERTBOT_EMAIL}" == "REPLACE_WITH_YOUR_EMAIL" ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL contains placeholder value 'REPLACE_WITH_YOUR_EMAIL'"
+        log_error "Please edit your environment file and set a real email address"
+        exit 1
+    fi
+
+    # Validate email format (basic validation)
+    if [[ ! "${CERTBOT_EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        log_error "SSL configuration: CERTBOT_EMAIL '${CERTBOT_EMAIL}' is not a valid email format"
+        exit 1
+    fi
+
+    # Check if ENABLE_SSL is a valid boolean
+    if [[ -z "${ENABLE_SSL:-}" ]]; then
+        log_error "SSL configuration: ENABLE_SSL is not set"
+        exit 1
+    fi
+    
+    if [[ "${ENABLE_SSL}" != "true" && "${ENABLE_SSL}" != "false" ]]; then
+        log_error "SSL configuration: ENABLE_SSL must be 'true' or 'false', got '${ENABLE_SSL}'"
+        exit 1
+    fi
+
+    # Log SSL configuration validation result
+    if [[ "${ENABLE_SSL}" == "true" ]]; then
+        log_info "SSL configuration: Enabled for domain '${DOMAIN_NAME}' with email '${CERTBOT_EMAIL}'"
+    else
+        log_info "SSL configuration: Disabled (ENABLE_SSL=false)"
+    fi
+}
+
+# Validate backup configuration
+validate_backup_configuration() {
+    # Check if ENABLE_DB_BACKUPS is a valid boolean
+    if [[ -z "${ENABLE_DB_BACKUPS:-}" ]]; then
+        log_error "Backup configuration: ENABLE_DB_BACKUPS is not set"
+        exit 1
+    fi
+    
+    if [[ "${ENABLE_DB_BACKUPS}" != "true" && "${ENABLE_DB_BACKUPS}" != "false" ]]; then
+        log_error "Backup configuration: ENABLE_DB_BACKUPS must be 'true' or 'false', got '${ENABLE_DB_BACKUPS}'"
+        exit 1
+    fi
+
+    # Validate BACKUP_RETENTION_DAYS is numeric and reasonable
+    if [[ -z "${BACKUP_RETENTION_DAYS:-}" ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS is not set"
+        exit 1
+    fi
+    
+    if ! [[ "${BACKUP_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS must be a positive integer, got '${BACKUP_RETENTION_DAYS}'"
+        exit 1
+    fi
+    
+    if [[ "${BACKUP_RETENTION_DAYS}" -lt 1 ]]; then
+        log_error "Backup configuration: BACKUP_RETENTION_DAYS must be at least 1 day, got '${BACKUP_RETENTION_DAYS}'"
+        exit 1
+    fi
+    
+    if [[ "${BACKUP_RETENTION_DAYS}" -gt 365 ]]; then
+        log_warning "Backup configuration: BACKUP_RETENTION_DAYS is very high (${BACKUP_RETENTION_DAYS} days)"
+        log_warning "This may consume significant disk space"
+    fi
+
+    # Log backup configuration validation result
+    if [[ "${ENABLE_DB_BACKUPS}" == "true" ]]; then
+        log_info "Backup configuration: Enabled with ${BACKUP_RETENTION_DAYS} days retention"
+    else
+        log_info "Backup configuration: Disabled (ENABLE_DB_BACKUPS=false)"
+    fi
 }
 
 # Process configuration templates
@@ -191,24 +357,63 @@ show_help() {
     cat <<EOF
 Configuration Processing Script
 
-Usage: $0 [ENVIRONMENT]
+Usage: $0 [ENVIRONMENT|COMMAND]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT         Environment name (local, production)
+    generate-secrets    Generate secure secrets for production
+
+Commands:
+    generate-secrets    Generate secure random secrets and show configuration guidance
 
 Examples:
-    $0 local       # Process local environment configuration
-    $0 production  # Process production environment configuration
+    $0 local            # Process local environment configuration
+    $0 production       # Process production environment configuration (requires configured secrets)
+    $0 generate-secrets # Generate secure secrets for production setup
 
 Environment Variables:
-    VERBOSE        Enable verbose output (true/false)
+    VERBOSE             Enable verbose output (true/false)
 EOF
+}
+
+# Generate secure secrets for production
+generate_production_secrets() {
+    log_info "Generating secure random secrets for production environment..."
+    echo ""
+    echo "=== TORRUST TRACKER PRODUCTION SECRETS ==="
+    echo ""
+    echo "Copy these values into: infrastructure/config/environments/production.env"
+    echo ""
+    echo "# === GENERATED SECRETS ==="
+    echo "MYSQL_ROOT_PASSWORD=$(gpg --armor --gen-random 1 40)"
+    echo "MYSQL_PASSWORD=$(gpg --armor --gen-random 1 40)"
+    echo "TRACKER_ADMIN_TOKEN=$(gpg --armor --gen-random 1 40)"
+    echo "GF_SECURITY_ADMIN_PASSWORD=$(gpg --armor --gen-random 1 40)"
+    echo ""
+    echo "# === DOMAIN CONFIGURATION (REPLACE WITH YOUR VALUES) ==="
+    echo "DOMAIN_NAME=your-domain.com"
+    echo "CERTBOT_EMAIL=admin@your-domain.com"
+    echo ""
+    echo "⚠️  Security Notes:"
+    echo "   - Store these secrets securely"
+    echo "   - Never commit production.env to version control"
+    echo "   - Replace domain placeholders with your actual domain"
+    echo ""
+    echo "✅ Next Steps:"
+    echo "   1. Replace 'your-domain.com' with your actual domain"
+    echo "   2. Replace 'admin@your-domain.com' with your real email"
+    echo "   3. Run: make infra-config-production"
+    echo ""
 }
 
 # Handle arguments
 case "${1:-}" in
 "help" | "-h" | "--help")
     show_help
+    exit 0
+    ;;
+"generate-secrets")
+    generate_production_secrets
     exit 0
     ;;
 *)

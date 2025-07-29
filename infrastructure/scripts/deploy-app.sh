@@ -462,6 +462,85 @@ wait_for_services() {
     exit 1
 }
 
+# Setup database backup automation
+setup_backup_automation() {
+    local vm_ip="$1"
+
+    # Load environment variables from the generated .env file
+    if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then
+        # shellcheck source=/dev/null
+        source "${PROJECT_ROOT}/application/storage/compose/.env"
+    else
+        log_warning "Environment file not found, using defaults"
+    fi
+
+    # Check if backup automation is enabled
+    if [[ "${ENABLE_DB_BACKUPS:-false}" != "true" ]]; then
+        log_info "Database backup automation disabled (ENABLE_DB_BACKUPS=false)"
+        return 0
+    fi
+
+    log_info "Setting up automated database backups..."
+
+    # Create backup directory and set permissions
+    vm_exec "${vm_ip}" "
+        # Create backup directory if it doesn't exist
+        sudo mkdir -p /var/lib/torrust/mysql/backups
+        
+        # Ensure torrust user owns backup directory
+        sudo chown -R torrust:torrust /var/lib/torrust/mysql/backups
+        
+        # Set appropriate permissions
+        chmod 755 /var/lib/torrust/mysql/backups
+    " "Setting up backup directory"
+
+    # Install crontab entry for automated backups
+    vm_exec "${vm_ip}" "
+        cd /home/torrust/github/torrust/torrust-tracker-demo
+        
+        # Check if backup cron job already exists
+        if crontab -l 2>/dev/null | grep -q 'mysql-backup.sh'; then
+            echo 'MySQL backup cron job already exists'
+        else
+            # Add the cron job from template
+            (crontab -l 2>/dev/null || echo '') | cat - infrastructure/config/templates/crontab/mysql-backup.cron | crontab -
+            echo 'MySQL backup cron job added successfully'
+        fi
+        
+        # Show current crontab for verification
+        echo 'Current crontab entries:'
+        crontab -l || echo 'No crontab entries found'
+    " "Installing MySQL backup cron job"
+
+    # Test backup script functionality
+    vm_exec "${vm_ip}" "
+        cd /home/torrust/github/torrust/torrust-tracker-demo/application
+        
+        # Test backup script with dry-run
+        echo 'Testing backup script...'
+        if bash -n share/bin/mysql-backup.sh; then
+            echo '✅ Backup script syntax is valid'
+        else
+            echo '❌ Backup script has syntax errors'
+            exit 1
+        fi
+        
+        # Check script permissions
+        if [[ -x share/bin/mysql-backup.sh ]]; then
+            echo '✅ Backup script is executable'
+        else
+            echo '❌ Backup script is not executable'
+            chmod +x share/bin/mysql-backup.sh
+            echo '✅ Fixed backup script permissions'
+        fi
+    " "Validating backup script"
+
+    log_success "Database backup automation configured successfully"
+    log_info "Backup schedule: Daily at 3:00 AM"
+    log_info "Backup location: /var/lib/torrust/mysql/backups"
+    log_info "Retention period: ${BACKUP_RETENTION_DAYS:-7} days"
+}
+
 # RUN STAGE: Start application processes
 run_stage() {
     local vm_ip="$1"
@@ -499,6 +578,9 @@ run_stage() {
 
     # Wait for services to initialize
     wait_for_services "${vm_ip}"
+
+    # Setup database backup automation (if enabled)
+    setup_backup_automation "${vm_ip}"
 
     log_success "Run stage completed"
 }

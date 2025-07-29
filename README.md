@@ -56,31 +56,31 @@ This project implements a complete [twelve-factor app](https://12factor.net/) ar
 clear separation between infrastructure provisioning and application deployment:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                 Configuration Management                    │
-├─────────────────────────────────────────────────────────────┤
+┌───────────────────────────────────────────────────────────────┐
+│                 Configuration Management                      │
+├───────────────────────────────────────────────────────────────┤
 │  • Environment Templates (local.env.tpl, production.env.tpl)  │
-│  • Configuration Processing (configure-env.sh)              │
-│  • Template Rendering (.tpl → actual configs)               │
-└─────────────────────────────────────────────────────────────┘
+│  • Configuration Processing (configure-env.sh)                │
+│  • Template Rendering (.tpl → actual configs)                 │
+└───────────────────────────────────────────────────────────────┘
                             │
                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Infrastructure Layer                    │
-├─────────────────────────────────────────────────────────────┤
-│  • VM Provisioning (provision-infrastructure.sh)            │
-│  • Environment-specific Setup (templated cloud-init)        │
-│  • Provider Abstraction (local implemented, cloud planned)  │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                     Infrastructure Layer                      │
+├───────────────────────────────────────────────────────────────┤
+│  • VM Provisioning (provision-infrastructure.sh)              │
+│  • Environment-specific Setup (templated cloud-init)          │
+│  • Provider Abstraction (local implemented, cloud planned)    │
+└───────────────────────────────────────────────────────────────┘
                             │
                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                        │
-├─────────────────────────────────────────────────────────────┤
-│  • Environment-aware Deployment (templated configs)         │
-│  • Dynamic Service Configuration                            │
-│  • Comprehensive Health Validation                          │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                    Application Layer                          │
+├───────────────────────────────────────────────────────────────┤
+│  • Environment-aware Deployment (templated configs)           │
+│  • Dynamic Service Configuration                              │
+│  • Comprehensive Health Validation                            │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Features
@@ -104,6 +104,9 @@ peer connections, and system health.
 ![Grafana Dashboard](application/docs/media/torrust-tracker-grafana-dashboard.png)
 
 ## 🚀 Quick Start
+
+**New users start here**: [**Deployment Guide**](docs/guides/cloud-deployment-guide.md) -
+Complete guide for deploying Torrust Tracker locally or in the cloud
 
 For detailed setup instructions, see the specific documentation:
 
@@ -153,7 +156,8 @@ make dev-deploy ENVIRONMENT=local      # Does all steps 3-4
   deployment
 - [Production Setup](application/docs/production-setup.md) - Production
   deployment with MySQL
-- [Deployment Guide](application/docs/deployment.md) - Deployment procedures
+- [Application Deployment Procedures](application/docs/deployment.md) - Detailed
+  application deployment procedures
 - [Backup Procedures](application/docs/backups.md) - Data backup and recovery
 - [Rollback Guide](application/docs/rollbacks.md) - Application rollbacks
 - [Useful Commands](application/docs/useful-commands.md) - Common operations
@@ -162,6 +166,8 @@ make dev-deploy ENVIRONMENT=local      # Does all steps 3-4
 
 ### General Documentation
 
+- [Deployment Guide](docs/guides/cloud-deployment-guide.md) - **Main deployment
+  guide** for local development and planned cloud deployment
 - [Documentation Structure](docs/README.md) - Cross-cutting documentation
 - [Architecture Decisions](docs/adr/) - Design decisions and rationale
   - [ADR-001: Makefile Location](docs/adr/001-makefile-location.md) - Why the

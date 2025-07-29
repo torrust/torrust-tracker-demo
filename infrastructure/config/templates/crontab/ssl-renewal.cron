@@ -1,0 +1,6 @@
+# SSL Certificate Renewal Crontab Entry  
+# Runs daily at 2:00 AM as torrust user (before backup to avoid conflicts)
+# Output is logged to /var/log/ssl-renewal.log
+# Requires: torrust user in docker group (already configured via cloud-init)
+
+0 2 * * * /home/torrust/github/torrust/torrust-tracker-demo/application/share/bin/ssl_renew.sh >> /var/log/ssl-renewal.log 2>&1

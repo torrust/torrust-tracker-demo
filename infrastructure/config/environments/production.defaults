@@ -1,0 +1,26 @@
+# Production Environment Default Values  
+# These values are used to generate production.env template from the base template
+# Contains placeholder values that must be replaced with secure secrets
+
+ENVIRONMENT_DESCRIPTION="Production Environment Configuration Template"
+ENVIRONMENT_INSTRUCTIONS="Copy this file to production.env and replace placeholder values with secure secrets"
+ENVIRONMENT="production"
+TEMPLATE_PROCESSING_VARS=""
+SECRETS_DESCRIPTION="
+# IMPORTANT: Replace ALL placeholder values with actual secure secrets before deployment!"
+MYSQL_ROOT_PASSWORD="REPLACE_WITH_SECURE_ROOT_PASSWORD"
+MYSQL_PASSWORD="REPLACE_WITH_SECURE_PASSWORD"
+TRACKER_TOKEN_DESCRIPTION=" (Used for administrative API access)"
+TRACKER_ADMIN_TOKEN="REPLACE_WITH_SECURE_ADMIN_TOKEN"
+GF_SECURITY_ADMIN_PASSWORD="REPLACE_WITH_SECURE_GRAFANA_PASSWORD"
+DOMAIN_NAME_DESCRIPTION=" (required for production)"
+DOMAIN_NAME="REPLACE_WITH_YOUR_DOMAIN"
+CERTBOT_EMAIL_DESCRIPTION="Let's Encrypt certificate registration (required for production)"
+CERTBOT_EMAIL="REPLACE_WITH_YOUR_EMAIL"
+ENABLE_SSL_DESCRIPTION=" (true for production, false for testing)"
+ENABLE_SSL="true"
+BACKUP_DESCRIPTION=" (true/false)"
+ENABLE_DB_BACKUPS="true"
+BACKUP_RETENTION_DAYS="7"
+USER_ID_DESCRIPTION=" (match host user)"
+USER_ID="1000"

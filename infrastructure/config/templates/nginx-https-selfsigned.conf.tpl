@@ -3,7 +3,7 @@
 # It is intended for development and testing environments
 
 # WebSocket connection upgrade mapping for Grafana
-map $http_upgrade $connection_upgrade {
+map ${DOLLAR}http_upgrade ${DOLLAR}connection_upgrade {
     default upgrade;
     '' close;
 }
@@ -44,23 +44,23 @@ server {
     # Tracker API endpoints
     location /api/ {
         proxy_pass http://tracker:1212/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header Host ${DOLLAR}host;
+        proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+        proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto ${DOLLAR}scheme;
+        proxy_set_header X-Forwarded-Host ${DOLLAR}host;
+        proxy_set_header X-Forwarded-Server ${DOLLAR}host;
     }
 
     # Tracker HTTP endpoints
     location / {
         proxy_pass http://tracker:7070;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header Host ${DOLLAR}host;
+        proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+        proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto ${DOLLAR}scheme;
+        proxy_set_header X-Forwarded-Host ${DOLLAR}host;
+        proxy_set_header X-Forwarded-Server ${DOLLAR}host;
     }
 
     # Health check endpoint (accessible via HTTPS)
@@ -102,17 +102,17 @@ server {
     # Grafana web interface
     location / {
         proxy_pass http://grafana;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header Host ${DOLLAR}host;
+        proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+        proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto ${DOLLAR}scheme;
+        proxy_set_header X-Forwarded-Host ${DOLLAR}host;
+        proxy_set_header X-Forwarded-Server ${DOLLAR}host;
 
         # WebSocket support for Grafana live features
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+        proxy_set_header Connection ${DOLLAR}connection_upgrade;
         proxy_read_timeout 86400;
         proxy_buffering off;
     }
@@ -139,7 +139,7 @@ server {
 
     # Redirect all other HTTP traffic to HTTPS
     location / {
-        return 301 https://$server_name$request_uri;
+        return 301 https://${DOLLAR}server_name${DOLLAR}request_uri;
     }
 }
 
@@ -157,6 +157,6 @@ server {
 
     # Redirect all other HTTP traffic to HTTPS
     location / {
-        return 301 https://$server_name$request_uri;
+        return 301 https://${DOLLAR}server_name${DOLLAR}request_uri;
     }
 }

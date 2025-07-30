@@ -14,7 +14,7 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
-ENABLE_HTTPS="${ENABLE_SSL:-false}"  # Enable HTTPS with self-signed certificates by default
+ENABLE_HTTPS="${ENABLE_SSL:-true}"   # Enable HTTPS with self-signed certificates by default
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
@@ -344,7 +344,7 @@ generate_nginx_http_config() {
 # Generate and deploy nginx HTTPS configuration with self-signed certificates from template
 generate_nginx_https_selfsigned_config() {
     local vm_ip="$1"
-    local domain_name="${DOMAIN_NAME:-tracker-demo.local}"
+    local domain_name="${DOMAIN_NAME:-test.local}"
     
     log_info "Generating nginx HTTPS configuration with self-signed certificates from template..."
     
@@ -362,7 +362,7 @@ generate_nginx_https_selfsigned_config() {
     # Check if domain name is set
     if [[ -z "${domain_name}" ]]; then
         log_error "Domain name is required for HTTPS configuration"
-        log_error "Set DOMAIN_NAME environment variable (e.g., DOMAIN_NAME=tracker-demo.local)"
+        log_error "Set DOMAIN_NAME environment variable (e.g., DOMAIN_NAME=test.local)"
         exit 1
     fi
     
@@ -402,7 +402,7 @@ generate_nginx_https_selfsigned_config() {
 # Generate self-signed SSL certificates on the VM
 generate_selfsigned_certificates() {
     local vm_ip="$1"
-    local domain_name="${DOMAIN_NAME:-tracker-demo.local}"
+    local domain_name="${DOMAIN_NAME:-test.local}"
     
     log_info "Generating self-signed SSL certificates on VM..."
     
@@ -428,13 +428,15 @@ generate_selfsigned_certificates() {
     # Make script executable and run it
     vm_exec "${vm_ip}" "chmod +x /tmp/ssl-generate-test-certs.sh"
     
-    # Create temporary shell-utils in the expected location for the script
-    vm_exec "${vm_ip}" "sudo mkdir -p /tmp/share/dev"
-    vm_exec "${vm_ip}" "sudo cp /tmp/shell-utils.sh /tmp/share/dev/shell-utils.sh"
+    # Create temporary directory structure for certificate generation script
+    vm_exec "${vm_ip}" "sudo mkdir -p /tmp/share/bin /tmp/share/dev"
+    vm_exec "${vm_ip}" "sudo cp /tmp/ssl-generate-test-certs.sh /tmp/share/bin/"
+    vm_exec "${vm_ip}" "sudo cp /tmp/shell-utils.sh /tmp/share/dev/"
+    vm_exec "${vm_ip}" "sudo chmod +x /tmp/share/bin/ssl-generate-test-certs.sh"
     
     # Run certificate generation
     log_info "Running certificate generation for domain: ${domain_name}"
-    vm_exec "${vm_ip}" "cd /var/lib/torrust/compose && SCRIPT_DIR=/tmp /tmp/ssl-generate-test-certs.sh '${domain_name}'"
+    vm_exec "${vm_ip}" "cd /var/lib/torrust/compose && /tmp/share/bin/ssl-generate-test-certs.sh '${domain_name}'"
     
     # Clean up temporary files
     vm_exec "${vm_ip}" "rm -f /tmp/ssl-generate-test-certs.sh /tmp/shell-utils.sh"
@@ -807,6 +809,23 @@ run_stage() {
     # Wait for services to initialize
     wait_for_services "${vm_ip}"
 
+    # Setup HTTPS with self-signed certificates (if enabled)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "Setting up HTTPS with self-signed certificates..."
+        generate_selfsigned_certificates "${vm_ip}"
+        generate_nginx_https_selfsigned_config "${vm_ip}"
+        
+        # Restart proxy to apply HTTPS configuration
+        vm_exec "${vm_ip}" "
+            cd /home/torrust/github/torrust/torrust-tracker-demo/application
+            docker compose --env-file /var/lib/torrust/compose/.env restart proxy
+        " "Restarting proxy with HTTPS configuration"
+        
+        # Wait a moment for proxy to restart
+        sleep 5
+        log_success "HTTPS setup completed"
+    fi
+
     # Setup database backup automation (if enabled)
     setup_backup_automation "${vm_ip}"
 
@@ -910,6 +929,23 @@ show_connection_info() {
     echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
     echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
     echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
+    echo
+    echo "=== HTTPS ENDPOINTS (with self-signed certificates) ==="
+    echo "Tracker API:     https://tracker.test.local (add to /etc/hosts)"
+    echo "Grafana:         https://grafana.test.local (add to /etc/hosts)"
+    echo
+    echo "=== SETUP FOR HTTPS TESTING ==="
+    echo "Add these lines to your /etc/hosts file:"
+    echo "${vm_ip} tracker.test.local"
+    echo "${vm_ip} grafana.test.local"
+    echo
+    echo "Then access:"
+    echo "• Tracker API:   https://tracker.test.local/health_check"
+    echo "• Tracker Stats: https://tracker.test.local/api/v1/stats?token=MyAccessToken"
+    echo "• Grafana Login: https://grafana.test.local (admin/admin)"
+    echo
+    echo "Note: Your browser will show a security warning for self-signed certificates."
+    echo "      Click 'Advanced' -> 'Proceed to site' to continue."
     echo
     echo "=== NEXT STEPS ==="
     echo "Health Check:    make app-health-check ENVIRONMENT=${ENVIRONMENT}"

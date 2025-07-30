@@ -132,12 +132,15 @@ These are separate infrastructure concerns and should be documented separately:
 - [ADR-005: Sudo Cache Management for Infrastructure Operations]
   (005-sudo-cache-management-for-infrastructure-operations.md) -
   Proactive sudo cache management for better UX during testing
+- [ADR-006: SSL Certificate Generation Strategy]
+  (006-ssl-certificate-generation-strategy.md) -
+  Generate certificates per deployment vs reusing certificates
 
 ### 📊 ADR Statistics
 
-- **Total ADRs**: 5
+- **Total ADRs**: 6
 - **Status**: All Accepted
-- **Coverage**: Infrastructure (3), Application (1), Development Workflow (1)
+- **Coverage**: Infrastructure (3), Application (2), Development Workflow (1)
 
 ## Contributing
 

@@ -400,11 +400,23 @@ generate_nginx_https_selfsigned_config() {
 }
 
 # Generate self-signed SSL certificates on the VM
+#
+# Why we generate certificates on each deployment:
+# 1. Production flexibility: Different environments use different domains
+#    (test.local for local testing, actual domain for production)
+# 2. Certificate validity: Self-signed certs are domain-specific and must match
+#    the actual domain being used in each deployment
+# 3. Security: Fresh certificates for each deployment ensure no stale credentials
+# 4. Portability: Works across different deployment targets without manual
+#    certificate management or copying between environments
+#
+# While we could reuse certificates for local testing (always test.local),
+# this approach ensures consistency with production deployment workflows.
 generate_selfsigned_certificates() {
     local vm_ip="$1"
     local domain_name="${DOMAIN_NAME:-test.local}"
     
-    log_info "Generating self-signed SSL certificates on VM..."
+    log_info "Generating self-signed SSL certificates on VM for domain: ${domain_name}..."
     
     # Copy the certificate generation script to VM
     local cert_script="${PROJECT_ROOT}/application/share/bin/ssl-generate-test-certs.sh"

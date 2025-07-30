@@ -53,7 +53,57 @@ If you need to manually deploy on the server:
    docker compose --env-file /var/lib/torrust/compose/.env up -d
    ```
 
-## 3. Verification and Smoke Testing
+## 3. SSL Certificate Management
+
+### Certificate Generation Strategy
+
+The deployment process generates SSL certificates on each deployment rather than
+reusing certificates. This approach provides several advantages:
+
+#### Why Generate Certificates Per Deployment?
+
+1. **Production Flexibility**: Different environments use different domains:
+   - Local testing: `test.local`
+   - Staging: `staging.example.com`
+   - Production: `tracker.torrust-demo.com`
+
+2. **Certificate Validity**: Self-signed certificates are domain-specific and must
+   exactly match the domain being used in each deployment environment.
+
+3. **Security Best Practices**: Fresh certificates for each deployment ensure no
+   stale or leaked credentials are reused.
+
+4. **Workflow Consistency**: The same deployment process works across all
+   environments without manual certificate management or copying certificates
+   between systems.
+
+5. **Zero Configuration**: No need to maintain a certificate store or handle
+   certificate distribution between development and production environments.
+
+#### Certificate Types by Environment
+
+- **Local/Testing**: Self-signed certificates with 10-year validity (for convenience in testing)
+- **Production**: Let's Encrypt certificates (automatically renewed)
+
+#### Implementation Details
+
+The certificate generation happens during the application deployment phase
+(`make app-deploy`) and includes:
+
+1. **Self-signed certificates**: Generated using OpenSSL with domain-specific
+   Subject Alternative Names (SAN)
+2. **Certificate placement**: Stored in `/var/lib/torrust/proxy/certs/` and
+   `/var/lib/torrust/proxy/private/` on the target server
+3. **Container mounting**: Certificates are mounted into nginx container at runtime
+4. **Automatic configuration**: nginx configuration is automatically templated
+   with the correct certificate paths
+
+While it would be possible to reuse certificates for local testing (since we
+always use `test.local`), this approach ensures that the deployment workflow is
+identical between local testing and production, reducing the chance of
+environment-specific issues.
+
+## 4. Verification and Smoke Testing
 
 After deployment, verify that all services are running correctly.
 

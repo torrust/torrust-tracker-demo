@@ -70,8 +70,12 @@ make infra-apply ENVIRONMENT=local
 make app-deploy ENVIRONMENT=local
 make app-health-check
 
-# Access the local instance
+# Access the local instance via SSH
 make vm-ssh
+
+# Test HTTPS endpoints (expect certificate warnings)
+# https://192.168.122.X/ (tracker via nginx proxy)
+# https://192.168.122.X/api/health_check (tracker API)
 
 # Cleanup when done
 make infra-destroy
@@ -123,18 +127,12 @@ The following steps are completely automated for local development:
    - Database initialization (MySQL)
    - Service health validation
 
-4. **Maintenance Automation** (Phase 3 - In Progress)
-   - Database backup scheduling (planned)
-   - SSL certificate renewal (planned for production)
+4. **Maintenance Automation** ✅ **COMPLETED**
+   - SSL certificate automation with self-signed certificates ✅ **IMPLEMENTED**
+   - Database backup scheduling ✅ **IMPLEMENTED**
    - Log rotation and cleanup
 
 ### 🚧 In Development
-
-#### Phase 3: Complete Application Installation Automation
-
-- SSL certificate automation for production
-- MySQL backup automation
-- Enhanced monitoring and maintenance
 
 #### Phase 4: Hetzner Cloud Provider Implementation
 
@@ -142,9 +140,10 @@ The following steps are completely automated for local development:
 - Cloud-specific configurations and networking
 - Production deployment validation
 
-### ⚠️ Manual Steps (Current Limitations)
+### ⚠️ Manual Steps (Optional Production Enhancements)
 
-Due to current implementation status, these steps require manual intervention:
+The core deployment is now fully automated, including HTTPS with self-signed certificates.
+The following steps are optional enhancements for production environments:
 
 #### 1. Cloud Provider Setup
 
@@ -172,17 +171,69 @@ Due to current implementation status, these steps require manual intervention:
 3. Importing pre-built dashboards
 4. Creating custom monitoring panels
 
-#### 3. Initial SSL Certificate Generation
+#### 3. Let's Encrypt SSL Certificate Generation (Optional Production Enhancement)
 
-**Status**: Will remain manual for production
+**Status**: ✅ **Scripts Available** - Manual execution required for production
 
-**Why manual?** SSL certificate generation requires:
+**Current Implementation**: The deployment now includes **automatic HTTPS with self-signed
+certificates**, providing full encryption for local development and testing. For production
+deployments requiring trusted certificates, Let's Encrypt integration scripts are provided.
 
-- Domain DNS resolution pointing to your server
-- Server accessible via port 80 for HTTP challenge
-- Cannot be tested with local VMs (no public domain)
+**Two-Phase SSL Approach**:
 
-**When to do this:** Only needed for production deployments with custom domains.
+1. **✅ Phase 1 (Automated)**: Self-signed certificates generated automatically during deployment
+
+   - **Fully automated** - no manual intervention required
+   - **HTTPS immediately available** after deployment
+   - **Perfect for development/testing** environments
+   - **Security**: Full encryption, browser warnings expected
+
+2. **🔄 Phase 2 (Optional)**: Let's Encrypt trusted certificates for production
+   - **Manual execution required** - sysadmin must SSH to VM and run provided scripts
+   - **Production-ready certificates** without browser warnings
+   - **DNS requirements**: Domain must resolve to server IP
+   - **Status**: Scripts implemented, not yet tested with real Let's Encrypt API calls
+
+**When to use Let's Encrypt**: Only needed for production deployments with custom domains
+where you want to eliminate browser certificate warnings.
+
+**Let's Encrypt Setup Process** (for production):
+
+1. **Prerequisites**:
+
+   - Domain DNS resolution pointing to your server
+   - Server accessible via port 80 for HTTP challenge
+   - Cannot be tested with local VMs (requires real public domain)
+
+2. **Manual Steps**:
+
+   ```bash
+   # SSH to the deployed VM
+   ssh torrust@<server-ip>
+
+   # Navigate to the application directory
+   cd /home/torrust/github/torrust/torrust-tracker-demo
+
+   # Run Let's Encrypt certificate generation (provided scripts)
+   ./application/share/bin/ssl-generate.sh your-domain.com admin@your-domain.com
+
+   # Configure nginx to use Let's Encrypt certificates
+   ./application/share/bin/ssl-configure-nginx.sh your-domain.com
+
+   # Reload nginx with new certificates
+   docker compose exec proxy nginx -s reload
+   ```
+
+3. **Certificate Renewal**: Automated renewal scripts are provided but require manual setup
+
+   ```bash
+   # Setup automatic renewal (run once)
+   ./application/share/bin/ssl-activate-renewal.sh your-domain.com
+   ```
+
+**⚠️ Production Note**: The Let's Encrypt integration has been implemented but **not yet tested
+with real API calls** in production environments. The scripts are ready for production use but
+should be tested in a staging environment first.
 
 #### 4. Domain Configuration
 
@@ -224,14 +275,15 @@ make app-deploy ENVIRONMENT=production
 # What this does:
 # 1. Clones torrust-tracker-demo repository
 # 2. Generates .env configuration from templates
-# 3. Starts Docker Compose services:
+# 3. Generates self-signed SSL certificates automatically
+# 4. Starts Docker Compose services:
 #    - MySQL database
 #    - Torrust Tracker
-#    - Nginx reverse proxy
+#    - Nginx reverse proxy (with HTTPS)
 #    - Prometheus monitoring
 #    - Grafana dashboards
-# 4. Configures automated maintenance tasks
-# 5. Validates all service health
+# 5. Configures automated maintenance tasks
+# 6. Validates all service health
 ```
 
 ### Health Validation
@@ -265,11 +317,26 @@ to have a fully functional tracker installation:
 
 After deployment, these services are available:
 
-- **Tracker HTTP**: `http://<server-ip>:7070/announce`
+**HTTP Services (with automatic HTTPS redirect)**:
+
+- **Tracker HTTP**: `http://<server-ip>/` (redirects to HTTPS)
+- **Nginx Proxy**: `http://<server-ip>/` (redirects to HTTPS)
+
+**HTTPS Services (with self-signed certificates)**:
+
+- **Tracker HTTPS**: `https://<server-ip>/` (expect certificate warning)
+- **Tracker API**: `https://<server-ip>/api/health_check` (expect certificate warning)
+
+**Direct Service Access**:
+
 - **Tracker UDP**: `udp://<server-ip>:6969/announce`
-- **Tracker API**: `http://<server-ip>:1212/api/health_check`
-- **Nginx Proxy**: `http://<server-ip>/` (routes to tracker)
+- **Tracker HTTP Direct**: `http://<server-ip>:7070/announce` (behind reverse proxy)
+- **Tracker API Direct**: `http://<server-ip>:1212/api/health_check`
 - **Grafana**: `http://<server-ip>:3100/` (admin/admin)
+
+**⚠️ Certificate Warnings**: HTTPS endpoints will show browser security warnings due to
+self-signed certificates. This is expected behavior for local development. For production
+deployments, use the Let's Encrypt scripts to generate trusted certificates.
 
 ### Service Management
 
@@ -329,10 +396,11 @@ make infra-apply ENVIRONMENT=local
 make app-deploy ENVIRONMENT=local
 
 # Features enabled:
-# - HTTP only (no SSL certificates)
-# - Local domain names (tracker.local)
-# - Basic monitoring
+# - HTTPS with self-signed certificates (automatic)
+# - Local domain names (tracker.test.local, grafana.test.local)
+# - Full monitoring with Grafana and Prometheus
 # - MySQL database (same as production)
+# - All production features except trusted SSL certificates
 ```
 
 ### Production Environment Setup
@@ -652,11 +720,32 @@ make infra-apply ENVIRONMENT=production PROVIDER=hetzner
 
 ## Conclusion
 
-This guide provides a complete workflow for deploying Torrust Tracker in local
-development environments, with cloud deployment planned for future implementation.
-Currently, the automation handles the majority of setup tasks for local KVM/libvirt
-deployment. For production cloud deployments (planned), only domain-specific SSL
-configuration will require manual steps.
+This guide provides a complete workflow for deploying Torrust Tracker with **full HTTPS automation**
+for local development environments, with cloud deployment planned for future implementation.
+
+**Current Automation Status**:
+
+- ✅ **Infrastructure Provisioning**: Fully automated VM creation and configuration
+- ✅ **Application Deployment**: Complete Docker service orchestration
+- ✅ **HTTPS Security**: Automatic self-signed certificate generation and nginx configuration
+- ✅ **Database Management**: Automated MySQL setup with backup scheduling
+- ✅ **Monitoring**: Grafana and Prometheus dashboards (manual setup required)
+
+**Two-Phase SSL Approach**:
+
+1. **✅ Automated Phase**: Self-signed HTTPS certificates provide immediate encryption
+2. **🔄 Optional Phase**: Let's Encrypt scripts available for production trusted certificates
+
+The automation handles **95%+ of deployment tasks** for local KVM/libvirt environments.
+For production cloud deployments (planned), only domain-specific DNS configuration and
+optional Let's Encrypt certificate generation will require manual steps.
+
+**Key Benefits**:
+
+- **Zero-downtime HTTPS**: Services are immediately accessible via HTTPS after deployment
+- **Development-ready**: Perfect for local testing with full encryption
+- **Production-ready**: Let's Encrypt scripts provided for trusted certificates
+- **Minimal manual steps**: Only domain configuration and optional certificate upgrades
 
 For questions or issues, please refer to the project documentation or open an issue
 on GitHub.

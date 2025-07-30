@@ -94,6 +94,7 @@ rustup
 rwxr
 SAMEORIGIN
 secp
+selfsigned
 shellcheck
 somaxconn
 sshpass
@@ -107,6 +108,7 @@ tlsv
 tulpn
 UEFI
 usermod
+variablename
 vcpu
 vcpus
 virbr

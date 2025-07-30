@@ -63,6 +63,7 @@ reusing certificates. This approach provides several advantages:
 #### Why Generate Certificates Per Deployment?
 
 1. **Production Flexibility**: Different environments use different domains:
+
    - Local testing: `test.local`
    - Staging: `staging.example.com`
    - Production: `tracker.torrust-demo.com`

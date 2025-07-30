@@ -70,6 +70,7 @@ packages:
   - vim
   - net-tools
   - ca-certificates
+  - openssl
   - gnupg
   - lsb-release
   - ufw

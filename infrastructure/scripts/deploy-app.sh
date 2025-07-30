@@ -418,41 +418,35 @@ generate_selfsigned_certificates() {
     
     log_info "Generating self-signed SSL certificates on VM for domain: ${domain_name}..."
     
-    # Copy the certificate generation script to VM
+    # Copy the certificate generation script and its shell utilities to VM
     local cert_script="${PROJECT_ROOT}/application/share/bin/ssl-generate-test-certs.sh"
-    local shell_utils="${PROJECT_ROOT}/scripts/shell-utils.sh"
+    local app_shell_utils="${PROJECT_ROOT}/application/share/bin/shell-utils.sh"
     
     if [[ ! -f "${cert_script}" ]]; then
         log_error "Certificate generation script not found: ${cert_script}"
         exit 1
     fi
     
-    if [[ ! -f "${shell_utils}" ]]; then
-        log_error "Shell utilities script not found: ${shell_utils}"
+    if [[ ! -f "${app_shell_utils}" ]]; then
+        log_error "Application shell utilities script not found: ${app_shell_utils}"
         exit 1
     fi
     
-    # Copy scripts to VM
-    log_info "Copying certificate generation script to VM..."
-    scp -o StrictHostKeyChecking=no "${cert_script}" "torrust@${vm_ip}:/tmp/ssl-generate-test-certs.sh"
-    scp -o StrictHostKeyChecking=no "${shell_utils}" "torrust@${vm_ip}:/tmp/shell-utils.sh"
+    # Define the application directory on the VM where compose.yaml is located
+    local vm_app_dir="/home/torrust/github/torrust/torrust-tracker-demo/application"
     
-    # Make script executable and run it
-    vm_exec "${vm_ip}" "chmod +x /tmp/ssl-generate-test-certs.sh"
+    # Copy scripts to the VM application directory
+    log_info "Copying certificate generation script and utilities to VM..."
+    scp -o StrictHostKeyChecking=no "${cert_script}" "torrust@${vm_ip}:${vm_app_dir}/share/bin/"
+    scp -o StrictHostKeyChecking=no "${app_shell_utils}" "torrust@${vm_ip}:${vm_app_dir}/share/bin/"
     
-    # Create temporary directory structure for certificate generation script
-    vm_exec "${vm_ip}" "sudo mkdir -p /tmp/share/bin /tmp/share/dev"
-    vm_exec "${vm_ip}" "sudo cp /tmp/ssl-generate-test-certs.sh /tmp/share/bin/"
-    vm_exec "${vm_ip}" "sudo cp /tmp/shell-utils.sh /tmp/share/dev/"
-    vm_exec "${vm_ip}" "sudo chmod +x /tmp/share/bin/ssl-generate-test-certs.sh"
+    # Make script executable
+    vm_exec "${vm_ip}" "chmod +x ${vm_app_dir}/share/bin/ssl-generate-test-certs.sh"
+    vm_exec "${vm_ip}" "chmod +x ${vm_app_dir}/share/bin/shell-utils.sh"
     
-    # Run certificate generation
+    # Run certificate generation from the application directory where compose.yaml is located
     log_info "Running certificate generation for domain: ${domain_name}"
-    vm_exec "${vm_ip}" "cd /var/lib/torrust/compose && /tmp/share/bin/ssl-generate-test-certs.sh '${domain_name}'"
-    
-    # Clean up temporary files
-    vm_exec "${vm_ip}" "rm -f /tmp/ssl-generate-test-certs.sh /tmp/shell-utils.sh"
-    vm_exec "${vm_ip}" "sudo rm -rf /tmp/share"
+    vm_exec "${vm_ip}" "cd ${vm_app_dir} && ./share/bin/ssl-generate-test-certs.sh '${domain_name}'"
     
     log_success "Self-signed SSL certificates generated successfully"
 }
@@ -590,8 +584,7 @@ release_stage() {
     
     # Generate and copy nginx configuration (choose HTTP or HTTPS with self-signed certificates)
     if [[ "${ENABLE_HTTPS}" == "true" ]]; then
-        log_info "HTTPS enabled - generating self-signed certificates and HTTPS configuration"
-        generate_selfsigned_certificates "${vm_ip}"
+        log_info "HTTPS enabled - preparing HTTPS configuration"
         generate_nginx_https_selfsigned_config "${vm_ip}"
     else
         log_info "HTTPS disabled - using HTTP-only configuration"
@@ -607,6 +600,12 @@ release_stage() {
         log_error "No .env file found at ${PROJECT_ROOT}/application/storage/compose/.env"
         log_error "Configuration should have been generated locally before deployment"
         exit 1
+    fi
+    
+    # Generate SSL certificates before starting services (if HTTPS is enabled)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "Generating self-signed SSL certificates before starting services..."
+        generate_selfsigned_certificates "${vm_ip}"
     fi
 
     log_success "Release stage completed"
@@ -823,18 +822,7 @@ run_stage() {
 
     # Setup HTTPS with self-signed certificates (if enabled)
     if [[ "${ENABLE_HTTPS}" == "true" ]]; then
-        log_info "Setting up HTTPS with self-signed certificates..."
-        generate_selfsigned_certificates "${vm_ip}"
-        generate_nginx_https_selfsigned_config "${vm_ip}"
-        
-        # Restart proxy to apply HTTPS configuration
-        vm_exec "${vm_ip}" "
-            cd /home/torrust/github/torrust/torrust-tracker-demo/application
-            docker compose --env-file /var/lib/torrust/compose/.env restart proxy
-        " "Restarting proxy with HTTPS configuration"
-        
-        # Wait a moment for proxy to restart
-        sleep 5
+        log_info "HTTPS certificates already generated - services should be running with HTTPS..."
         log_success "HTTPS setup completed"
     fi
 

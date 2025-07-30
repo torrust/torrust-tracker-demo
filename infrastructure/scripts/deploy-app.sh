@@ -14,7 +14,7 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
-ENABLE_HTTPS="${ENABLE_HTTPS:-true}"  # Enable HTTPS with self-signed certificates by default
+ENABLE_HTTPS="${ENABLE_SSL:-false}"  # Enable HTTPS with self-signed certificates by default
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
@@ -408,7 +408,7 @@ generate_selfsigned_certificates() {
     
     # Copy the certificate generation script to VM
     local cert_script="${PROJECT_ROOT}/application/share/bin/ssl-generate-test-certs.sh"
-    local shell_utils="${PROJECT_ROOT}/application/share/dev/shell-utils.sh"
+    local shell_utils="${PROJECT_ROOT}/scripts/shell-utils.sh"
     
     if [[ ! -f "${cert_script}" ]]; then
         log_error "Certificate generation script not found: ${cert_script}"
@@ -470,7 +470,10 @@ deploy_local_working_tree() {
     
     # Use rsync with --filter to respect .gitignore while including untracked files
     # This copies all files in working tree except those explicitly ignored by git
-    if ! rsync -avz --filter=':- .gitignore' --exclude='.git/' ./ "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"; then
+    # Use SSH options to avoid host key verification issues in testing
+    if ! rsync -avz --filter=':- .gitignore' --exclude='.git/' \
+        -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+        ./ "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"; then
         log_error "Failed to rsync working tree to VM"
         exit 1
     fi

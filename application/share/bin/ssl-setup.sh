@@ -12,14 +12,12 @@
 #   --email EMAIL       Email for Let's Encrypt registration (required)
 #   --staging           Use Let's Encrypt staging environment (default)
 #   --production        Use Let's Encrypt production environment
-#   --pebble            Use Pebble for local testing
 #   --skip-dns          Skip DNS validation (for testing)
 #   --help              Show this help message
 #
 # Examples:
 #   ./ssl-setup.sh --domain example.com --email admin@example.com --staging
 #   ./ssl-setup.sh --domain example.com --email admin@example.com --production
-#   ./ssl-setup.sh --domain test.local --pebble (for local testing)
 
 set -euo pipefail
 
@@ -59,10 +57,6 @@ parse_arguments() {
                 MODE="production"
                 shift
                 ;;
-            --pebble)
-                MODE="pebble"
-                shift
-                ;;
             --skip-dns)
                 SKIP_DNS_VALIDATION=true
                 shift
@@ -87,7 +81,7 @@ SSL Certificate Setup Script for Torrust Tracker Demo
 
 This script enables HTTPS for the Torrust Tracker Demo application by:
 1. Validating DNS configuration (unless --skip-dns is used)
-2. Generating SSL certificates using Let's Encrypt or Pebble
+2. Generating SSL certificates using Let's Encrypt
 3. Configuring nginx for HTTPS
 4. Activating automatic certificate renewal
 
@@ -101,7 +95,6 @@ REQUIRED ARGUMENTS:
 OPTIONS:
     --staging           Use Let's Encrypt staging environment (default, recommended for testing)
     --production        Use Let's Encrypt production environment (use only after staging success)
-    --pebble            Use Pebble for local testing (no real domain needed)
     --skip-dns          Skip DNS validation (for testing environments)
     --help              Show this help message
 
@@ -111,9 +104,6 @@ EXAMPLES:
 
     # Generate production certificates (after staging success)
     $0 --domain tracker-demo.com --email admin@tracker-demo.com --production
-
-    # Local testing with Pebble
-    $0 --domain test.local --email test@test.local --pebble
 
 PREREQUISITES:
     1. Torrust Tracker Demo must be deployed and running (HTTP-only)
@@ -145,15 +135,10 @@ validate_arguments() {
         exit 1
     fi
 
-    if [[ -z "${EMAIL}" && "${MODE}" != "pebble" ]]; then
+    if [[ -z "${EMAIL}" ]]; then
         log_error "Email address is required for Let's Encrypt. Use --email EMAIL"
         show_usage
         exit 1
-    fi
-
-    # Set default email for Pebble mode
-    if [[ "${MODE}" == "pebble" && -z "${EMAIL}" ]]; then
-        EMAIL="test@${DOMAIN}"
     fi
 
     # Validate domain format (basic check)
@@ -192,13 +177,11 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Check if main services are running (for production/staging)
-    if [[ "${MODE}" != "pebble" ]]; then
-        if ! docker compose ps | grep -q "Up"; then
-            log_error "Docker Compose services are not running"
-            log_error "Please run 'docker compose up -d' first"
-            exit 1
-        fi
+    # Check if main services are running
+    if ! docker compose ps | grep -q "Up"; then
+        log_error "Docker Compose services are not running"
+        log_error "Please run 'docker compose up -d' first"
+        exit 1
     fi
 
     log_success "Prerequisites check passed"
@@ -217,12 +200,12 @@ main() {
 
     cd "${APP_DIR}"
 
-    # Step 1: DNS validation (unless skipped or using Pebble)
-    if [[ "${SKIP_DNS_VALIDATION}" == "false" && "${MODE}" != "pebble" ]]; then
+    # Step 1: DNS validation (unless skipped)
+    if [[ "${SKIP_DNS_VALIDATION}" == "false" ]]; then
         log_info "Step 1: Validating DNS configuration..."
         "${SCRIPT_DIR}/ssl-validate-dns.sh" "${DOMAIN}"
     else
-        log_info "Step 1: Skipping DNS validation (${MODE} mode or --skip-dns)"
+        log_info "Step 1: Skipping DNS validation (--skip-dns specified)"
     fi
 
     # Step 2: Generate SSL certificates
@@ -233,31 +216,15 @@ main() {
     log_info "Step 3: Configuring nginx for HTTPS..."
     "${SCRIPT_DIR}/ssl-configure-nginx.sh" "${DOMAIN}"
 
-    # Step 4: Activate automatic renewal (only for production/staging)
-    if [[ "${MODE}" != "pebble" ]]; then
-        log_info "Step 4: Activating automatic certificate renewal..."
-        "${SCRIPT_DIR}/ssl-activate-renewal.sh"
-    else
-        log_info "Step 4: Skipping renewal activation (Pebble mode)"
-    fi
+    # Step 4: Activate automatic renewal
+    log_info "Step 4: Activating automatic certificate renewal..."
+    "${SCRIPT_DIR}/ssl-activate-renewal.sh"
 
     # Step 5: Final validation
     log_info "Step 5: Validating HTTPS configuration..."
     sleep 5  # Give nginx time to reload
 
-    if [[ "${MODE}" == "pebble" ]]; then
-        log_success "✅ SSL setup completed successfully (Pebble mode)!"
-        log_info ""
-        log_info "HTTPS endpoints are now available:"
-        log_info "  - https://tracker.${DOMAIN} (use Pebble CA for verification)"
-        log_info "  - https://grafana.${DOMAIN} (use Pebble CA for verification)"
-        log_info ""
-        log_info "To test with curl:"
-        log_info "  curl --cacert /tmp/pebble.minica.pem https://tracker.${DOMAIN}/api/health_check"
-        log_info ""
-        log_info "To clean up Pebble test environment:"
-        log_info "  docker compose -f compose.test.yaml down -v"
-    elif [[ "${MODE}" == "staging" ]]; then
+    if [[ "${MODE}" == "staging" ]]; then
         log_success "✅ SSL setup completed successfully (Staging mode)!"
         log_info ""
         log_info "HTTPS endpoints are now available:"

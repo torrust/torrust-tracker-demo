@@ -14,6 +14,7 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
+ENABLE_HTTPS="${ENABLE_HTTPS:-true}"  # Enable HTTPS with self-signed certificates by default
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
@@ -340,6 +341,108 @@ generate_nginx_http_config() {
     log_success "Nginx HTTP configuration deployed"
 }
 
+# Generate and deploy nginx HTTPS configuration with self-signed certificates from template
+generate_nginx_https_selfsigned_config() {
+    local vm_ip="$1"
+    local domain_name="${DOMAIN_NAME:-tracker-demo.local}"
+    
+    log_info "Generating nginx HTTPS configuration with self-signed certificates from template..."
+    
+    # Template and output files
+    local template_file="${PROJECT_ROOT}/infrastructure/config/templates/nginx-https-selfsigned.conf.tpl"
+    local output_file
+    output_file="/tmp/nginx-https-selfsigned-$(date +%s).conf"
+    
+    # Check if template exists
+    if [[ ! -f "${template_file}" ]]; then
+        log_error "Nginx HTTPS self-signed template not found: ${template_file}"
+        exit 1
+    fi
+    
+    # Check if domain name is set
+    if [[ -z "${domain_name}" ]]; then
+        log_error "Domain name is required for HTTPS configuration"
+        log_error "Set DOMAIN_NAME environment variable (e.g., DOMAIN_NAME=tracker-demo.local)"
+        exit 1
+    fi
+    
+    log_info "Using domain: ${domain_name}"
+    log_info "Template: ${template_file}"
+    log_info "Output: ${output_file}"
+    
+    # Process template with environment variable substitution
+    # Note: nginx uses $variablename syntax, so we need to escape those with $${variablename}
+    # We use DOLLAR variable to represent literal $ in nginx config
+    # The template should use ${DOLLAR}variablename for nginx variables
+    
+    # Set DOLLAR variable for nginx variables (needed by envsubst to escape $)
+    export DOLLAR='$'
+    export DOMAIN_NAME="${domain_name}"
+    
+    # Generate configuration from template
+    if ! envsubst < "${template_file}" > "${output_file}"; then
+        log_error "Failed to generate nginx HTTPS configuration from template"
+        exit 1
+    fi
+    
+    log_info "Copying nginx HTTPS configuration to VM..."
+    scp -o StrictHostKeyChecking=no "${output_file}" "torrust@${vm_ip}:/tmp/nginx.conf"
+    
+    # Deploy configuration on VM
+    vm_exec "${vm_ip}" "sudo mkdir -p /var/lib/torrust/proxy/etc/nginx-conf"
+    vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    vm_exec "${vm_ip}" "sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    
+    # Clean up temporary file
+    rm -f "${output_file}"
+    
+    log_success "Nginx HTTPS self-signed configuration deployed"
+}
+
+# Generate self-signed SSL certificates on the VM
+generate_selfsigned_certificates() {
+    local vm_ip="$1"
+    local domain_name="${DOMAIN_NAME:-tracker-demo.local}"
+    
+    log_info "Generating self-signed SSL certificates on VM..."
+    
+    # Copy the certificate generation script to VM
+    local cert_script="${PROJECT_ROOT}/application/share/bin/ssl-generate-test-certs.sh"
+    local shell_utils="${PROJECT_ROOT}/application/share/dev/shell-utils.sh"
+    
+    if [[ ! -f "${cert_script}" ]]; then
+        log_error "Certificate generation script not found: ${cert_script}"
+        exit 1
+    fi
+    
+    if [[ ! -f "${shell_utils}" ]]; then
+        log_error "Shell utilities script not found: ${shell_utils}"
+        exit 1
+    fi
+    
+    # Copy scripts to VM
+    log_info "Copying certificate generation script to VM..."
+    scp -o StrictHostKeyChecking=no "${cert_script}" "torrust@${vm_ip}:/tmp/ssl-generate-test-certs.sh"
+    scp -o StrictHostKeyChecking=no "${shell_utils}" "torrust@${vm_ip}:/tmp/shell-utils.sh"
+    
+    # Make script executable and run it
+    vm_exec "${vm_ip}" "chmod +x /tmp/ssl-generate-test-certs.sh"
+    
+    # Create temporary shell-utils in the expected location for the script
+    vm_exec "${vm_ip}" "sudo mkdir -p /tmp/share/dev"
+    vm_exec "${vm_ip}" "sudo cp /tmp/shell-utils.sh /tmp/share/dev/shell-utils.sh"
+    
+    # Run certificate generation
+    log_info "Running certificate generation for domain: ${domain_name}"
+    vm_exec "${vm_ip}" "cd /var/lib/torrust/compose && SCRIPT_DIR=/tmp /tmp/ssl-generate-test-certs.sh '${domain_name}'"
+    
+    # Clean up temporary files
+    vm_exec "${vm_ip}" "rm -f /tmp/ssl-generate-test-certs.sh /tmp/shell-utils.sh"
+    vm_exec "${vm_ip}" "sudo rm -rf /tmp/share"
+    
+    log_success "Self-signed SSL certificates generated successfully"
+}
+
 # Deploy local working tree (includes uncommitted and untracked files) for local testing
 deploy_local_working_tree() {
     local vm_ip="$1"
@@ -468,8 +571,15 @@ release_stage() {
         vm_exec "${vm_ip}" "sudo mv /tmp/prometheus.yml /var/lib/torrust/prometheus/etc/prometheus.yml && sudo chown torrust:torrust /var/lib/torrust/prometheus/etc/prometheus.yml"
     fi
     
-    # Generate and copy nginx HTTP configuration
-    generate_nginx_http_config "${vm_ip}"
+    # Generate and copy nginx configuration (choose HTTP or HTTPS with self-signed certificates)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "HTTPS enabled - generating self-signed certificates and HTTPS configuration"
+        generate_selfsigned_certificates "${vm_ip}"
+        generate_nginx_https_selfsigned_config "${vm_ip}"
+    else
+        log_info "HTTPS disabled - using HTTP-only configuration"
+        generate_nginx_http_config "${vm_ip}"
+    fi
     
     # Copy Docker Compose .env file
     if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then

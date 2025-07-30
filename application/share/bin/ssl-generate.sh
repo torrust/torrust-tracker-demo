@@ -1,20 +1,19 @@
 #!/bin/bash
 # SSL Certificate Generation Script for Torrust Tracker Demo
 #
-# This script generates SSL certificates using Let's Encrypt or Pebble.
-# It supports staging, production, and local testing modes.
+# This script generates SSL certificates using Let's Encrypt.
+# It supports staging and production modes.
 #
 # Usage: ./ssl-generate.sh DOMAIN EMAIL MODE
 #
 # Arguments:
 #   DOMAIN  - Domain name for certificates (e.g., example.com)
 #   EMAIL   - Email for Let's Encrypt registration
-#   MODE    - Certificate mode: --staging, --production, or --pebble
+#   MODE    - Certificate mode: --staging or --production
 #
 # Examples:
 #   ./ssl-generate.sh example.com admin@example.com --staging
 #   ./ssl-generate.sh example.com admin@example.com --production
-#   ./ssl-generate.sh test.local test@test.local --pebble
 
 set -euo pipefail
 
@@ -29,7 +28,7 @@ source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 # Validate arguments
 if [[ $# -ne 3 ]]; then
     log_error "Usage: $0 DOMAIN EMAIL MODE"
-    log_error "MODE: --staging, --production, or --pebble"
+    log_error "MODE: --staging or --production"
     log_error "Example: $0 example.com admin@example.com --staging"
     exit 1
 fi
@@ -40,11 +39,11 @@ MODE="$3"
 
 # Validate mode
 case "${MODE}" in
-    --staging|--production|--pebble)
+    --staging|--production)
         ;;
     *)
         log_error "Invalid mode: ${MODE}"
-        log_error "Supported modes: --staging, --production, --pebble"
+        log_error "Supported modes: --staging, --production"
         exit 1
         ;;
 esac
@@ -75,12 +74,6 @@ setup_cert_params() {
             COMPOSE_FILE="compose.yaml"
             log_info "Using Let's Encrypt production environment"
             ;;
-        pebble)
-            CERT_ARGS="--server https://pebble:14000/dir --no-verify-ssl"
-            CERTBOT_SERVICE="certbot-test"
-            COMPOSE_FILE="compose.test.yaml"
-            log_info "Using Pebble test environment"
-            ;;
     esac
 }
 
@@ -91,26 +84,14 @@ check_prerequisites() {
     # Check if required compose file exists
     if [[ ! -f "${COMPOSE_FILE}" ]]; then
         log_error "Required compose file not found: ${COMPOSE_FILE}"
-        if [[ "${MODE_NAME}" == "pebble" ]]; then
-            log_error "Pebble testing requires compose.test.yaml"
-            log_error "Please create the Pebble testing environment first"
-        fi
         exit 1
     fi
     
     # Check if required services are running
-    if [[ "${MODE_NAME}" == "pebble" ]]; then
-        if ! docker compose -f "${COMPOSE_FILE}" ps pebble | grep -q "Up"; then
-            log_error "Pebble service is not running"
-            log_error "Please start Pebble first: docker compose -f ${COMPOSE_FILE} up -d pebble"
-            exit 1
-        fi
-    else
-        if ! docker compose ps proxy | grep -q "Up"; then
-            log_error "Proxy service is not running"
-            log_error "Please start services first: docker compose up -d"
-            exit 1
-        fi
+    if ! docker compose ps proxy | grep -q "Up"; then
+        log_error "Proxy service is not running"
+        log_error "Please start services first: docker compose up -d"
+        exit 1
     fi
     
     log_success "Prerequisites check passed"
@@ -118,12 +99,6 @@ check_prerequisites() {
 
 # Generate DH parameters if needed
 generate_dhparam() {
-    # Skip DH param generation for Pebble mode (not needed for testing)
-    if [[ "${MODE_NAME}" == "pebble" ]]; then
-        log_info "Skipping DH parameter generation (Pebble mode)"
-        return 0
-    fi
-    
     log_info "Checking DH parameters..."
     
     # Check if DH parameters already exist
@@ -214,21 +189,14 @@ show_certificate_info() {
     local subdomain="$1"
     
     log_info "Certificate information for ${subdomain}:"
+    log_info "  Location: /var/lib/torrust/certbot/etc/letsencrypt/live/${subdomain}/"
+    log_info "  Type: Let's Encrypt ${MODE_NAME} certificate"
     
-    if [[ "${MODE_NAME}" == "pebble" ]]; then
-        log_info "  Location: /var/lib/torrust/certbot/etc/letsencrypt/live/${subdomain}/"
-        log_info "  Type: Pebble test certificate"
-        log_info "  Validation: Use Pebble CA certificate"
-    else
-        log_info "  Location: /var/lib/torrust/certbot/etc/letsencrypt/live/${subdomain}/"
-        log_info "  Type: Let's Encrypt ${MODE_NAME} certificate"
-        
-        # Try to show certificate expiration
-        if docker compose exec proxy test -f "/etc/letsencrypt/live/${subdomain}/cert.pem" 2>/dev/null; then
-            local expiry
-            expiry=$(docker compose exec proxy openssl x509 -in "/etc/letsencrypt/live/${subdomain}/cert.pem" -noout -enddate 2>/dev/null | cut -d= -f2 || echo "Unable to determine")
-            log_info "  Expires: ${expiry}"
-        fi
+    # Try to show certificate expiration
+    if docker compose exec proxy test -f "/etc/letsencrypt/live/${subdomain}/cert.pem" 2>/dev/null; then
+        local expiry
+        expiry=$(docker compose exec proxy openssl x509 -in "/etc/letsencrypt/live/${subdomain}/cert.pem" -noout -enddate 2>/dev/null | cut -d= -f2 || echo "Unable to determine")
+        log_info "  Expires: ${expiry}"
     fi
 }
 
@@ -283,14 +251,6 @@ main() {
             log_info "1. Configure nginx for HTTPS: ./ssl-configure-nginx.sh ${DOMAIN}"
             log_info "2. Test HTTPS endpoints - they should work without warnings"
             log_info "3. Activate automatic renewal: ./ssl-activate-renewal.sh"
-            ;;
-        pebble)
-            log_info "Next steps:"
-            log_info "1. Configure nginx for HTTPS: ./ssl-configure-nginx.sh ${DOMAIN}"
-            log_info "2. Test HTTPS endpoints with Pebble CA:"
-            log_info "   curl --cacert /tmp/pebble.minica.pem https://tracker.${DOMAIN}/api/health_check"
-            log_info "3. Clean up test environment when done:"
-            log_info "   docker compose -f ${COMPOSE_FILE} down -v"
             ;;
     esac
     

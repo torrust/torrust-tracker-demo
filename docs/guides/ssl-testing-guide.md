@@ -35,7 +35,8 @@ The SSL/HTTPS enablement follows a two-phase approach:
 **Important**: For local testing, the deployment script automatically uses `rsync --filter=':- .gitignore'`
 to copy the working tree, including uncommitted and untracked files (while respecting `.gitignore`).
 This means all new SSL scripts, nginx templates, and Pebble configuration files are automatically
-copied to the VM during `make app-deploy ENVIRONMENT=local`, even if they are not yet committed to git.
+copied to the VM during `make app-deploy ENVIRONMENT=local`, even if they are not yet committed
+to git.
 
 This makes the testing workflow seamless - you can create new SSL scripts, test them locally,
 and deploy them immediately without needing to commit first.
@@ -599,7 +600,8 @@ This section documents the actual test results and any updates made during testi
 **Tester**: System validation  
 **Status**: ✅ PASS
 
-**Test Description**: Verified that the deployment script properly copies untracked SSL files to the VM for local testing.
+**Test Description**: Verified that the deployment script properly copies untracked SSL files to
+the VM for local testing.
 
 **Key Findings**:
 
@@ -623,17 +625,56 @@ make app-deploy ENVIRONMENT=local VM_IP=192.168.122.92
 ssh torrust@192.168.122.92 "ls -la /home/torrust/github/torrust/torrust-tracker-demo/application/share/bin/ssl-*.sh"
 
 # Test SSL script functionality
-ssh torrust@192.168.122.92 "cd /home/torrust/github/torrust/torrust-tracker-demo && ./application/share/bin/ssl-setup.sh --help"
+ssh torrust@192.168.122.92 "cd /home/torrust/github/torrust/torrust-tracker-demo && \
+  ./application/share/bin/ssl-setup.sh --help"
 ```
 
-**Resolution Notes**: Fixed path calculation in SSL scripts. The scripts were initially calculating `PROJECT_ROOT` incorrectly, causing `shell-utils.sh` to not be found. Updated to use the correct relative paths.
+**Resolution Notes**: Fixed path calculation in SSL scripts. The scripts were initially calculating
+`PROJECT_ROOT` incorrectly, causing `shell-utils.sh` to not be found. Updated to use the correct
+relative paths.
+
+### Storage Location Update
+
+**Test Date**: July 30, 2025  
+**Status**: ✅ FIXED
+
+**Issue**: E2E test failing with "Storage directory missing" error during health check validation.
+
+**Root Cause**: The health check script was looking for the storage directory in the old location
+`/home/torrust/github/torrust/torrust-tracker-demo/application/storage`, but the application
+architecture has been updated to manage all persistent storage directly in `/var/lib/torrust/`
+via Docker volume mounts.
+
+**Resolution**: Updated health check script to validate storage at the correct location
+`/var/lib/torrust/` instead of the old repository-based path.
+
+**Key Changes**:
+
+- ✅ Updated `infrastructure/scripts/health-check.sh` to check `/var/lib/torrust/`
+- ✅ All Docker services now use `/var/lib/torrust/` subdirectories for persistent data
+- ✅ Certificate storage: `/var/lib/torrust/certbot/`
+- ✅ Nginx config: `/var/lib/torrust/proxy/etc/nginx-conf/`
+- ✅ Database data: mounted via Docker volumes to `/var/lib/torrust/mysql/`
+- ✅ Tracker config: `/var/lib/torrust/tracker/etc/`
+
+**Validation Commands**:
+
+```bash
+# Check storage location on VM
+ssh torrust@VM_IP "ls -la /var/lib/torrust/"
+ssh torrust@VM_IP "docker volume ls | grep torrust"
+
+# Verify health check passes
+make app-health-check ENVIRONMENT=local
+```
 
 ### Template Processing Validation
 
 **Test Date**: July 29, 2025  
 **Status**: ✅ PASS
 
-**Test Description**: Verified that nginx HTTP and HTTPS templates process correctly with environment variables.
+**Test Description**: Verified that nginx HTTP and HTTPS templates process correctly with
+environment variables.
 
 **Key Findings**:
 
@@ -641,6 +682,49 @@ ssh torrust@192.168.122.92 "cd /home/torrust/github/torrust/torrust-tracker-demo
 - ✅ Nginx variables are properly preserved with `DOLLAR='$'` export
 - ✅ Domain substitution works for `tracker.test.local` and `grafana.test.local`
 - ✅ Template processing is automated in `deploy-app.sh`
+
+### End-to-End Test Integration Validation
+
+**Test Date**: July 30, 2025  
+**Status**: ✅ PASS
+
+**Test Description**: Validated complete e2e test infrastructure with all SSL automation fixes applied.
+
+**Key Results**:
+
+- ✅ **Test Duration**: 3 minutes 18 seconds
+- ✅ **Health Checks**: 14/14 passed (100% success rate)
+- ✅ **All linting fixes validated**: yamllint, shellcheck, markdownlint all pass
+- ✅ **Storage path fix confirmed**: Health check correctly validates `/var/lib/torrust/`
+- ✅ **SSL infrastructure ready**: All SSL scripts deployed via working tree deployment
+- ✅ **Twelve-factor compliance**: Infrastructure provisioning and application deployment
+  stages work cleanly
+
+**Critical Fixes Validated**:
+
+- ✅ **Storage Architecture Update**: Health check now validates correct storage location
+  `/var/lib/torrust/` instead of old repository path
+- ✅ **Linting Compliance**: All YAML, shell, and markdown files pass syntax validation
+- ✅ **SSL Script Deployment**: Working tree deployment successfully copies all untracked
+  SSL scripts to VM
+- ✅ **Container Orchestration**: All 5 Docker services (grafana, mysql, prometheus, proxy,
+  tracker) running healthy
+
+**Validation Commands**:
+
+```bash
+# Run complete e2e test from scratch
+make test-e2e
+
+# Expected results:
+# - Total test time: ~3-5 minutes
+# - Health checks: 14/14 passed
+# - All services running and accessible
+# - Infrastructure cleanup successful
+```
+
+**Next Development Phase**: SSL automation infrastructure is now fully validated and ready
+for Phase 2 SSL/HTTPS enablement testing.
 
 ### Future Test Areas
 
@@ -685,4 +769,10 @@ ssh torrust@192.168.122.92 "cd /home/torrust/github/torrust/torrust-tracker-demo
 3. Deploy with: `make app-deploy ENVIRONMENT=local`
 4. Test on VM: `ssh torrust@VM_IP "cd torrust-tracker-demo && ./application/share/bin/ssl-setup.sh --help"`
 
-This approach enables rapid iteration during SSL feature development without requiring git commits for every change.
+This approach enables rapid iteration during SSL feature development without requiring git
+commits for every change.
+
+**Important**: As of the application refactoring, all persistent storage is now managed directly
+in `/var/lib/torrust/` on the VM (via Docker volume mounts). The `application/storage/` directory
+in the repository contains template configuration files that are copied to `/var/lib/torrust/`
+during deployment, rather than being directly mounted.

@@ -104,8 +104,8 @@ process_template() {
     
     log_info "Processing template: $(basename "${template_file}")"
     
-    # Use envsubst to substitute domain name
-    if ! DOMAIN_NAME="${DOMAIN}" envsubst "\${DOMAIN_NAME}" < "${template_file}" > "${output_file}"; then
+    # Use envsubst to substitute domain name, then convert ${DOLLAR} back to $
+    if ! DOMAIN_NAME="${DOMAIN}" envsubst "\${DOMAIN_NAME}" < "${template_file}" | sed "s/\${DOLLAR}/\$/g" > "${output_file}"; then
         log_error "Failed to process template: $(basename "${template_file}")"
         exit 1
     fi

@@ -27,7 +27,7 @@ services:
     image: ghcr.io/letsencrypt/pebble-challtestsrv:latest
     container_name: pebble-challtestsrv
     command: [
-      "-defaultIPv6", "", 
+      "-defaultIPv6", "",
       "-defaultIPv4", "proxy",
       "-http01", "proxy:80",
       "-https01", "",

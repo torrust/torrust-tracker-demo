@@ -874,24 +874,36 @@ validate_deployment() {
     vm_exec "${vm_ip}" "
         echo '=== Testing Application Endpoints ==='
         
-        # Test global health check endpoint (through nginx proxy)
+        # Test HTTP health check endpoint (through nginx proxy)
+        echo 'Testing HTTP health check endpoint...'
         if curl -f -s http://localhost/health_check >/dev/null 2>&1; then
-            echo '✅ Global health check endpoint: OK'
+            echo '✅ HTTP health check endpoint: OK'
         else
-            echo '❌ Global health check endpoint: FAILED'
+            echo '❌ HTTP health check endpoint: FAILED'
             exit 1
         fi
         
-        # Test API stats endpoint (through nginx proxy, requires auth)
+        # Test HTTPS health check endpoint (through nginx proxy, with self-signed certificates)
+        echo 'Testing HTTPS health check endpoint...'
+        if curl -f -s -k https://localhost/health_check >/dev/null 2>&1; then
+            echo '✅ HTTPS health check endpoint: OK (self-signed certificate)'
+        else
+            echo '❌ HTTPS health check endpoint: FAILED'
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, continuing with HTTP tests'
+        fi
+        
+        # Test HTTP API stats endpoint (through nginx proxy, requires auth)
+        echo 'Testing HTTP API stats endpoint...'
         # Save response to temp file and get HTTP status code
         api_http_code=\$(curl -s -o /tmp/api_response.json -w '%{http_code}' \"http://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
         api_response_body=\$(cat /tmp/api_response.json 2>/dev/null || echo \"No response\")
         
         # Check if HTTP status is 200 (success)
         if [ \"\$api_http_code\" -eq 200 ] 2>/dev/null; then
-            echo '✅ API stats endpoint: OK'
+            echo '✅ HTTP API stats endpoint: OK'
         else
-            echo '❌ API stats endpoint: FAILED'
+            echo '❌ HTTP API stats endpoint: FAILED'
             echo \"  HTTP Code: \$api_http_code\"
             echo \"  Response: \$api_response_body\"
             rm -f /tmp/api_response.json
@@ -899,7 +911,26 @@ validate_deployment() {
         fi
         rm -f /tmp/api_response.json
         
+        # Test HTTPS API stats endpoint (through nginx proxy, with self-signed certificates)
+        echo 'Testing HTTPS API stats endpoint...'
+        # Save response to temp file and get HTTP status code
+        api_https_code=\$(curl -s -k -o /tmp/api_response_https.json -w '%{http_code}' \"https://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
+        api_https_response=\$(cat /tmp/api_response_https.json 2>/dev/null || echo \"No response\")
+        
+        # Check if HTTPS status is 200 (success)
+        if [ \"\$api_https_code\" -eq 200 ] 2>/dev/null; then
+            echo '✅ HTTPS API stats endpoint: OK (self-signed certificate)'
+        else
+            echo '⚠️  HTTPS API stats endpoint: FAILED'
+            echo \"  HTTPS Code: \$api_https_code\"
+            echo \"  Response: \$api_https_response\"
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, continuing with HTTP validation'
+        fi
+        rm -f /tmp/api_response_https.json
+        
         # Test HTTP tracker endpoint (through nginx proxy - expects 404 for root)
+        echo 'Testing HTTP tracker endpoint...'
         if curl -s -w '%{http_code}' http://localhost/ -o /dev/null | grep -q '404'; then
             echo '✅ HTTP tracker endpoint: OK (nginx proxy responding, tracker ready for BitTorrent clients)'
         else
@@ -907,7 +938,17 @@ validate_deployment() {
             exit 1
         fi
         
-        echo '✅ All endpoints are responding'
+        # Test HTTPS tracker endpoint (through nginx proxy - expects 404 for root)
+        echo 'Testing HTTPS tracker endpoint...'
+        if curl -s -k -w '%{http_code}' https://localhost/ -o /dev/null | grep -q '404'; then
+            echo '✅ HTTPS tracker endpoint: OK (nginx proxy with SSL responding, tracker ready for secure BitTorrent clients)'
+        else
+            echo '⚠️  HTTPS tracker endpoint: FAILED'
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, HTTP tracker is working'
+        fi
+        
+        echo '✅ All critical endpoints are responding (HTTP validated, HTTPS optional)'
     " "Testing application endpoints"
 
     log_success "Deployment validation passed"
@@ -924,15 +965,21 @@ show_connection_info() {
     echo "SSH Access:      ssh torrust@${vm_ip}"
     echo
     echo "=== APPLICATION ENDPOINTS ==="
-    echo "Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
-    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
-    echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
-    echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
-    echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
+    echo "HTTP Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
+    echo "HTTP API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
+    echo "HTTP Tracker:         http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
+    echo "UDP Tracker:          udp://${vm_ip}:6868, udp://${vm_ip}:6969"
+    echo "Grafana HTTP:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
     echo
     echo "=== HTTPS ENDPOINTS (with self-signed certificates) ==="
-    echo "Tracker API:     https://tracker.test.local (add to /etc/hosts)"
-    echo "Grafana:         https://grafana.test.local (add to /etc/hosts)"
+    echo "HTTPS Health Check:   https://${vm_ip}/health_check (expect certificate warning)"     # DevSkim: ignore DS137138
+    echo "HTTPS API Stats:      https://${vm_ip}/api/v1/stats?token=MyAccessToken (expect certificate warning)" # DevSkim: ignore DS137138
+    echo "HTTPS Tracker:        https://${vm_ip}/ (expect certificate warning)"                 # DevSkim: ignore DS137138
+    echo "Grafana HTTPS:        https://${vm_ip}:3100 (expect certificate warning)" # DevSkim: ignore DS137138
+    echo
+    echo "=== DOMAIN-BASED HTTPS (add to /etc/hosts for testing) ==="
+    echo "Tracker API:          https://tracker.test.local (requires hosts entry)"
+    echo "Grafana:              https://grafana.test.local (requires hosts entry)"
     echo
     echo "=== SETUP FOR HTTPS TESTING ==="
     echo "Add these lines to your /etc/hosts file:"

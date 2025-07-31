@@ -379,3 +379,137 @@ time_operation() {
         return 1
     fi
 }
+
+# =============================================================================
+# Infrastructure Waiting Functions
+# =============================================================================
+
+# Helper function to get VM IP address from libvirt
+get_vm_ip_from_libvirt() {
+    virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo ""
+}
+
+# Helper function for SSH connections with standard options
+ssh_to_vm() {
+    local vm_ip="$1"
+    local command="$2"
+    local output_redirect="${3:->/dev/null 2>&1}"
+
+    eval ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no torrust@"${vm_ip}" "\"${command}\"" "${output_redirect}"
+}
+
+# Wait for VM IP assignment after infrastructure provisioning
+wait_for_vm_ip() {
+    local environment="${1:-local}"
+    local project_root="${2:-$(pwd)}"
+    
+    log_info "⏳ Waiting for VM IP assignment..."
+    local max_attempts=30
+    local attempt=1
+    local vm_ip=""
+
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "   Checking for VM IP (attempt ${attempt}/${max_attempts})..."
+
+        # Try to get IP from terraform output
+        cd "${project_root}" || return 1
+        vm_ip=$(make infra-status ENVIRONMENT="${environment}" 2>/dev/null | grep "vm_ip" | grep -v "No IP assigned yet" | awk -F '"' '{print $2}' || echo "")
+
+        if [[ -n "${vm_ip}" && "${vm_ip}" != "No IP assigned yet" ]]; then
+            log_success "✅ VM IP assigned: ${vm_ip}"
+            return 0
+        fi
+
+        # Also check libvirt directly as fallback
+        vm_ip=$(get_vm_ip_from_libvirt)
+        if [[ -n "${vm_ip}" ]]; then
+            log_success "✅ VM IP assigned (via libvirt): ${vm_ip}"
+            # Refresh terraform state to sync with actual VM state
+            log_info "   Refreshing terraform state to sync with VM..."
+            make infra-refresh-state ENVIRONMENT="${environment}" || true
+            return 0
+        fi
+
+        log_info "   VM IP not yet assigned, waiting 10 seconds..."
+        sleep 10
+        ((attempt++))
+    done
+
+    log_error "❌ Timeout waiting for VM IP assignment after $((max_attempts * 10)) seconds"
+    log_error "   VM may still be starting or cloud-init may be running"
+    log_error "   You can check manually with: virsh domifaddr torrust-tracker-demo"
+    return 1
+}
+
+# Wait for VM to be fully ready (cloud-init completion and Docker availability)
+wait_for_cloud_init_completion() {
+    local environment="${1:-local}"
+    
+    log_info "⏳ Waiting for cloud-init to complete..."
+    local max_attempts=60 # 10 minutes total
+    local attempt=1
+    local vm_ip=""
+
+    # First get the VM IP
+    vm_ip=$(get_vm_ip_from_libvirt)
+    if [[ -z "${vm_ip}" ]]; then
+        log_error "❌ VM IP not available - cannot check readiness"
+        return 1
+    fi
+
+    log_info "   VM IP: ${vm_ip} - checking cloud-init readiness..."
+
+    while [[ ${attempt} -le ${max_attempts} ]]; do
+        log_info "   Checking cloud-init status (attempt ${attempt}/${max_attempts})..."
+
+        # Check if SSH is available
+        if ! ssh_to_vm "${vm_ip}" "echo 'SSH OK'"; then
+            log_info "   SSH not ready yet, waiting 10 seconds..."
+            sleep 10
+            ((attempt++))
+            continue
+        fi
+
+        # Primary check: Official cloud-init status
+        local cloud_init_status
+        cloud_init_status=$(ssh_to_vm "${vm_ip}" "cloud-init status" "2>/dev/null" || echo "unknown")
+
+        if [[ "${cloud_init_status}" == *"done"* ]]; then
+            log_success "✅ Cloud-init reports completion: ${cloud_init_status}"
+
+            # Secondary check: Custom completion marker file
+            if ssh_to_vm "${vm_ip}" "test -f /var/lib/cloud/torrust-setup-complete"; then
+                log_success "✅ Setup completion marker found"
+                
+                # Tertiary check: Verify critical services are available
+                # Note: This is not tied to specific software, just basic system readiness
+                if ssh_to_vm "${vm_ip}" "systemctl is-active docker >/dev/null 2>&1"; then
+                    log_success "✅ Critical services are active"
+                    log_success "🎉 VM is ready for application deployment"
+                    return 0
+                else
+                    log_info "   Critical services not ready yet, waiting 10 seconds..."
+                fi
+            else
+                log_info "   Setup completion marker not found yet, waiting 10 seconds..."
+            fi
+        elif [[ "${cloud_init_status}" == *"error"* ]]; then
+            log_error "❌ Cloud-init failed with error status: ${cloud_init_status}"
+            
+            # Try to get more detailed error information
+            local cloud_init_result
+            cloud_init_result=$(ssh_to_vm "${vm_ip}" "cloud-init status --long" "2>/dev/null" || echo "unknown")
+            log_error "   Cloud-init detailed status: ${cloud_init_result}"
+            return 1
+        else
+            log_info "   Cloud-init status: ${cloud_init_status}, waiting 10 seconds..."
+        fi
+
+        sleep 10
+        ((attempt++))
+    done
+
+    log_error "❌ Timeout waiting for cloud-init to finish after $((max_attempts * 10)) seconds"
+    log_error "   You can check manually with: ssh torrust@${vm_ip} 'cloud-init status --long'"
+    return 1
+}

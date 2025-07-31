@@ -11,11 +11,10 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 
 # Default values
-# Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ENVIRONMENT="${1:-local}"
 ACTION="${2:-apply}"
+SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
+SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
@@ -115,9 +114,32 @@ provision_infrastructure() {
 
         tofu apply -auto-approve -var-file="local.tfvars"
 
+        # Wait for infrastructure to be fully ready (unless skipped)
+        if [[ "${SKIP_WAIT}" != "true" ]]; then
+            log_info "⏳ Waiting for infrastructure to be fully ready..."
+            log_info "   (Use SKIP_WAIT=true to skip this waiting)"
+            
+            # Wait for VM IP assignment
+            if ! wait_for_vm_ip "${ENVIRONMENT}" "${PROJECT_ROOT}"; then
+                log_error "Failed to wait for VM IP assignment"
+                exit 1
+            fi
+            
+            # Wait for cloud-init completion  
+            if ! wait_for_cloud_init_completion "${ENVIRONMENT}"; then
+                log_error "Failed to wait for cloud-init completion"
+                exit 1
+            fi
+            
+            log_success "🎉 Infrastructure is fully ready for application deployment!"
+        else
+            log_warning "⚠️  Skipping wait for infrastructure readiness (SKIP_WAIT=true)"
+            log_info "   Note: You may need to wait before running app-deploy"
+        fi
+
         # Get VM IP and display connection info
         local vm_ip
-        vm_ip=$(tofu output -raw vm_ip 2>/dev/null || echo "")
+        vm_ip=$(cd "${TERRAFORM_DIR}" && tofu output -raw vm_ip 2>/dev/null || echo "")
 
         if [[ -n "${vm_ip}" ]]; then
             log_success "Infrastructure provisioned successfully"

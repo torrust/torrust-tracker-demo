@@ -314,9 +314,11 @@ The twelve-factor **Build, Release, Run** stages apply to the application deploy
 
 #### Branch Naming
 
-- **Format**: `{issue-number}-{short-description}`
-- **Examples**: `42-add-mysql-support`, `15-fix-ssl-renewal`
+- **Format**: `{issue-number}-{short-description-following-github-conventions}`
+- **GitHub conventions**: Use lowercase, separate words with hyphens, descriptive but concise
+- **Examples**: `42-add-mysql-support`, `15-fix-ssl-renewal`, `24-improve-ux-add-automatic-waiting-to-infra-apply-and-app-deploy-commands`
 - Always start with the GitHub issue number
+- Follow GitHub's recommended branch naming: lowercase, hyphens for word separation, descriptive of the change
 
 #### Commit Messages
 

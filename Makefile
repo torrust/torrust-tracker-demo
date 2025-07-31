@@ -71,7 +71,12 @@ infra-plan: ## Plan infrastructure changes
 infra-apply: ## Provision infrastructure (platform setup)
 	@echo "Provisioning infrastructure for $(ENVIRONMENT)..."
 	@echo "⚠️  This command may prompt for your password for sudo operations"
-	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
+	@if [ "$(SKIP_WAIT)" = "true" ]; then \
+		echo "⚠️  SKIP_WAIT=true - Infrastructure will not wait for full readiness"; \
+	else \
+		echo "ℹ️  Infrastructure will wait for full readiness (use SKIP_WAIT=true to skip)"; \
+	fi
+	SKIP_WAIT=$(SKIP_WAIT) $(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
 
 infra-destroy: ## Destroy infrastructure
 	@echo "Destroying infrastructure for $(ENVIRONMENT)..."
@@ -116,7 +121,12 @@ infra-test-local: ## Run local-only infrastructure tests (requires virtualizatio
 
 app-deploy: ## Deploy application (Twelve-Factor Build + Release + Run stages)
 	@echo "Deploying application for $(ENVIRONMENT)..."
-	$(SCRIPTS_DIR)/deploy-app.sh $(ENVIRONMENT)
+	@if [ "$(SKIP_WAIT)" = "true" ]; then \
+		echo "⚠️  SKIP_WAIT=true - Application will not wait for service readiness"; \
+	else \
+		echo "ℹ️  Application will wait for service readiness (use SKIP_WAIT=true to skip)"; \
+	fi
+	SKIP_WAIT=$(SKIP_WAIT) $(SCRIPTS_DIR)/deploy-app.sh $(ENVIRONMENT)
 
 app-redeploy: ## Redeploy application without infrastructure changes
 	@echo "Redeploying application for $(ENVIRONMENT)..."

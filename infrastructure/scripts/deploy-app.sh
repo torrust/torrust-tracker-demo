@@ -14,6 +14,7 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
+SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
 ENABLE_HTTPS="${ENABLE_SSL:-true}"   # Enable HTTPS with self-signed certificates by default
 
 # Source shared shell utilities
@@ -707,23 +708,27 @@ wait_for_services() {
 setup_backup_automation() {
     local vm_ip="$1"
 
+    log_info "   Checking backup automation configuration..."
+
     # Load environment variables from the generated .env file
     if [[ -f "${PROJECT_ROOT}/application/storage/compose/.env" ]]; then
         # shellcheck source=/dev/null
         source "${PROJECT_ROOT}/application/storage/compose/.env"
+        log_info "   ✅ Loaded environment configuration"
     else
-        log_warning "Environment file not found, using defaults"
+        log_warning "   ⚠️  Environment file not found, using defaults"
     fi
 
     # Check if backup automation is enabled
     if [[ "${ENABLE_DB_BACKUPS:-false}" != "true" ]]; then
-        log_info "Database backup automation disabled (ENABLE_DB_BACKUPS=false)"
+        log_info "   ⏹️  Database backup automation disabled (ENABLE_DB_BACKUPS=${ENABLE_DB_BACKUPS:-false})"
         return 0
     fi
 
-    log_info "Setting up automated database backups..."
+    log_info "   ✅ Database backup automation enabled - proceeding with setup..."
 
     # Create backup directory and set permissions
+    log_info "   ⏳ Creating backup directory and setting permissions..."
     vm_exec "${vm_ip}" "
         # Create backup directory if it doesn't exist
         sudo mkdir -p /var/lib/torrust/mysql/backups
@@ -734,8 +739,10 @@ setup_backup_automation() {
         # Set appropriate permissions
         chmod 755 /var/lib/torrust/mysql/backups
     " "Setting up backup directory"
+    log_info "   ✅ Backup directory setup completed"
 
     # Install crontab entry for automated backups
+    log_info "   ⏳ Installing MySQL backup cron job..."
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo
         
@@ -752,8 +759,10 @@ setup_backup_automation() {
         echo 'Current crontab entries:'
         crontab -l || echo 'No crontab entries found'
     " "Installing MySQL backup cron job"
+    log_info "   ✅ Cron job installation completed"
 
     # Test backup script functionality
+    log_info "   ⏳ Validating backup script functionality..."
     vm_exec "${vm_ip}" "
         cd /home/torrust/github/torrust/torrust-tracker-demo/application
         
@@ -775,8 +784,9 @@ setup_backup_automation() {
             echo '✅ Fixed backup script permissions'
         fi
     " "Validating backup script"
+    log_info "   ✅ Backup script validation completed"
 
-    log_success "Database backup automation configured successfully"
+    log_success "   🎉 Database backup automation configured successfully"
     log_info "Backup schedule: Daily at 3:00 AM"
     log_info "Backup location: /var/lib/torrust/mysql/backups"
     log_info "Retention period: ${BACKUP_RETENTION_DAYS:-7} days"
@@ -817,19 +827,32 @@ run_stage() {
         docker compose --env-file /var/lib/torrust/compose/.env up -d
     " "Starting application services"
 
-    # Wait for services to initialize
-    wait_for_services "${vm_ip}"
+    # Wait for services to initialize (unless skipped)
+    if [[ "${SKIP_WAIT}" != "true" ]]; then
+        log_info "⏳ Waiting for application services to be healthy..."
+        log_info "   (Use SKIP_WAIT=true to skip this waiting)"
+        wait_for_services "${vm_ip}"
+        log_success "🎉 All application services are healthy and ready!"
+    else
+        log_warning "⚠️  Skipping wait for service health checks (SKIP_WAIT=true)"
+        log_info "   Note: Services may not be ready immediately"
+    fi
 
     # Setup HTTPS with self-signed certificates (if enabled)
     if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "⏳ Setting up HTTPS certificates..."
         log_info "HTTPS certificates already generated - services should be running with HTTPS..."
-        log_success "HTTPS setup completed"
+        log_success "✅ HTTPS setup completed"
+    else
+        log_info "⏹️  HTTPS setup skipped (ENABLE_HTTPS=${ENABLE_HTTPS})"
     fi
 
     # Setup database backup automation (if enabled)
+    log_info "⏳ Setting up database backup automation..."
     setup_backup_automation "${vm_ip}"
+    log_success "✅ Database backup automation completed"
 
-    log_success "Run stage completed"
+    log_success "🎉 Run stage completed successfully"
 }
 
 # Validate deployment (Health checks)
@@ -1018,10 +1041,14 @@ main() {
     test_ssh_connection "${vm_ip}"
     wait_for_system_ready "${vm_ip}"
     release_stage "${vm_ip}"
-    run_stage "${vm_ip}"
+    run_stage "${vm_ip}"  # This already includes waiting for services
 
     if [[ "${SKIP_HEALTH_CHECK}" != "true" ]]; then
+        log_info "⏳ Running deployment validation..."
         validate_deployment "${vm_ip}"
+        log_success "✅ Deployment validation completed"
+    else
+        log_warning "⚠️  Skipping deployment validation (SKIP_HEALTH_CHECK=true)"
     fi
 
     show_connection_info "${vm_ip}"
@@ -1040,6 +1067,7 @@ Arguments:
 
 Environment Variables:
     SKIP_HEALTH_CHECK    Skip health check validation (true/false, default: false)
+    SKIP_WAIT           Skip waiting for services to be ready (true/false, default: false)
 
 Examples:
     $0 local                    # Deploy to local environment (get IP from Terraform)

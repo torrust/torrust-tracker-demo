@@ -66,8 +66,14 @@ make infra-config-local
 
 ```bash
 # Test deployment locally with KVM
+# Commands wait for full readiness by default
 make infra-apply ENVIRONMENT=local
 make app-deploy ENVIRONMENT=local
+make app-health-check
+
+# Advanced users: Skip waiting for faster execution
+make infra-apply ENVIRONMENT=local SKIP_WAIT=true
+make app-deploy ENVIRONMENT=local SKIP_WAIT=true
 make app-health-check
 
 # Access the local instance via SSH
@@ -247,6 +253,41 @@ should be tested in a staging environment first.
 
 ## Detailed Deployment Process
 
+### ✅ Improved User Experience (Automatic Waiting)
+
+**Issue #24 - Enhanced Workflow**: The deployment commands now wait for full readiness by
+default, providing a much better user experience:
+
+**Previous workflow problems**:
+
+- Commands completed before systems were actually ready
+- Users had to manually wait between steps without clear indicators
+- Following commands often failed if run too quickly
+
+**✅ Current improved workflow**:
+
+```bash
+# Each command waits for full readiness by default
+make infra-apply ENVIRONMENT=local    # Waits for VM IP + cloud-init completion
+make app-deploy ENVIRONMENT=local     # Waits for all services to be healthy
+make app-health-check                 # Validates everything is working
+```
+
+**Key improvements**:
+
+- ✅ **Clear progress indicators**: You see exactly what's happening during waits
+- ✅ **Automatic readiness detection**: Commands complete when actually ready for next step
+- ✅ **Reliable workflow**: No more timing-related failures between commands
+- ✅ **Backwards compatibility**: Use `SKIP_WAIT=true` for original fast behavior
+
+**Advanced usage** (for CI/automation):
+
+```bash
+# Skip waiting for faster execution (original behavior)
+make infra-apply ENVIRONMENT=local SKIP_WAIT=true
+make app-deploy ENVIRONMENT=local SKIP_WAIT=true
+```
+
 ### Infrastructure Deployment
 
 The infrastructure deployment creates and configures the VM:
@@ -262,6 +303,8 @@ make infra-apply ENVIRONMENT=production
 # 4. Sets up torrust user with SSH access
 # 5. Configures firewall rules
 # 6. Creates persistent data volume
+# 7. ✅ NEW: Waits for VM IP assignment and cloud-init completion
+# 8. ✅ NEW: Ensures infrastructure is ready for next step
 ```
 
 ### Application Deployment
@@ -284,6 +327,8 @@ make app-deploy ENVIRONMENT=production
 #    - Grafana dashboards
 # 5. Configures automated maintenance tasks
 # 6. Validates all service health
+# 7. ✅ NEW: Waits for all services to be healthy and ready
+# 8. ✅ NEW: Ensures deployment is complete before finishing
 ```
 
 ### Health Validation

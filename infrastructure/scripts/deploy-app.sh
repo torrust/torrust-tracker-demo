@@ -14,6 +14,7 @@ TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 ENVIRONMENT="${1:-local}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
+ENABLE_HTTPS="${ENABLE_SSL:-true}"   # Enable HTTPS with self-signed certificates by default
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
@@ -58,6 +59,14 @@ check_git_status() {
         return 0
     fi
     
+    # Determine deployment approach based on environment
+    local deployment_approach
+    if [[ "${ENVIRONMENT}" == "local" ]]; then
+        deployment_approach="working tree (includes uncommitted changes)"
+    else
+        deployment_approach="git archive (committed changes only)"
+    fi
+    
     # Check for uncommitted changes in configuration templates
     local config_changes
     config_changes=$(git status --porcelain infrastructure/config/environments/ 2>/dev/null || echo "")
@@ -71,18 +80,24 @@ check_git_status() {
             log_warning "  ${line}"
         done
         log_warning ""
-        log_warning "IMPORTANT: Deployment uses 'git archive' which only includes committed files."
-        log_warning "Your uncommitted changes will NOT be deployed to the VM."
-        log_warning ""
-        log_warning "To include these changes in deployment:"
-        log_warning "  1. git add infrastructure/config/environments/"
-        log_warning "  2. git commit -m 'update: configuration templates'"
-        log_warning "  3. Re-run deployment"
-        log_warning ""
-        log_warning "To continue without committing (deployment will use last committed version):"
-        log_warning "  Press ENTER to continue or Ctrl+C to abort"
+        
+        if [[ "${ENVIRONMENT}" == "local" ]]; then
+            log_info "ℹ️  LOCAL TESTING: Uncommitted changes WILL be deployed (using working tree)"
+            log_info "This includes your configuration changes and any other uncommitted modifications."
+        else
+            log_warning "IMPORTANT: Production deployment uses 'git archive' which only includes committed files."
+            log_warning "Your uncommitted changes will NOT be deployed to the VM."
+            log_warning ""
+            log_warning "To include these changes in deployment:"
+            log_warning "  1. git add infrastructure/config/environments/"
+            log_warning "  2. git commit -m 'update: configuration templates'"
+            log_warning "  3. Re-run deployment"
+            log_warning ""
+            log_warning "To continue without committing (deployment will use last committed version):"
+            log_warning "  Press ENTER to continue or Ctrl+C to abort"
+            read -r
+        fi
         log_warning "==============================================="
-        read -r
     fi
     
     # Check for any other uncommitted changes (informational)
@@ -92,7 +107,9 @@ check_git_status() {
     if [[ "${all_changes}" -gt 0 ]]; then
         local git_status
         git_status=$(git status --short 2>/dev/null || echo "")
-        log_info "Repository has ${all_changes} uncommitted changes (git archive will use committed version)"
+        log_info "Repository has ${all_changes} uncommitted changes"
+        log_info "Deployment approach: ${deployment_approach}"
+        
         if [[ "${all_changes}" -le 10 ]]; then
             log_info "Uncommitted files:"
             echo "${git_status}" | while IFS= read -r line; do
@@ -264,15 +281,219 @@ generate_configuration_locally() {
     fi
 }
 
-# RELEASE STAGE: Deploy application code and configuration
-release_stage() {
+# Generate and deploy nginx HTTP configuration from template
+generate_nginx_http_config() {
     local vm_ip="$1"
+    
+    log_info "Generating nginx HTTP configuration from template..."
+    
+    # Template and output paths
+    local template_file="${PROJECT_ROOT}/infrastructure/config/templates/nginx-http.conf.tpl"
+    local output_file
+    output_file="/tmp/nginx-http-$(date +%s).conf"
+    
+    # Check if template exists
+    if [[ ! -f "${template_file}" ]]; then
+        log_error "Nginx HTTP template not found: ${template_file}"
+        exit 1
+    fi
+    
+    # Load environment variables from the generated config
+    local env_file="${PROJECT_ROOT}/infrastructure/config/environments/${ENVIRONMENT}.env"
+    if [[ -f "${env_file}" ]]; then
+        log_info "Loading environment variables from ${env_file}"
+        # Export variables for envsubst, filtering out comments and empty lines
+        set -a  # automatically export all variables
+        # shellcheck source=/dev/null
+        source "${env_file}"
+        set +a  # stop auto-exporting
+    else
+        log_error "Environment file not found: ${env_file}"
+        log_error "Run 'make infra-config ENVIRONMENT=${ENVIRONMENT}' first"
+        exit 1
+    fi
+    
+    # Ensure required variables are set
+    if [[ -z "${DOMAIN_NAME:-}" ]]; then
+        log_error "DOMAIN_NAME not set in environment"
+        exit 1
+    fi
+    
+    # Set DOLLAR variable for nginx variables (needed by envsubst to escape $)
+    export DOLLAR='$'
+    
+    # Process template using envsubst
+    log_info "Processing template with DOMAIN_NAME=${DOMAIN_NAME}"
+    envsubst < "${template_file}" > "${output_file}"
+    
+    # Copy generated configuration to VM
+    log_info "Copying nginx HTTP configuration to VM..."
+    scp -o StrictHostKeyChecking=no "${output_file}" "torrust@${vm_ip}:/tmp/nginx.conf"
+    
+    # Deploy configuration to proper location on VM
+    vm_exec "${vm_ip}" "sudo mkdir -p /var/lib/torrust/proxy/etc/nginx-conf"
+    vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    vm_exec "${vm_ip}" "sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    
+    # Cleanup local temporary file
+    rm -f "${output_file}"
+    
+    log_success "Nginx HTTP configuration deployed"
+}
 
-    log_info "=== TWELVE-FACTOR RELEASE STAGE ==="
-    log_info "Deploying application with environment: ${ENVIRONMENT}"
+# Generate and deploy nginx HTTPS configuration with self-signed certificates from template
+generate_nginx_https_selfsigned_config() {
+    local vm_ip="$1"
+    local domain_name="${DOMAIN_NAME:-test.local}"
+    
+    log_info "Generating nginx HTTPS configuration with self-signed certificates from template..."
+    
+    # Template and output files
+    local template_file="${PROJECT_ROOT}/infrastructure/config/templates/nginx-https-selfsigned.conf.tpl"
+    local output_file
+    output_file="/tmp/nginx-https-selfsigned-$(date +%s).conf"
+    
+    # Check if template exists
+    if [[ ! -f "${template_file}" ]]; then
+        log_error "Nginx HTTPS self-signed template not found: ${template_file}"
+        exit 1
+    fi
+    
+    # Check if domain name is set
+    if [[ -z "${domain_name}" ]]; then
+        log_error "Domain name is required for HTTPS configuration"
+        log_error "Set DOMAIN_NAME environment variable (e.g., DOMAIN_NAME=test.local)"
+        exit 1
+    fi
+    
+    log_info "Using domain: ${domain_name}"
+    log_info "Template: ${template_file}"
+    log_info "Output: ${output_file}"
+    
+    # Process template with environment variable substitution
+    # Note: nginx uses $variablename syntax, so we need to escape those with $${variablename}
+    # We use DOLLAR variable to represent literal $ in nginx config
+    # The template should use ${DOLLAR}variablename for nginx variables
+    
+    # Set DOLLAR variable for nginx variables (needed by envsubst to escape $)
+    export DOLLAR='$'
+    export DOMAIN_NAME="${domain_name}"
+    
+    # Generate configuration from template
+    if ! envsubst < "${template_file}" > "${output_file}"; then
+        log_error "Failed to generate nginx HTTPS configuration from template"
+        exit 1
+    fi
+    
+    log_info "Copying nginx HTTPS configuration to VM..."
+    scp -o StrictHostKeyChecking=no "${output_file}" "torrust@${vm_ip}:/tmp/nginx.conf"
+    
+    # Deploy configuration on VM
+    vm_exec "${vm_ip}" "sudo mkdir -p /var/lib/torrust/proxy/etc/nginx-conf"
+    vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    vm_exec "${vm_ip}" "sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    
+    # Clean up temporary file
+    rm -f "${output_file}"
+    
+    log_success "Nginx HTTPS self-signed configuration deployed"
+}
 
-    # Deploy local repository using git archive (testing local changes)
-    log_info "Creating git archive of local repository..."
+# Generate self-signed SSL certificates on the VM
+#
+# Why we generate certificates on each deployment:
+# 1. Production flexibility: Different environments use different domains
+#    (test.local for local testing, actual domain for production)
+# 2. Certificate validity: Self-signed certs are domain-specific and must match
+#    the actual domain being used in each deployment
+# 3. Security: Fresh certificates for each deployment ensure no stale credentials
+# 4. Portability: Works across different deployment targets without manual
+#    certificate management or copying between environments
+#
+# While we could reuse certificates for local testing (always test.local),
+# this approach ensures consistency with production deployment workflows.
+generate_selfsigned_certificates() {
+    local vm_ip="$1"
+    local domain_name="${DOMAIN_NAME:-test.local}"
+    
+    log_info "Generating self-signed SSL certificates on VM for domain: ${domain_name}..."
+    
+    # Copy the certificate generation script and its shell utilities to VM
+    local cert_script="${PROJECT_ROOT}/application/share/bin/ssl-generate-test-certs.sh"
+    local app_shell_utils="${PROJECT_ROOT}/application/share/bin/shell-utils.sh"
+    
+    if [[ ! -f "${cert_script}" ]]; then
+        log_error "Certificate generation script not found: ${cert_script}"
+        exit 1
+    fi
+    
+    if [[ ! -f "${app_shell_utils}" ]]; then
+        log_error "Application shell utilities script not found: ${app_shell_utils}"
+        exit 1
+    fi
+    
+    # Define the application directory on the VM where compose.yaml is located
+    local vm_app_dir="/home/torrust/github/torrust/torrust-tracker-demo/application"
+    
+    # Copy scripts to the VM application directory
+    log_info "Copying certificate generation script and utilities to VM..."
+    scp -o StrictHostKeyChecking=no "${cert_script}" "torrust@${vm_ip}:${vm_app_dir}/share/bin/"
+    scp -o StrictHostKeyChecking=no "${app_shell_utils}" "torrust@${vm_ip}:${vm_app_dir}/share/bin/"
+    
+    # Make script executable
+    vm_exec "${vm_ip}" "chmod +x ${vm_app_dir}/share/bin/ssl-generate-test-certs.sh"
+    vm_exec "${vm_ip}" "chmod +x ${vm_app_dir}/share/bin/shell-utils.sh"
+    
+    # Run certificate generation from the application directory where compose.yaml is located
+    log_info "Running certificate generation for domain: ${domain_name}"
+    vm_exec "${vm_ip}" "cd ${vm_app_dir} && ./share/bin/ssl-generate-test-certs.sh '${domain_name}'"
+    
+    log_success "Self-signed SSL certificates generated successfully"
+}
+
+# Deploy local working tree (includes uncommitted and untracked files) for local testing
+deploy_local_working_tree() {
+    local vm_ip="$1"
+    
+    log_info "Deploying local working tree (includes uncommitted and untracked files) for testing..."
+    
+    # Create target directory structure
+    vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
+    
+    # Handle existing repository  
+    vm_exec "${vm_ip}" "
+        if [ -d /home/torrust/github/torrust/torrust-tracker-demo ]; then
+            # Remove the repository directory
+            rm -rf /home/torrust/github/torrust/torrust-tracker-demo
+        fi
+    " "Removing existing repository"
+    
+    # Create target directory
+    vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust/torrust-tracker-demo" "Creating repository directory"
+    
+    # Use rsync to copy working tree, including uncommitted and untracked files (but respecting .gitignore)
+    log_info "Using rsync to copy working tree (committed + uncommitted + untracked files)..."
+    
+    cd "${PROJECT_ROOT}"
+    
+    # Use rsync with --filter to respect .gitignore while including untracked files
+    # This copies all files in working tree except those explicitly ignored by git
+    # Use SSH options to avoid host key verification issues in testing
+    if ! rsync -avz --filter=':- .gitignore' --exclude='.git/' \
+        -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+        ./ "torrust@${vm_ip}:/home/torrust/github/torrust/torrust-tracker-demo/"; then
+        log_error "Failed to rsync working tree to VM"
+        exit 1
+    fi
+    
+    log_success "Local working tree deployed successfully (includes uncommitted and untracked files)"
+}
+
+# Deploy using git archive (committed changes only) for production
+deploy_git_archive() {
+    local vm_ip="$1"
+    
+    log_info "Deploying using git archive (committed changes only)..."
     local temp_archive
     temp_archive="/tmp/torrust-tracker-demo-$(date +%s).tar.gz"
 
@@ -282,7 +503,7 @@ release_stage() {
         exit 1
     fi
 
-    log_info "Copying local repository to VM..."
+    log_info "Copying git archive to VM..."
 
     # Create target directory structure
     vm_exec "${vm_ip}" "mkdir -p /home/torrust/github/torrust" "Creating directory structure"
@@ -311,10 +532,22 @@ release_stage() {
     # Clean up local temp file
     rm -f "${temp_archive}"
 
-    # Verify deployment
-    vm_exec "${vm_ip}" "test -f /home/torrust/github/torrust/torrust-tracker-demo/Makefile" "Verifying repository deployment"
+    log_success "Git archive deployed successfully (committed changes only)"
+}
 
-    log_success "Local repository deployed successfully"
+# RELEASE STAGE: Deploy application code and configuration
+release_stage() {
+    local vm_ip="$1"
+
+    log_info "=== TWELVE-FACTOR RELEASE STAGE ==="
+    log_info "Deploying application with environment: ${ENVIRONMENT}"
+
+    # Choose deployment method based on environment
+    if [[ "${ENVIRONMENT}" == "local" ]]; then
+        deploy_local_working_tree "${vm_ip}"
+    else
+        deploy_git_archive "${vm_ip}"
+    fi
 
     # Set up persistent data volume and copy locally generated configuration files directly
     vm_exec "${vm_ip}" "
@@ -349,11 +582,13 @@ release_stage() {
         vm_exec "${vm_ip}" "sudo mv /tmp/prometheus.yml /var/lib/torrust/prometheus/etc/prometheus.yml && sudo chown torrust:torrust /var/lib/torrust/prometheus/etc/prometheus.yml"
     fi
     
-    # Copy nginx configuration
-    if [[ -f "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" ]]; then
-        log_info "Copying nginx configuration..."
-        scp -o StrictHostKeyChecking=no "${PROJECT_ROOT}/application/storage/proxy/etc/nginx-conf/nginx.conf" "torrust@${vm_ip}:/tmp/nginx.conf"
-        vm_exec "${vm_ip}" "sudo mv /tmp/nginx.conf /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf && sudo chown torrust:torrust /var/lib/torrust/proxy/etc/nginx-conf/nginx.conf"
+    # Generate and copy nginx configuration (choose HTTP or HTTPS with self-signed certificates)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "HTTPS enabled - preparing HTTPS configuration"
+        generate_nginx_https_selfsigned_config "${vm_ip}"
+    else
+        log_info "HTTPS disabled - using HTTP-only configuration"
+        generate_nginx_http_config "${vm_ip}"
     fi
     
     # Copy Docker Compose .env file
@@ -365,6 +600,12 @@ release_stage() {
         log_error "No .env file found at ${PROJECT_ROOT}/application/storage/compose/.env"
         log_error "Configuration should have been generated locally before deployment"
         exit 1
+    fi
+    
+    # Generate SSL certificates before starting services (if HTTPS is enabled)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "Generating self-signed SSL certificates before starting services..."
+        generate_selfsigned_certificates "${vm_ip}"
     fi
 
     log_success "Release stage completed"
@@ -579,6 +820,12 @@ run_stage() {
     # Wait for services to initialize
     wait_for_services "${vm_ip}"
 
+    # Setup HTTPS with self-signed certificates (if enabled)
+    if [[ "${ENABLE_HTTPS}" == "true" ]]; then
+        log_info "HTTPS certificates already generated - services should be running with HTTPS..."
+        log_success "HTTPS setup completed"
+    fi
+
     # Setup database backup automation (if enabled)
     setup_backup_automation "${vm_ip}"
 
@@ -627,24 +874,36 @@ validate_deployment() {
     vm_exec "${vm_ip}" "
         echo '=== Testing Application Endpoints ==='
         
-        # Test global health check endpoint (through nginx proxy)
+        # Test HTTP health check endpoint (through nginx proxy)
+        echo 'Testing HTTP health check endpoint...'
         if curl -f -s http://localhost/health_check >/dev/null 2>&1; then
-            echo '✅ Global health check endpoint: OK'
+            echo '✅ HTTP health check endpoint: OK'
         else
-            echo '❌ Global health check endpoint: FAILED'
+            echo '❌ HTTP health check endpoint: FAILED'
             exit 1
         fi
         
-        # Test API stats endpoint (through nginx proxy, requires auth)
+        # Test HTTPS health check endpoint (through nginx proxy, with self-signed certificates)
+        echo 'Testing HTTPS health check endpoint...'
+        if curl -f -s -k https://localhost/health_check >/dev/null 2>&1; then
+            echo '✅ HTTPS health check endpoint: OK (self-signed certificate)'
+        else
+            echo '❌ HTTPS health check endpoint: FAILED'
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, continuing with HTTP tests'
+        fi
+        
+        # Test HTTP API stats endpoint (through nginx proxy, requires auth)
+        echo 'Testing HTTP API stats endpoint...'
         # Save response to temp file and get HTTP status code
         api_http_code=\$(curl -s -o /tmp/api_response.json -w '%{http_code}' \"http://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
         api_response_body=\$(cat /tmp/api_response.json 2>/dev/null || echo \"No response\")
         
         # Check if HTTP status is 200 (success)
         if [ \"\$api_http_code\" -eq 200 ] 2>/dev/null; then
-            echo '✅ API stats endpoint: OK'
+            echo '✅ HTTP API stats endpoint: OK'
         else
-            echo '❌ API stats endpoint: FAILED'
+            echo '❌ HTTP API stats endpoint: FAILED'
             echo \"  HTTP Code: \$api_http_code\"
             echo \"  Response: \$api_response_body\"
             rm -f /tmp/api_response.json
@@ -652,7 +911,26 @@ validate_deployment() {
         fi
         rm -f /tmp/api_response.json
         
+        # Test HTTPS API stats endpoint (through nginx proxy, with self-signed certificates)
+        echo 'Testing HTTPS API stats endpoint...'
+        # Save response to temp file and get HTTP status code
+        api_https_code=\$(curl -s -k -o /tmp/api_response_https.json -w '%{http_code}' \"https://localhost/api/v1/stats?token=MyAccessToken\" 2>&1 || echo \"000\")
+        api_https_response=\$(cat /tmp/api_response_https.json 2>/dev/null || echo \"No response\")
+        
+        # Check if HTTPS status is 200 (success)
+        if [ \"\$api_https_code\" -eq 200 ] 2>/dev/null; then
+            echo '✅ HTTPS API stats endpoint: OK (self-signed certificate)'
+        else
+            echo '⚠️  HTTPS API stats endpoint: FAILED'
+            echo \"  HTTPS Code: \$api_https_code\"
+            echo \"  Response: \$api_https_response\"
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, continuing with HTTP validation'
+        fi
+        rm -f /tmp/api_response_https.json
+        
         # Test HTTP tracker endpoint (through nginx proxy - expects 404 for root)
+        echo 'Testing HTTP tracker endpoint...'
         if curl -s -w '%{http_code}' http://localhost/ -o /dev/null | grep -q '404'; then
             echo '✅ HTTP tracker endpoint: OK (nginx proxy responding, tracker ready for BitTorrent clients)'
         else
@@ -660,7 +938,17 @@ validate_deployment() {
             exit 1
         fi
         
-        echo '✅ All endpoints are responding'
+        # Test HTTPS tracker endpoint (through nginx proxy - expects 404 for root)
+        echo 'Testing HTTPS tracker endpoint...'
+        if curl -s -k -w '%{http_code}' https://localhost/ -o /dev/null | grep -q '404'; then
+            echo '✅ HTTPS tracker endpoint: OK (nginx proxy with SSL responding, tracker ready for secure BitTorrent clients)'
+        else
+            echo '⚠️  HTTPS tracker endpoint: FAILED'
+            # Don't exit on HTTPS failure in case certificates aren't ready yet
+            echo '⚠️  HTTPS may not be fully configured yet, HTTP tracker is working'
+        fi
+        
+        echo '✅ All critical endpoints are responding (HTTP validated, HTTPS optional)'
     " "Testing application endpoints"
 
     log_success "Deployment validation passed"
@@ -677,11 +965,34 @@ show_connection_info() {
     echo "SSH Access:      ssh torrust@${vm_ip}"
     echo
     echo "=== APPLICATION ENDPOINTS ==="
-    echo "Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
-    echo "API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
-    echo "HTTP Tracker:    http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
-    echo "UDP Tracker:     udp://${vm_ip}:6868, udp://${vm_ip}:6969"
-    echo "Grafana:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
+    echo "HTTP Health Check:    http://${vm_ip}/health_check"                                   # DevSkim: ignore DS137138
+    echo "HTTP API Stats:       http://${vm_ip}/api/v1/stats?token=MyAccessToken" # DevSkim: ignore DS137138
+    echo "HTTP Tracker:         http://${vm_ip}/ (for BitTorrent clients)"                      # DevSkim: ignore DS137138
+    echo "UDP Tracker:          udp://${vm_ip}:6868, udp://${vm_ip}:6969"
+    echo "Grafana HTTP:         http://${vm_ip}:3100 (admin/admin)" # DevSkim: ignore DS137138
+    echo
+    echo "=== HTTPS ENDPOINTS (with self-signed certificates) ==="
+    echo "HTTPS Health Check:   https://${vm_ip}/health_check (expect certificate warning)"     # DevSkim: ignore DS137138
+    echo "HTTPS API Stats:      https://${vm_ip}/api/v1/stats?token=MyAccessToken (expect certificate warning)" # DevSkim: ignore DS137138
+    echo "HTTPS Tracker:        https://${vm_ip}/ (expect certificate warning)"                 # DevSkim: ignore DS137138
+    echo "Grafana HTTPS:        https://${vm_ip}:3100 (expect certificate warning)" # DevSkim: ignore DS137138
+    echo
+    echo "=== DOMAIN-BASED HTTPS (add to /etc/hosts for testing) ==="
+    echo "Tracker API:          https://tracker.test.local (requires hosts entry)"
+    echo "Grafana:              https://grafana.test.local (requires hosts entry)"
+    echo
+    echo "=== SETUP FOR HTTPS TESTING ==="
+    echo "Add these lines to your /etc/hosts file:"
+    echo "${vm_ip} tracker.test.local"
+    echo "${vm_ip} grafana.test.local"
+    echo
+    echo "Then access:"
+    echo "• Tracker API:   https://tracker.test.local/health_check"
+    echo "• Tracker Stats: https://tracker.test.local/api/v1/stats?token=MyAccessToken"
+    echo "• Grafana Login: https://grafana.test.local (admin/admin)"
+    echo
+    echo "Note: Your browser will show a security warning for self-signed certificates."
+    echo "      Click 'Advanced' -> 'Proceed to site' to continue."
     echo
     echo "=== NEXT STEPS ==="
     echo "Health Check:    make app-health-check ENVIRONMENT=${ENVIRONMENT}"

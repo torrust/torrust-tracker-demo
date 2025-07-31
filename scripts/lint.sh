@@ -71,7 +71,8 @@ run_shellcheck() {
     fi
 
     # Add source-path to help shellcheck find sourced files
-    if shellcheck --source-path=SCRIPTDIR "${shell_files[@]}"; then
+    # Exclude SC1091 (not following sourced files) as it's informational only
+    if shellcheck --source-path=SCRIPTDIR --exclude=SC1091 "${shell_files[@]}"; then
         log_success "shellcheck passed"
         return 0
     else

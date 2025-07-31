@@ -209,7 +209,7 @@ test_storage() {
 
     # Test storage directories
     ((TOTAL_TESTS++))
-    if vm_exec "${vm_ip}" "[ -d /home/torrust/github/torrust/torrust-tracker-demo/application/storage ]"; then
+    if vm_exec "${vm_ip}" "[ -d /var/lib/torrust ]"; then
         log_test_pass "Storage directory exists"
     else
         log_test_fail "Storage directory missing"

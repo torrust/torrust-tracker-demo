@@ -186,14 +186,15 @@ torrust-tracker-demo/
 
 Key design decisions are documented in `docs/adr/`. Contributors should review relevant ADRs when working on related features:
 
-| ADR | Title | Description |
-|-----|-------|-------------|
-| [ADR-001](../docs/adr/001-makefile-location.md) | Makefile Location | Why the main Makefile is at repository root |
-| [ADR-002](../docs/adr/002-docker-for-all-services.md) | Docker for All Services | Why we use Docker for all services including UDP tracker |
-| [ADR-003](../docs/adr/003-use-mysql-over-mariadb.md) | Use MySQL Over MariaDB | Database backend selection rationale |
-| [ADR-004](../docs/adr/004-configuration-approach-files-vs-environment-variables.md) | Configuration Approach | Files vs environment variables for configuration |
-| [ADR-005](../docs/adr/005-sudo-cache-management-for-infrastructure-operations.md) | Sudo Cache Management | Managing sudo credentials during infrastructure operations |
-| [ADR-006](../docs/adr/006-ssl-certificate-generation-strategy.md) | SSL Certificate Generation Strategy | Approach for SSL certificate management |
+| ADR                                                                                 | Title                               | Description                                                |
+| ----------------------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| [ADR-001](../docs/adr/001-makefile-location.md)                                     | Makefile Location                   | Why the main Makefile is at repository root                |
+| [ADR-002](../docs/adr/002-docker-for-all-services.md)                               | Docker for All Services             | Why we use Docker for all services including UDP tracker   |
+| [ADR-003](../docs/adr/003-use-mysql-over-mariadb.md)                                | Use MySQL Over MariaDB              | Database backend selection rationale                       |
+| [ADR-004](../docs/adr/004-configuration-approach-files-vs-environment-variables.md) | Configuration Approach              | Files vs environment variables for configuration           |
+| [ADR-005](../docs/adr/005-sudo-cache-management-for-infrastructure-operations.md)   | Sudo Cache Management               | Managing sudo credentials during infrastructure operations |
+| [ADR-006](../docs/adr/006-ssl-certificate-generation-strategy.md)                   | SSL Certificate Generation Strategy | Approach for SSL certificate management                    |
+| [ADR-007](../docs/adr/007-two-level-environment-variable-structure.md)              | Two-Level Environment Variable Structure | Security-focused separation of infrastructure and container variables |
 
 ## 🛠️ Development Workflow
 
@@ -297,9 +298,11 @@ The twelve-factor **Build, Release, Run** stages apply to the application deploy
 
 - **Release Stage**: Combine built application with environment-specific configuration
 
-  - Apply environment variables and configuration files
+  - Apply environment variables and configuration files using **two-level structure** (see [ADR-007](../docs/adr/007-two-level-environment-variable-structure.md))
+    - **Level 1**: Main environment files (`infrastructure/config/environments/`) for all deployment processes
+    - **Level 2**: Docker environment files (generated from templates) for container runtime only
   - Combine application artifacts with runtime configuration
-  - Prepare deployment-ready releases
+  - Prepare deployment-ready releases with security-focused variable filtering
 
 - **Run Stage**: Execute the application in the runtime environment
   - Start application processes (tracker binary, background jobs)

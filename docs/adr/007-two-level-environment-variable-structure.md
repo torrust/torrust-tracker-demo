@@ -162,19 +162,18 @@ envsubst < "infrastructure/config/templates/docker-compose.env.tpl" > "applicati
 
 ### For Container Configuration
 
-```yaml
-# docker-compose.yaml
-services:
-  tracker:
-    env_file: .env  # Only contains container-relevant variables
-    environment:
-      - TRACKER_ADMIN_TOKEN=${TRACKER_ADMIN_TOKEN}
+```bash
+# Docker Compose command (in deploy-app.sh)
+docker compose --env-file /var/lib/torrust/compose/.env up -d
+
+# The .env file contains only container-relevant variables
+# and is passed to Docker Compose via the --env-file flag
 ```
 
 ## Benefits
 
 1. **Security**: Reduced container attack surface
-2. **Clarity**: Clear separation between infrastructure and application concerns  
+2. **Clarity**: Clear separation between infrastructure and application concerns
 3. **Maintainability**: Easier to understand what variables are used where
 4. **Flexibility**: Can generate different container environments from same base
 5. **Compliance**: Aligns with twelve-factor configuration principles

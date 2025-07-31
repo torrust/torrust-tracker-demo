@@ -182,6 +182,19 @@ torrust-tracker-demo/
 - **Cross-cutting**: Project-wide documentation and ADRs
 - **Architecture Decisions**: Documented design choices and rationale
 
+#### Architecture Decision Records (ADRs)
+
+Key design decisions are documented in `docs/adr/`. Contributors should review relevant ADRs when working on related features:
+
+| ADR | Title | Description |
+|-----|-------|-------------|
+| [ADR-001](../docs/adr/001-makefile-location.md) | Makefile Location | Why the main Makefile is at repository root |
+| [ADR-002](../docs/adr/002-docker-for-all-services.md) | Docker for All Services | Why we use Docker for all services including UDP tracker |
+| [ADR-003](../docs/adr/003-use-mysql-over-mariadb.md) | Use MySQL Over MariaDB | Database backend selection rationale |
+| [ADR-004](../docs/adr/004-configuration-approach-files-vs-environment-variables.md) | Configuration Approach | Files vs environment variables for configuration |
+| [ADR-005](../docs/adr/005-sudo-cache-management-for-infrastructure-operations.md) | Sudo Cache Management | Managing sudo credentials during infrastructure operations |
+| [ADR-006](../docs/adr/006-ssl-certificate-generation-strategy.md) | SSL Certificate Generation Strategy | Approach for SSL certificate management |
+
 ## 🛠️ Development Workflow
 
 ### Quick Start for Contributors

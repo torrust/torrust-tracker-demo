@@ -90,6 +90,51 @@ clear separation between infrastructure provisioning and application deployment:
 - **Environment-based Configuration**: Template system with `local.env.tpl` and `production.env.tpl`
 - **Build/Release/Run Stages**: Proper separation of configuration processing, deployment, and execution
 
+## 🚀 Deployment Process Overview
+
+This project follows a **four-step deployment process** based on twelve-factor app principles:
+
+### 1. **Configure Environment Variables**
+
+Customize deployment settings using environment-specific templates:
+
+- `infrastructure/config/environments/local.env.tpl` → `local.env`
+- `infrastructure/config/environments/production.env.tpl` → `production.env`
+- Contains ALL deployment configuration (infrastructure, SSL, backups, application secrets)
+
+### 2. **Provision Infrastructure**
+
+Create and configure the target environment:
+
+- **VM Creation**: Deploy virtual machine with specified resources
+- **System Setup**: cloud-init installs dependencies, configures firewall, sets up users
+- **Platform Preparation**: Ready environment for application deployment
+
+### 3. **Deploy Application** (Build + Release + Run Stages)
+
+Deploy the application stack following twelve-factor principles:
+
+- **Build**: Prepare application artifacts and configuration files
+- **Release**: Generate SSL certificates, create Docker environment files, copy configs
+- **Run**: Start Docker Compose stack (tracker, MySQL, Nginx, Grafana, Prometheus)
+
+### 4. **Validation**
+
+Verify deployment health and functionality:
+
+- Service health checks (HTTP/UDP endpoints)
+- Database connectivity validation
+- Monitoring dashboard accessibility
+- End-to-end smoke testing
+
+### Quick Commands
+
+```bash
+make infra-apply ENVIRONMENT=local      # Steps 1-2: Configure + Provision
+make app-deploy ENVIRONMENT=local       # Step 3: Deploy Application
+make app-health-check ENVIRONMENT=local # Step 4: Validation
+```
+
 ## Demo Tracker
 
 - **HTTP Tracker**: <https://tracker.torrust-demo.com/announce>

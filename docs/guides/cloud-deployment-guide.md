@@ -12,6 +12,53 @@ and testing. Hetzner Cloud support is planned as the next implementation target.
 The process combines Infrastructure as Code with application deployment automation to
 provide a streamlined deployment experience, following twelve-factor app methodology.
 
+## Deployment Process
+
+This project implements a **four-step deployment workflow** aligned with twelve-factor app principles:
+
+### Step 1: Configure Environment Variables
+
+Create environment-specific configuration from templates:
+
+- **Local Development**: `infrastructure/config/environments/local.env.tpl` → `local.env`
+- **Production**: `infrastructure/config/environments/production.env.tpl` → `production.env`
+
+The environment file contains **all deployment configuration**, including:
+
+- Infrastructure settings (VM specs, network configuration)
+- Application secrets (database passwords, API tokens)
+- SSL certificate configuration (domains, email for Let's Encrypt)
+- Backup and monitoring settings
+
+### Step 2: Provision Infrastructure
+
+Deploy and configure the target environment:
+
+- **VM Creation**: Deploy virtual machine with specified resources
+- **System Dependencies**: cloud-init installs Docker, configures firewall, creates users
+- **Network Setup**: Configure firewall rules, SSH access, system security
+- **Platform Readiness**: Environment prepared for application deployment
+
+### Step 3: Deploy Application (Build + Release + Run)
+
+Deploy the application stack following twelve-factor methodology:
+
+- **Build Stage**: Prepare application artifacts and configuration templates
+- **Release Stage**:
+  - Generate SSL certificates (Let's Encrypt or self-signed)
+  - Create Docker environment files from templates
+  - Copy application configurations to target VM
+- **Run Stage**: Start Docker Compose stack (Torrust Tracker, MySQL, Nginx, Grafana, Prometheus)
+
+### Step 4: Validation
+
+Verify deployment health and functionality:
+
+- **Service Health**: HTTP/UDP endpoint availability checks
+- **Database Connectivity**: MySQL connection and schema validation
+- **Monitoring Access**: Grafana dashboard accessibility
+- **End-to-end Testing**: Tracker announce/scrape functionality
+
 ## Prerequisites
 
 ### Local Requirements

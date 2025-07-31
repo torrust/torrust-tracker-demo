@@ -18,6 +18,24 @@ following twelve-factor principles for better maintainability and deployment rel
 
 **Total Time**: ~5-8 minutes (streamlined with separated stages)
 
+## Recent Updates
+
+### SSL Certificate Automation
+
+The deployment now includes **automatic SSL certificate generation** for HTTPS support:
+
+- **Self-signed certificates**: Generated automatically for local testing
+- **HTTPS endpoints**: All services accessible via HTTPS with nginx reverse proxy
+- **Domain-based SSL**: Supports `tracker.test.local` and `grafana.test.local`
+- **Browser warnings**: Expected for self-signed certificates (click "Advanced" → "Proceed")
+
+### Key Infrastructure Changes
+
+- **Nginx reverse proxy**: All HTTP services now run behind nginx (ports 80/443)
+- **MySQL database**: Replaces SQLite for better production readiness
+- **Unified health checks**: All endpoints tested through nginx proxy
+- **Environment parameters**: All commands now require `ENVIRONMENT=local` parameter
+
 ---
 
 ## Automated Testing Alternative
@@ -31,12 +49,12 @@ following twelve-factor principles for better maintainability and deployment rel
 
 The automated test script (`tests/test-e2e.sh`) follows the same steps described in this guide:
 
-- **Step 1**: Prerequisites validation
-- **Step 2**: Infrastructure provisioning (`make infra-apply`)
-- **Step 3**: Application deployment (`make app-deploy`)
-- **Step 4**: Health validation (`make app-health-check`)
+- **Step 1**: Prerequisites validation (`make lint`)
+- **Step 2**: Infrastructure provisioning (`make infra-apply ENVIRONMENT=local`)
+- **Step 3**: Application deployment (`make app-deploy ENVIRONMENT=local`)
+- **Step 4**: Health validation (`make app-health-check ENVIRONMENT=local`)
 - **Step 5**: Smoke testing (basic functionality validation)
-- **Step 6**: Cleanup (`make infra-destroy`)
+- **Step 6**: Cleanup (`make infra-destroy ENVIRONMENT=local`)
 
 **Benefits of the automated test**:
 
@@ -72,7 +90,7 @@ Ensure you have completed the initial setup:
 
 ```bash
 # Verify prerequisites are met
-make test-syntax
+make lint
 ```
 
 **Expected Output**: All syntax validation should pass.
@@ -184,11 +202,25 @@ Provisioning infrastructure for local...
 make infra-status ENVIRONMENT=local
 
 # [PROJECT_ROOT] Test SSH connectivity
-make vm-ssh
+make vm-ssh ENVIRONMENT=local
 # (type 'exit' to return)
 ```
 
 **Expected Output**: VM IP address and successful SSH connection.
+
+**⚠️ VM IP Detection Issue**: If `make infra-status` shows "No IP assigned yet" but you can  
+see the VM is running (`virsh list`), you may need to refresh the infrastructure state:
+
+```bash
+# [PROJECT_ROOT] Refresh infrastructure state to detect VM IP
+make infra-refresh-state ENVIRONMENT=local
+
+# [PROJECT_ROOT] Check status again
+make infra-status ENVIRONMENT=local
+```
+
+This happens because the VM gets its IP from DHCP after cloud-init completes,  
+but the infrastructure state may not automatically detect this change.
 
 ---
 
@@ -275,18 +307,18 @@ Running health check for local...
 [INFO] Testing Docker services
 ✅ Docker daemon
 ✅ Docker Compose services accessible
-✅ Services are running (6 services)
+✅ Services are running (5 services)
 [INFO] Testing application endpoints
-✅ Health check endpoint (port 1313)
-✅ API stats endpoint (port 1212)
-✅ HTTP tracker endpoint (port 7070)
-✅ Grafana endpoint (port 3000)
+✅ Health check endpoint (nginx proxy)
+✅ API stats endpoint (nginx proxy)
+✅ HTTP tracker endpoint (nginx proxy)
+✅ Grafana endpoint (port 3100)
 [INFO] Testing UDP tracker connectivity
 ✅ UDP tracker port 6868
 ✅ UDP tracker port 6969
 [INFO] Testing storage and persistence
 ✅ Storage directory exists
-✅ SQLite database file exists
+✅ MySQL database connectivity
 [INFO] Testing logging and monitoring
 ✅ Prometheus metrics endpoint
 ✅ Docker logs accessible
@@ -294,8 +326,8 @@ Running health check for local...
 === HEALTH CHECK REPORT ===
 Environment:      local
 VM IP:           192.168.122.XXX
-Total Tests:     12
-Passed:          12
+Total Tests:     14
+Passed:          14
 Failed:          0
 Success Rate:    100%
 
@@ -308,7 +340,7 @@ Success Rate:    100%
 
 ```bash
 # [PROJECT_ROOT] SSH into VM for manual inspection
-make ssh
+make vm-ssh ENVIRONMENT=local
 
 # [VM] Check service status
 cd /home/torrust/github/torrust/torrust-tracker-demo/application
@@ -317,12 +349,20 @@ docker compose ps
 # [VM] Check application logs
 docker compose logs --tail=20
 
-# [VM] Test endpoints manually
-curl http://localhost:1313/health_check
-curl http://localhost:1212/api/v1/stats
-
 # Exit back to host
 exit
+
+# [PROJECT_ROOT] Test endpoints from host machine
+VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+echo "Testing VM at IP: $VM_IP"
+
+# Test HTTP endpoints
+curl http://$VM_IP/health_check
+curl "http://$VM_IP/api/v1/stats?token=MyAccessToken"
+
+# Test HTTPS endpoints (expect certificate warnings)
+curl -sk https://$VM_IP/health_check
+curl -sk "https://$VM_IP/api/v1/stats?token=MyAccessToken"
 ```
 
 ---
@@ -333,27 +373,66 @@ exit
 
 After successful deployment, you should see these services running:
 
-| Service                  | Port       | Status     | Purpose               |
-| ------------------------ | ---------- | ---------- | --------------------- |
-| Torrust Tracker (Health) | 1313       | ✅ Running | Health check endpoint |
-| Torrust Tracker (API)    | 1212       | ✅ Running | REST API and stats    |
-| Torrust Tracker (HTTP)   | 7070       | ✅ Running | HTTP tracker protocol |
-| Torrust Tracker (UDP)    | 6868, 6969 | ✅ Running | UDP tracker protocol  |
-| Grafana                  | 3000       | ✅ Running | Monitoring dashboard  |
-| Prometheus               | 9090       | ✅ Running | Metrics collection    |
+| Service                | Port/Access               | Status     | Purpose                            |
+| ---------------------- | ------------------------- | ---------- | ---------------------------------- |
+| Nginx Proxy            | 80 (HTTP), 443 (HTTPS)    | ✅ Running | Reverse proxy with SSL termination |
+| Torrust Tracker (API)  | 1212, via nginx on 80/443 | ✅ Running | REST API and stats                 |
+| Torrust Tracker (HTTP) | 7070, via nginx on 80/443 | ✅ Running | HTTP tracker protocol              |
+| Torrust Tracker (UDP)  | 6868, 6969                | ✅ Running | UDP tracker protocol               |
+| MySQL Database         | 3306                      | ✅ Running | Persistent data storage            |
+| Grafana                | 3100, via nginx on 80/443 | ✅ Running | Monitoring dashboard               |
+| Prometheus             | 9090                      | ✅ Running | Metrics collection                 |
 
-### 5.2 Test Endpoints
+**Key Changes from Previous Version**:
 
-You can test these endpoints from the host machine:
+- All HTTP services now run behind nginx reverse proxy (ports 80/443)
+- SSL/HTTPS support with self-signed certificates for local testing
+- MySQL replaces SQLite for better production readiness
+- Health check endpoints accessible via nginx proxy
+
+### 5.2 SSL/HTTPS Testing
+
+The local environment automatically generates self-signed SSL certificates for testing HTTPS functionality:
 
 ```bash
 # Get VM IP first
 VM_IP=$(cd infrastructure/terraform && tofu output -raw vm_ip)
+echo "Testing VM at IP: $VM_IP"
 
-# Test endpoints (replace with actual VM IP)
-curl http://$VM_IP:1313/health_check
-curl http://$VM_IP:1212/api/v1/stats
-curl http://$VM_IP:7070
+# Test HTTP endpoints
+curl http://$VM_IP/health_check
+curl "http://$VM_IP/api/v1/stats?token=MyAccessToken"
+
+# Test HTTPS endpoints (expect certificate warnings)
+curl -sk https://$VM_IP/health_check
+curl -sk "https://$VM_IP/api/v1/stats?token=MyAccessToken"
+
+# Test Grafana (HTTP and HTTPS)
+curl -s http://$VM_IP:3100/login | grep -q "Grafana" && echo "✅ Grafana HTTP accessible"
+curl -sk https://$VM_IP:3100/login | grep -q "Grafana" && echo "✅ Grafana HTTPS accessible"
+```
+
+**Expected Results**:
+
+- HTTP endpoints: Should return "healthy" or JSON responses
+- HTTPS endpoints: Should work but show certificate warnings in browsers
+- All services accessible through nginx reverse proxy
+
+**Note**: Self-signed certificates will show security warnings in browsers.  
+Click "Advanced" → "Proceed to site" to continue.
+
+### 5.3 Domain-Based HTTPS Testing (Optional)
+
+For testing domain-based SSL certificates, add entries to your `/etc/hosts` file:
+
+```bash
+# Add to /etc/hosts (requires sudo)
+echo "$VM_IP tracker.test.local" | sudo tee -a /etc/hosts
+echo "$VM_IP grafana.test.local" | sudo tee -a /etc/hosts
+
+# Test domain-based endpoints
+curl -sk https://tracker.test.local/health_check
+curl -sk https://grafana.test.local/login
 ```
 
 ---

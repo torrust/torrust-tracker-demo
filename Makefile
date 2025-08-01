@@ -1,7 +1,7 @@
 # Makefile for Torrust Tracker Demo - Twelve-Factor App Deployment
 .PHONY: help install-deps test-e2e lint test-unit clean
 .PHONY: infra-init infra-plan infra-apply infra-destroy infra-status infra-refresh-state
-.PHONY: infra-config-local infra-config-production infra-validate-config
+.PHONY: infra-config-development infra-config-production infra-validate-config
 .PHONY: infra-test-prereq infra-test-ci infra-test-local
 .PHONY: app-deploy app-redeploy app-health-check
 .PHONY: app-test-config app-test-containers app-test-services
@@ -90,9 +90,9 @@ infra-refresh-state: ## Refresh Terraform state to detect IP changes
 	@echo "Refreshing Terraform state..."
 	@cd $(TERRAFORM_DIR) && tofu refresh
 
-infra-config-local: ## Generate local environment configuration
-	@echo "Configuring local environment..."
-	$(SCRIPTS_DIR)/configure-env.sh local
+infra-config-development: ## Generate development environment configuration
+	@echo "Configuring development environment..."
+	$(SCRIPTS_DIR)/configure-env.sh development
 
 infra-config-production: ## Generate production environment configuration
 	@echo "Configuring production environment..."

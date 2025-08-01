@@ -19,6 +19,21 @@ INFRA_TESTS_DIR = infrastructure/tests
 TESTS_DIR = tests
 SCRIPTS_DIR = infrastructure/scripts
 
+# Parameter validation for infrastructure commands
+check-infra-params:
+	@if [ -z "$(ENVIRONMENT)" ]; then \
+		echo "❌ Error: ENVIRONMENT not specified"; \
+		echo "Usage: make <target> ENVIRONMENT=<env> PROVIDER=<provider>"; \
+		echo "Available environments: development, staging, production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(PROVIDER)" ]; then \
+		echo "❌ Error: PROVIDER not specified"; \
+		echo "Usage: make <target> ENVIRONMENT=<env> PROVIDER=<provider>"; \
+		echo "Available providers: libvirt, hetzner"; \
+		exit 1; \
+	fi
+
 # Help target
 help: ## Show this help message
 	@echo "Torrust Tracker Demo - Twelve-Factor App Deployment"
@@ -63,15 +78,15 @@ install-deps: ## Install required dependencies (Ubuntu/Debian)
 # INFRASTRUCTURE LAYER (PLATFORM SETUP & CONFIGURATION)
 # =============================================================================
 
-infra-init: ## Initialize infrastructure (Terraform init)
+infra-init: check-infra-params ## Initialize infrastructure (Terraform init)
 	@echo "Initializing infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) init
 
-infra-plan: ## Plan infrastructure changes
+infra-plan: check-infra-params ## Plan infrastructure changes
 	@echo "Planning infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) plan
 
-infra-apply: ## Provision infrastructure (platform setup)
+infra-apply: check-infra-params ## Provision infrastructure (platform setup)
 	@echo "Provisioning infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
 	@echo "⚠️  This command may prompt for your password for sudo operations"
 	@if [ "$(SKIP_WAIT)" = "true" ]; then \
@@ -81,15 +96,15 @@ infra-apply: ## Provision infrastructure (platform setup)
 	fi
 	SKIP_WAIT=$(SKIP_WAIT) $(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) apply
 
-infra-destroy: ## Destroy infrastructure
+infra-destroy: check-infra-params ## Destroy infrastructure
 	@echo "Destroying infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
 	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) destroy
 
-infra-status: ## Show infrastructure status
+infra-status: check-infra-params ## Show infrastructure status
 	@echo "Infrastructure status for $(ENVIRONMENT) on $(PROVIDER):"
 	@cd $(TERRAFORM_DIR) && tofu show -no-color | grep -E "(vm_ip|vm_status)" || echo "No infrastructure found"
 
-infra-refresh-state: ## Refresh Terraform state to detect IP changes
+infra-refresh-state: check-infra-params ## Refresh Terraform state to detect IP changes
 	@echo "Refreshing Terraform state..."
 	@cd $(TERRAFORM_DIR) && tofu refresh
 

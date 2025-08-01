@@ -34,28 +34,52 @@ users:
 ssh_pwauth: false
 
 # Persistent data volume configuration
-# This configures the second disk (/dev/vdb) attached to the VM for persistent storage.
-# All application data that needs to survive VM destruction is stored here, including:
-# - Database data (MySQL)
-# - Application configuration files (.env, tracker.toml)
-# - SSL certificates and keys
-# - Logs and application state
-# - Prometheus metrics data
-# The volume is mounted at /var/lib/torrust and survives infrastructure recreation.
-disk_setup:
-  /dev/vdb:
-    table_type: gpt
-    layout: true
-    overwrite: false
-
-fs_setup:
-  - label: torrust-data
-    filesystem: ext4
-    device: /dev/vdb1
-    overwrite: false
-
-mounts:
-  - ["/dev/vdb1", "/var/lib/torrust", "ext4", "defaults,noatime", "0", "2"]
+# 
+# IMPORTANT: Persistent volume mounting is DISABLED by default
+# 
+# This configuration originally set up automatic mounting of a second disk (/dev/vdb)
+# for persistent storage, but is now commented out because:
+# 
+# 1. Not all providers create additional volumes automatically (e.g., Hetzner Cloud)
+# 2. Some sysadmins prefer not to use separate volumes
+# 3. Manual volume setup gives more control over storage configuration
+# 
+# DATA PERSISTENCE IMPLICATIONS:
+# - Database data: Stored on main disk, will be lost when server is destroyed
+# - Configuration files: Stored on main disk, will be lost when server is destroyed  
+# - SSL certificates: Stored on main disk, will be lost when server is destroyed
+# - Application state: Stored on main disk, will be lost when server is destroyed
+# 
+# FOR PRODUCTION DATA PERSISTENCE:
+# After infrastructure provisioning but BEFORE application deployment:
+# 1. Create and attach a persistent volume to the server
+# 2. Format and mount the volume to /var/lib/torrust
+# 3. Ensure proper ownership: chown -R torrust:torrust /var/lib/torrust
+# 4. Then proceed with application deployment
+# 
+# LIBVIRT TESTING: This affects local testing too - data will not persist
+# across VM recreation unless you manually set up persistent volumes.
+# 
+%{~ if !use_minimal ~}
+# NOTE: Disk setup only for providers that create additional volumes
+# Hetzner Cloud servers don't have /dev/vdb by default, using main disk instead
+# 
+# Uncomment and modify the following if you want automatic volume mounting:
+# disk_setup:
+#   /dev/vdb:
+#     table_type: gpt
+#     layout: true
+#     overwrite: false
+# 
+# fs_setup:
+#   - label: torrust-data
+#     filesystem: ext4
+#     device: /dev/vdb1
+#     overwrite: false
+# 
+# mounts:
+#   - ["/dev/vdb1", "/var/lib/torrust", "ext4", "defaults,noatime", "0", "2"]
+%{~ endif ~}
 
 # Package updates and installations
 package_update: true
@@ -135,6 +159,7 @@ write_files:
 # Commands to run after package installation
 runcmd:
   # Set up persistent data volume and directory structure
+  # Create data directory on main filesystem for Hetzner (no separate volume)
   - mkdir -p /var/lib/torrust
   - chown -R torrust:torrust /var/lib/torrust
 

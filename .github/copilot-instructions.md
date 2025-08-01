@@ -664,6 +664,40 @@ When executing commands on the remote VM, be aware of limitations with interacti
 
 This ensures that the command is executed and its output is returned to the primary terminal session.
 
+#### Docker Compose on Remote Servers
+
+**CRITICAL**: When working with Docker Compose on deployed servers, the environment file
+is NOT in the standard location. The Torrust Tracker Demo uses a persistent volume
+approach where all configuration files are stored in `/var/lib/torrust` for backup
+and snapshot purposes.
+
+**Always use the `--env-file` parameter** when running Docker Compose commands:
+
+```bash
+# Correct way to run Docker Compose commands on remote server
+ssh torrust@<VM_IP> "cd /home/torrust/github/torrust/torrust-tracker-demo/application && \
+  docker compose --env-file /var/lib/torrust/compose/.env ps"
+
+# Check service status
+ssh torrust@<VM_IP> "cd /home/torrust/github/torrust/torrust-tracker-demo/application && \
+  docker compose --env-file /var/lib/torrust/compose/.env ps"
+
+# View logs
+ssh torrust@<VM_IP> "cd /home/torrust/github/torrust/torrust-tracker-demo/application && \
+  docker compose --env-file /var/lib/torrust/compose/.env logs tracker"
+
+# Restart services
+ssh torrust@<VM_IP> "cd /home/torrust/github/torrust/torrust-tracker-demo/application && \
+  docker compose --env-file /var/lib/torrust/compose/.env restart"
+```
+
+**Why this approach**:
+
+- **Persistent Volume**: All configuration stored in `/var/lib/torrust` for persistence
+- **Backup Strategy**: Snapshot only the volume instead of the entire server
+- **Configuration Management**: Centralized environment variable management
+- **Infrastructure Separation**: Configuration survives server recreation
+
 #### Preferred Working Methodology
 
 **Work in Small Steps:**

@@ -8,6 +8,14 @@ terraform {
       source  = "dmacvicar/libvirt"
       version = "~> 0.7"
     }
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "~> 1.47"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.11"
+    }
   }
 }
 
@@ -53,6 +61,12 @@ variable "ssh_public_key" {
   description = "SSH public key for VM access"
   type        = string
   default     = ""
+}
+
+variable "environment" {
+  description = "Environment name (development, staging, production)"
+  type        = string
+  default     = "development"
 }
 
 variable "use_minimal_config" {
@@ -123,6 +137,11 @@ provider "libvirt" {
   uri = var.infrastructure_provider == "libvirt" ? var.libvirt_uri : null
 }
 
+# Configure hetzner provider when using hetzner
+provider "hcloud" {
+  token = var.infrastructure_provider == "hetzner" ? var.hetzner_token : "0000000000000000000000000000000000000000000000000000000000000000"
+}
+
 # LibVirt Infrastructure Module
 module "libvirt_infrastructure" {
   source = "./providers/libvirt"
@@ -147,17 +166,34 @@ module "libvirt_infrastructure" {
   base_image_url  = var.base_image_url
 }
 
-# Future provider modules will be added here:
-# module "hetzner_infrastructure" {
-#   source = "./providers/hetzner"
-#   count  = var.infrastructure_provider == "hetzner" ? 1 : 0
-#   ...
-# }
+# Hetzner Cloud provider module
+module "hetzner_infrastructure" {
+  source = "./providers/hetzner"
+  count  = var.infrastructure_provider == "hetzner" ? 1 : 0
+
+  # Standard interface variables
+  infrastructure_provider = var.infrastructure_provider
+  environment            = var.environment
+  vm_name               = var.vm_name
+  vm_memory             = var.vm_memory
+  vm_vcpus              = var.vm_vcpus
+  vm_disk_size          = var.vm_disk_size
+  ssh_public_key        = var.ssh_public_key
+  use_minimal_config    = var.use_minimal_config
+
+  # Hetzner-specific variables
+  hetzner_token       = var.hetzner_token
+  hetzner_server_type = var.hetzner_server_type
+  hetzner_location    = var.hetzner_location
+  hetzner_image       = var.hetzner_image
+}
 
 # Standard outputs (available regardless of provider)
 output "vm_ip" {
   value = var.infrastructure_provider == "libvirt" ? (
     length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].vm_ip : "No provider module"
+  ) : var.infrastructure_provider == "hetzner" ? (
+    length(module.hetzner_infrastructure) > 0 ? module.hetzner_infrastructure[0].vm_ip : "No provider module"
   ) : "Unsupported provider"
   description = "IP address of the created VM"
 }
@@ -165,6 +201,8 @@ output "vm_ip" {
 output "vm_name" {
   value = var.infrastructure_provider == "libvirt" ? (
     length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].vm_name : "No provider module"
+  ) : var.infrastructure_provider == "hetzner" ? (
+    length(module.hetzner_infrastructure) > 0 ? module.hetzner_infrastructure[0].vm_name : "No provider module"  
   ) : "Unsupported provider"
   description = "Name of the created VM"
 }
@@ -172,6 +210,8 @@ output "vm_name" {
 output "connection_info" {
   value = var.infrastructure_provider == "libvirt" ? (
     length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].connection_info : "No provider module"
+  ) : var.infrastructure_provider == "hetzner" ? (
+    length(module.hetzner_infrastructure) > 0 ? module.hetzner_infrastructure[0].connection_info : "No provider module"
   ) : "Unsupported provider"
   description = "SSH connection command"
 }

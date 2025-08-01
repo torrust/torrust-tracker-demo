@@ -363,24 +363,27 @@ make test-e2e                                              # ✅ PASSES (~2m 35s
 
 ### Phase 3: Enhanced Makefile and Commands ✅ COMPLETED
 
-    # Load environment configuration
-    load_environment
-    load_provider_config
+```bash
+# Load environment configuration
+load_environment
+load_provider_config
 
-    # Load and validate provider
-    load_provider "${PROVIDER}"
+# Load and validate provider
+load_provider "${PROVIDER}"
 
-    # Provider-specific validation
-    provider_validate_prerequisites
+# Provider-specific validation
+provider_validate_prerequisites
 
-    # Generate provider-specific Terraform variables
-    local vars_file="${TERRAFORM_DIR}/${PROVIDER}.auto.tfvars"
-    provider_generate_terraform_vars "${vars_file}"
+# Generate provider-specific Terraform variables
+local vars_file="${TERRAFORM_DIR}/${PROVIDER}.auto.tfvars"
+provider_generate_terraform_vars "${vars_file}"
+```
 
-    # Continue with Terraform operations...
-    cd "${TERRAFORM_DIR}"
+```bash
+# Continue with Terraform operations...
+cd "${TERRAFORM_DIR}"
 
-    case "${ACTION}" in
+case "${ACTION}" in
         "init")
             tofu init
             ;;
@@ -400,8 +403,7 @@ make test-e2e                                              # ✅ PASSES (~2m 35s
     esac
 
 }
-
-````
+```
 
 #### 2.4 Validation
 
@@ -409,7 +411,7 @@ make test-e2e                                              # ✅ PASSES (~2m 35s
 # Test provider system
 make infra-apply ENVIRONMENT=development PROVIDER=libvirt
 make infra-destroy ENVIRONMENT=development PROVIDER=libvirt
-````
+```
 
 **Expected outcome**: Provider system works with pluggable interface.
 
@@ -528,7 +530,7 @@ make test-e2e  # Completes in ~2m 35s
 
 ## Benefits of Current Implementation
 
-#### 3.1 Provider-Aware Makefile
+### 3.1 Provider-Aware Makefile
 
 ```makefile
 # Default values

@@ -1,0 +1,48 @@
+# Hetzner Cloud Provider Configuration Template
+# Copy this file to hetzner.env and replace placeholder values
+# Location: infrastructure/config/providers/hetzner.env
+
+# === HETZNER CLOUD AUTHENTICATION ===
+# Get your API token from: https://console.hetzner.cloud/
+# Navigate to: Project → Security → API Tokens → Generate API Token
+HETZNER_TOKEN=REPLACE_WITH_YOUR_HETZNER_API_TOKEN
+
+# === HETZNER CLOUD SETTINGS ===
+# Server type determines CPU, RAM, and storage
+# Available types: cx11, cx21, cx31, cx41, cx51, cpx11, cpx21, cpx31, cpx41, cpx51
+HETZNER_SERVER_TYPE=cx31  # 2 vCPU, 8GB RAM, 80GB SSD (~€8.21/month)
+
+# Datacenter location
+# Available: nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki), ash (Ashburn), hil (Hillsboro)
+HETZNER_LOCATION=nbg1
+
+# Operating system image
+# Available: ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, debian-11, debian-12, etc.
+HETZNER_IMAGE=ubuntu-24.04
+
+# === VM DEFAULTS (used if not overridden by environment) ===
+# These map to server types but can be used for automatic selection
+VM_MEMORY_DEFAULT=8192    # Will auto-select cx31 server type
+VM_VCPUS_DEFAULT=2
+VM_DISK_SIZE_DEFAULT=80
+
+# === REFERENCE: SERVER TYPES AND PRICING ===
+# cx11:  1 vCPU,  4GB RAM,  25GB SSD - €3.29/month  - Good for testing
+# cx21:  2 vCPU,  8GB RAM,  40GB SSD - €5.83/month  - Light workloads
+# cx31:  2 vCPU,  8GB RAM,  80GB SSD - €8.21/month  - Recommended for demo
+# cx41:  4 vCPU, 16GB RAM, 160GB SSD - €15.99/month - Production ready
+# cx51:  8 vCPU, 32GB RAM, 320GB SSD - €31.67/month - High performance
+# 
+# CPX series offers AMD EPYC processors:
+# cpx11: 2 vCPU,  4GB RAM,  40GB SSD - €4.15/month
+# cpx21: 3 vCPU,  8GB RAM,  80GB SSD - €7.05/month  
+# cpx31: 4 vCPU, 16GB RAM, 160GB SSD - €13.85/month
+# cpx41: 8 vCPU, 32GB RAM, 240GB SSD - €27.45/month
+# cpx51: 16 vCPU, 64GB RAM, 360GB SSD - €54.45/month
+
+# === REFERENCE: DATACENTER LOCATIONS ===
+# nbg1: Nuremberg, Germany      - EU, good general purpose
+# fsn1: Falkenstein, Germany    - EU, alternative German location  
+# hel1: Helsinki, Finland       - EU, northern Europe
+# ash:  Ashburn, VA, USA        - US East Coast
+# hil:  Hillsboro, OR, USA      - US West Coast

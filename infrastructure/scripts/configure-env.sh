@@ -14,7 +14,7 @@ CONFIG_DIR="${PROJECT_ROOT}/infrastructure/config"
 source "${PROJECT_ROOT}/scripts/shell-utils.sh"
 
 # Default values
-ENVIRONMENT="${1:-local}"
+ENVIRONMENT="${1:-development}"
 VERBOSE="${VERBOSE:-false}"
 
 # Source shared shell utilities
@@ -36,8 +36,8 @@ generate_environment_config() {
     
     # Generate environment-specific variables
     case "${environment}" in
-        "local")
-            generate_local_config "${base_template}" "${env_file}"
+        "development")
+            generate_development_config "${base_template}" "${env_file}"
             ;;
         "production")
             generate_production_config "${base_template}" "${env_file}"
@@ -51,18 +51,18 @@ generate_environment_config() {
     log_success "${environment^} environment file generated: ${env_file}"
 }
 
-# Generate local development configuration
-generate_local_config() {
+# Generate development configuration
+generate_development_config() {
     local template_file="$1"
     local output_file="$2"
-    local defaults_file="${CONFIG_DIR}/environments/local.defaults"
+    local defaults_file="${CONFIG_DIR}/environments/development.defaults"
 
     if [[ ! -f "${defaults_file}" ]]; then
-        log_error "Local defaults file not found: ${defaults_file}"
+        log_error "Development defaults file not found: ${defaults_file}"
         exit 1
     fi
 
-    log_info "Loading local environment defaults from: ${defaults_file}"
+    log_info "Loading development environment defaults from: ${defaults_file}"
     
     # Export all variables from defaults file for envsubst
     set -a # automatically export all variables
@@ -108,13 +108,13 @@ generate_production_config() {
     log_warning "File location: ${output_file}"
 }
 
-# Setup local environment from base template
-setup_local_environment() {
-    local env_file="${CONFIG_DIR}/environments/local.env"
+# Setup development environment from base template
+setup_development_environment() {
+    local env_file="${CONFIG_DIR}/environments/development.env"
 
-    # Always regenerate local.env from base template for consistency
-    generate_environment_config "local"
-    log_success "Local environment file created from base template: ${env_file}"
+    # Always regenerate development.env from base template for consistency
+    generate_environment_config "development"
+    log_success "Development environment file created from base template: ${env_file}"
 }
 
 # Setup production environment from base template  
@@ -140,8 +140,8 @@ load_environment() {
     # Special handling for template-based environments
     if [[ "${ENVIRONMENT}" == "production" ]]; then
         setup_production_environment
-    elif [[ "${ENVIRONMENT}" == "local" ]]; then
-        setup_local_environment
+    elif [[ "${ENVIRONMENT}" == "development" ]]; then
+        setup_development_environment
     fi
 
     if [[ ! -f "${env_file}" ]]; then
@@ -360,14 +360,14 @@ Configuration Processing Script
 Usage: $0 [ENVIRONMENT|COMMAND]
 
 Arguments:
-    ENVIRONMENT         Environment name (local, production)
+    ENVIRONMENT         Environment name (development, production)
     generate-secrets    Generate secure secrets for production
 
 Commands:
     generate-secrets    Generate secure random secrets and show configuration guidance
 
 Examples:
-    $0 local            # Process local environment configuration
+    $0 development      # Process development environment configuration
     $0 production       # Process production environment configuration (requires configured secrets)
     $0 generate-secrets # Generate secure secrets for production setup
 

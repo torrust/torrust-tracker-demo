@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 
 # Default values
-ENVIRONMENT="${1:-local}"
+ENVIRONMENT="${1:-development}"
 ACTION="${2:-apply}"
 SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
 SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
@@ -49,7 +49,7 @@ validate_prerequisites() {
     fi
 
     # Check if libvirt is available (for local environment)
-    if [[ "${ENVIRONMENT}" == "local" ]]; then
+    if [[ "${ENVIRONMENT}" == "development" ]]; then
         if ! command -v virsh >/dev/null 2>&1; then
             log_error "virsh not found. Please install libvirt-clients."
             exit 1
@@ -190,7 +190,7 @@ Infrastructure Provisioning Script (Twelve-Factor Build Stage)
 Usage: $0 [ENVIRONMENT] [ACTION]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT    Environment name (development, production)
     ACTION         Action to perform (init, plan, apply, destroy)
 
 Examples:

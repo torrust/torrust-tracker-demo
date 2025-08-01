@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 
 # Default values
-ENVIRONMENT="${1:-local}"
+ENVIRONMENT="${1:-development}"
 VM_IP="${2:-}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
 SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
@@ -62,7 +62,7 @@ check_git_status() {
     
     # Determine deployment approach based on environment
     local deployment_approach
-    if [[ "${ENVIRONMENT}" == "local" ]]; then
+    if [[ "${ENVIRONMENT}" == "development" ]]; then
         deployment_approach="working tree (includes uncommitted changes)"
     else
         deployment_approach="git archive (committed changes only)"
@@ -82,8 +82,8 @@ check_git_status() {
         done
         log_warning ""
         
-        if [[ "${ENVIRONMENT}" == "local" ]]; then
-            log_info "ℹ️  LOCAL TESTING: Uncommitted changes WILL be deployed (using working tree)"
+        if [[ "${ENVIRONMENT}" == "development" ]]; then
+            log_info "ℹ️  DEVELOPMENT TESTING: Uncommitted changes WILL be deployed (using working tree)"
             log_info "This includes your configuration changes and any other uncommitted modifications."
         else
             log_warning "IMPORTANT: Production deployment uses 'git archive' which only includes committed files."
@@ -544,7 +544,7 @@ release_stage() {
     log_info "Deploying application with environment: ${ENVIRONMENT}"
 
     # Choose deployment method based on environment
-    if [[ "${ENVIRONMENT}" == "local" ]]; then
+    if [[ "${ENVIRONMENT}" == "development" ]]; then
         deploy_local_working_tree "${vm_ip}"
     else
         deploy_git_archive "${vm_ip}"
@@ -1062,7 +1062,7 @@ Application Deployment Script (Twelve-Factor Release + Run Stages)
 Usage: $0 [ENVIRONMENT] [VM_IP]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT    Environment name (development, production)
     VM_IP          VM IP address (optional, will get from Terraform if not provided)
 
 Environment Variables:

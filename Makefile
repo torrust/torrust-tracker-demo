@@ -10,7 +10,7 @@
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
-ENVIRONMENT ?= local
+ENVIRONMENT ?= development
 TERRAFORM_DIR = infrastructure/terraform
 INFRA_TESTS_DIR = infrastructure/tests
 TESTS_DIR = tests
@@ -44,9 +44,9 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^(install-deps|clean).*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Examples:"
-	@echo "  make dev-deploy ENVIRONMENT=local"
-	@echo "  make infra-apply ENVIRONMENT=local"
-	@echo "  make app-deploy ENVIRONMENT=local"
+	@echo "  make dev-deploy ENVIRONMENT=development"
+	@echo "  make infra-apply ENVIRONMENT=development"
+	@echo "  make app-deploy ENVIRONMENT=development"
 
 install-deps: ## Install required dependencies (Ubuntu/Debian)
 	@echo "Installing dependencies..."

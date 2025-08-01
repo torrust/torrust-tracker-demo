@@ -1,10 +1,10 @@
-# Local Development Environment Default Values
-# These values are used to generate local.env from the base template
+# Development Environment Default Values
+# These values are used to generate development.env from the base template
 # Safe default values for local development and testing
 
-ENVIRONMENT_DESCRIPTION="Local Development Environment Configuration"
-ENVIRONMENT_INSTRUCTIONS="Generated from base template for local development and testing"
-ENVIRONMENT="local"
+ENVIRONMENT_DESCRIPTION="Development Environment Configuration"
+ENVIRONMENT_INSTRUCTIONS="Generated from base template for development and testing"
+ENVIRONMENT="development"
 TEMPLATE_PROCESSING_VARS="
 # Template processing variables
 DOLLAR=\$"

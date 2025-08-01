@@ -3,6 +3,7 @@
 .PHONY: infra-init infra-plan infra-apply infra-destroy infra-status infra-refresh-state
 .PHONY: infra-config-development infra-config-production infra-validate-config
 .PHONY: infra-test-prereq infra-test-ci infra-test-local
+.PHONY: infra-providers infra-environments provider-info
 .PHONY: app-deploy app-redeploy app-health-check
 .PHONY: app-test-config app-test-containers app-test-services
 .PHONY: vm-ssh vm-console vm-gui-console vm-clean-ssh vm-prepare-ssh vm-status
@@ -10,7 +11,9 @@
 
 # Default variables
 VM_NAME ?= torrust-tracker-demo
+# Default values
 ENVIRONMENT ?= development
+PROVIDER ?= libvirt
 TERRAFORM_DIR = infrastructure/terraform
 INFRA_TESTS_DIR = infrastructure/tests
 TESTS_DIR = tests
@@ -43,9 +46,9 @@ help: ## Show this help message
 	@echo "⚙️  SYSTEM SETUP:"
 	@awk 'BEGIN {FS = ":.*?## "} /^(install-deps|clean).*:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "Examples:"
-	@echo "  make dev-deploy ENVIRONMENT=development"
-	@echo "  make infra-apply ENVIRONMENT=development"
+		@echo "Development examples:"
+	@echo "  make dev-deploy ENVIRONMENT=development PROVIDER=libvirt"
+	@echo "  make infra-apply ENVIRONMENT=development PROVIDER=libvirt"
 	@echo "  make app-deploy ENVIRONMENT=development"
 
 install-deps: ## Install required dependencies (Ubuntu/Debian)
@@ -61,34 +64,65 @@ install-deps: ## Install required dependencies (Ubuntu/Debian)
 # =============================================================================
 
 infra-init: ## Initialize infrastructure (Terraform init)
-	@echo "Initializing infrastructure for $(ENVIRONMENT)..."
-	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) init
+	@echo "Initializing infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
+	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) init
 
 infra-plan: ## Plan infrastructure changes
-	@echo "Planning infrastructure for $(ENVIRONMENT)..."
-	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) plan
+	@echo "Planning infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
+	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) plan
 
 infra-apply: ## Provision infrastructure (platform setup)
-	@echo "Provisioning infrastructure for $(ENVIRONMENT)..."
+	@echo "Provisioning infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
 	@echo "⚠️  This command may prompt for your password for sudo operations"
 	@if [ "$(SKIP_WAIT)" = "true" ]; then \
 		echo "⚠️  SKIP_WAIT=true - Infrastructure will not wait for full readiness"; \
 	else \
 		echo "ℹ️  Infrastructure will wait for full readiness (use SKIP_WAIT=true to skip)"; \
 	fi
-	SKIP_WAIT=$(SKIP_WAIT) $(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) apply
+	SKIP_WAIT=$(SKIP_WAIT) $(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) apply
 
 infra-destroy: ## Destroy infrastructure
-	@echo "Destroying infrastructure for $(ENVIRONMENT)..."
-	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) destroy
+	@echo "Destroying infrastructure for $(ENVIRONMENT) on $(PROVIDER)..."
+	$(SCRIPTS_DIR)/provision-infrastructure.sh $(ENVIRONMENT) $(PROVIDER) destroy
 
 infra-status: ## Show infrastructure status
-	@echo "Infrastructure status for $(ENVIRONMENT):"
+	@echo "Infrastructure status for $(ENVIRONMENT) on $(PROVIDER):"
 	@cd $(TERRAFORM_DIR) && tofu show -no-color | grep -E "(vm_ip|vm_status)" || echo "No infrastructure found"
 
 infra-refresh-state: ## Refresh Terraform state to detect IP changes
 	@echo "Refreshing Terraform state..."
 	@cd $(TERRAFORM_DIR) && tofu refresh
+
+# Provider and environment information
+infra-providers: ## List available infrastructure providers
+	@echo "Available Infrastructure Providers:"
+	@$(SCRIPTS_DIR)/providers/provider-interface.sh list || echo "No providers found"
+	@echo ""
+	@echo "Usage examples:"
+	@echo "  make infra-apply ENVIRONMENT=development PROVIDER=libvirt"
+	@echo "  make infra-apply ENVIRONMENT=staging PROVIDER=digitalocean"
+	@echo "  make infra-apply ENVIRONMENT=production PROVIDER=hetzner"
+
+infra-environments: ## List available environments
+	@echo "Available Environments:"
+	@ls infrastructure/config/environments/*.env \
+		infrastructure/config/environments/*.env.tpl 2>/dev/null | \
+		xargs -I {} basename {} | sed 's/\.env.*//g' | sort | uniq || \
+		echo "No environments found"
+	@echo ""
+	@echo "Environments:"
+	@echo "  development - Local development and testing"
+	@echo "  staging     - Pre-production testing"
+	@echo "  production  - Production deployment"
+
+provider-info: ## Show provider information (requires PROVIDER=<name>)
+	@if [ -z "$(PROVIDER)" ]; then \
+		echo "Error: PROVIDER not specified"; \
+		echo "Usage: make provider-info PROVIDER=<provider>"; \
+		exit 1; \
+	fi
+	@echo "Getting information for provider: $(PROVIDER)"
+	@$(SCRIPTS_DIR)/providers/provider-interface.sh info $(PROVIDER)
 
 infra-config-development: ## Generate development environment configuration
 	@echo "Configuring development environment..."

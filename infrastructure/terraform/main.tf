@@ -1,5 +1,5 @@
-# Torrust Tracker Demo - Local Testing Infrastructure
-# OpenTofu configuration for KVM/libvirt local testing
+# Torrust Tracker Demo - Multi-Provider Infrastructure
+# Provider-agnostic orchestration with pluggable provider modules
 
 terraform {
   required_version = ">= 1.0"
@@ -11,24 +11,14 @@ terraform {
   }
 }
 
-# Configure the libvirt provider
-provider "libvirt" {
-  uri = "qemu:///system"
-}
-
-# Variables
-variable "use_minimal_config" {
-  description = "Use minimal cloud-init configuration for debugging"
-  type        = bool
-  default     = false
-}
-
-variable "ssh_public_key" {
-  description = "SSH public key for VM access"
+# Variables for provider selection
+variable "infrastructure_provider" {
+  description = "Infrastructure provider to use (libvirt, hetzner, aws, etc.)"
   type        = string
-  default     = ""
+  default     = "libvirt"
 }
 
+# Standard interface variables (passed to all providers)
 variable "vm_name" {
   description = "Name of the virtual machine"
   type        = string
@@ -48,7 +38,7 @@ variable "vm_vcpus" {
 }
 
 variable "vm_disk_size" {
-  description = "Disk size in GB"
+  description = "Primary disk size in GB"
   type        = number
   default     = 20
 }
@@ -59,124 +49,134 @@ variable "persistent_data_size" {
   default     = 20
 }
 
+variable "ssh_public_key" {
+  description = "SSH public key for VM access"
+  type        = string
+  default     = ""
+}
+
+variable "use_minimal_config" {
+  description = "Use minimal cloud-init configuration for debugging"
+  type        = bool
+  default     = false
+}
+
+# Additional variables that might be used by specific providers
+# These will be ignored by providers that don't need them
+
+# LibVirt-specific variables
+variable "libvirt_uri" {
+  description = "LibVirt connection URI"
+  type        = string
+  default     = "qemu:///system"
+}
+
+variable "libvirt_pool" {
+  description = "LibVirt storage pool name"
+  type        = string
+  default     = "user-default"
+}
+
+variable "libvirt_network" {
+  description = "LibVirt network name"
+  type        = string
+  default     = "default"
+}
+
 variable "base_image_url" {
-  description = "URL for the base Ubuntu cloud image"
+  description = "URL for the base Ubuntu cloud image (LibVirt)"
   type        = string
   default     = "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
 }
 
-# Download Ubuntu cloud image
-resource "libvirt_volume" "base_image" {
-  name   = "ubuntu-24.04-base.qcow2"
-  source = var.base_image_url
-  format = "qcow2"
-  pool   = "user-default"
-
-  # Fix permissions after creation
-  provisioner "local-exec" {
-    command = "${path.module}/../scripts/fix-volume-permissions.sh"
-  }
+# Hetzner-specific variables (for future use)
+variable "hetzner_token" {
+  description = "Hetzner Cloud API token"
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
-# Create a volume for the VM based on the base image
-resource "libvirt_volume" "vm_disk" {
-  name           = "${var.vm_name}.qcow2"
-  base_volume_id = libvirt_volume.base_image.id
-  size           = var.vm_disk_size * 1024 * 1024 * 1024  # Convert GB to bytes
-  pool           = "user-default"
-
-  # Fix permissions after creation
-  provisioner "local-exec" {
-    command = "${path.module}/../scripts/fix-volume-permissions.sh"
-  }
+variable "hetzner_server_type" {
+  description = "Hetzner server type"
+  type        = string
+  default     = "cx31"
 }
 
-# Create persistent data volume for application storage
-resource "libvirt_volume" "persistent_data" {
-  name   = "${var.vm_name}-data.qcow2"
-  format = "qcow2"
-  size   = var.persistent_data_size * 1024 * 1024 * 1024  # Convert GB to bytes
-  pool   = "user-default"
-
-  # Fix permissions after creation
-  provisioner "local-exec" {
-    command = "${path.module}/../scripts/fix-volume-permissions.sh"
-  }
+variable "hetzner_location" {
+  description = "Hetzner datacenter location"
+  type        = string
+  default     = "nbg1"
 }
 
-# Create cloud-init disk
-resource "libvirt_cloudinit_disk" "commoninit" {
-  name           = "${var.vm_name}-cloudinit.iso"
-  user_data      = templatefile("${path.module}/../cloud-init/${var.use_minimal_config ? "user-data-minimal.yaml.tpl" : "user-data.yaml.tpl"}", {
-    ssh_public_key = var.ssh_public_key
-  })
-  meta_data      = templatefile("${path.module}/../cloud-init/meta-data.yaml", {
-    hostname = var.vm_name
-  })
-  network_config = file("${path.module}/../cloud-init/network-config.yaml")
-  pool           = "user-default"
+variable "hetzner_image" {
+  description = "Hetzner server image"
+  type        = string
+  default     = "ubuntu-24.04"
 }
 
-# Create the VM
-resource "libvirt_domain" "vm" {
-  name   = var.vm_name
-  memory = var.vm_memory
-  vcpu   = var.vm_vcpus
+# Provider-specific configurations
+# We'll use the provider selection through tfvars rather than count
 
-  cloudinit = libvirt_cloudinit_disk.commoninit.id
-
-  # CPU configuration - use a modern CPU model that supports x86-64-v2
-  # Enable modern CPU model for x86-64-v2 instruction set support (required by MySQL 8.0)
-  # Reference: https://github.com/docker-library/mysql/issues/1055
-  cpu {
-    mode = "host-model"
-  }
-
-  disk {
-    volume_id = libvirt_volume.vm_disk.id
-  }
-
-  # Attach persistent data volume as second disk
-  disk {
-    volume_id = libvirt_volume.persistent_data.id
-  }
-
-  network_interface {
-    network_name   = "default"
-    wait_for_lease = false
-  }
-
-  # Console for debugging
-  console {
-    type        = "pty"
-    target_port = "0"
-    target_type = "serial"
-  }
-
-  graphics {
-    type        = "spice"
-    listen_type = "address"
-    autoport    = true
-  }
-
-  # Boot configuration
-  boot_device {
-    dev = ["hd", "network"]
-  }
+# Configure libvirt provider when using libvirt
+provider "libvirt" {
+  uri = var.infrastructure_provider == "libvirt" ? var.libvirt_uri : null
 }
 
-# Output the VM's IP address
+# LibVirt Infrastructure Module
+module "libvirt_infrastructure" {
+  source = "./providers/libvirt"
+  
+  # Only create when using libvirt provider
+  count = var.infrastructure_provider == "libvirt" ? 1 : 0
+
+  # Standard interface variables
+  vm_name              = var.vm_name
+  vm_memory            = var.vm_memory
+  vm_vcpus             = var.vm_vcpus
+  vm_disk_size         = var.vm_disk_size
+  persistent_data_size = var.persistent_data_size
+  ssh_public_key       = var.ssh_public_key
+  use_minimal_config   = var.use_minimal_config
+  infrastructure_provider = var.infrastructure_provider
+
+  # LibVirt-specific variables
+  libvirt_uri     = var.libvirt_uri
+  libvirt_pool    = var.libvirt_pool
+  libvirt_network = var.libvirt_network
+  base_image_url  = var.base_image_url
+}
+
+# Future provider modules will be added here:
+# module "hetzner_infrastructure" {
+#   source = "./providers/hetzner"
+#   count  = var.infrastructure_provider == "hetzner" ? 1 : 0
+#   ...
+# }
+
+# Standard outputs (available regardless of provider)
 output "vm_ip" {
-  value = length(libvirt_domain.vm.network_interface[0].addresses) > 0 ? libvirt_domain.vm.network_interface[0].addresses[0] : "No IP assigned yet"
+  value = var.infrastructure_provider == "libvirt" ? (
+    length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].vm_ip : "No provider module"
+  ) : "Unsupported provider"
   description = "IP address of the created VM"
 }
 
 output "vm_name" {
-  value = libvirt_domain.vm.name
+  value = var.infrastructure_provider == "libvirt" ? (
+    length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].vm_name : "No provider module"
+  ) : "Unsupported provider"
   description = "Name of the created VM"
 }
 
 output "connection_info" {
-  value = length(libvirt_domain.vm.network_interface[0].addresses) > 0 ? "SSH to VM: ssh torrust@${libvirt_domain.vm.network_interface[0].addresses[0]}" : "VM created, waiting for IP address..."
+  value = var.infrastructure_provider == "libvirt" ? (
+    length(module.libvirt_infrastructure) > 0 ? module.libvirt_infrastructure[0].connection_info : "No provider module"
+  ) : "Unsupported provider"
   description = "SSH connection command"
+}
+
+output "infrastructure_provider" {
+  value = var.infrastructure_provider
+  description = "Infrastructure provider used for deployment"
 }

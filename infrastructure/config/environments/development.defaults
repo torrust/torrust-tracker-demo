@@ -5,6 +5,16 @@
 ENVIRONMENT_DESCRIPTION="Development Environment Configuration"
 ENVIRONMENT_INSTRUCTIONS="Generated from base template for development and testing"
 ENVIRONMENT="development"
+
+# === VM CONFIGURATION ===
+VM_NAME="torrust-tracker-dev"
+VM_MEMORY="2048"
+VM_VCPUS="2"
+VM_DISK_SIZE="20"
+PERSISTENT_DATA_SIZE="20"
+SSH_PUBLIC_KEY=""  # Will be auto-detected or user must configure
+USE_MINIMAL_CONFIG="false"
+
 TEMPLATE_PROCESSING_VARS="
 # Template processing variables
 DOLLAR=\$"

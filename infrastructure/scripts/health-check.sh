@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
 
 # Default values
-ENVIRONMENT="${1:-local}"
+ENVIRONMENT="${1:-development}"
 VM_IP="${2:-}"
 VERBOSE="${VERBOSE:-false}"
 
@@ -216,7 +216,7 @@ test_storage() {
     fi
 
     # Test database connectivity (MySQL)
-    if [[ "${ENVIRONMENT}" == "local" ]]; then
+    if [[ "${ENVIRONMENT}" == "development" ]]; then
         ((TOTAL_TESTS++))
         if vm_exec "${vm_ip}" "cd /home/torrust/github/torrust/torrust-tracker-demo/application && docker compose exec mysql mysqladmin ping -h localhost --silent"; then
             log_test_pass "MySQL database connectivity"
@@ -324,7 +324,7 @@ Health Check Script for Torrust Tracker Demo
 Usage: $0 [ENVIRONMENT] [VM_IP]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT    Environment name (development, production)
     VM_IP          VM IP address (optional, will get from Terraform if not provided)
 
 Environment Variables:

@@ -386,7 +386,19 @@ time_operation() {
 
 # Helper function to get VM IP address from libvirt
 get_vm_ip_from_libvirt() {
-    virsh domifaddr torrust-tracker-demo 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1 || echo ""
+    # Try to find VM by common names (support both old and new naming)
+    local vm_names=("torrust-tracker-dev" "torrust-tracker-demo")
+    
+    for vm_name in "${vm_names[@]}"; do
+        local ip
+        ip=$(virsh domifaddr "${vm_name}" 2>/dev/null | grep ipv4 | awk '{print $4}' | cut -d'/' -f1)
+        if [[ -n "${ip}" ]]; then
+            echo "${ip}"
+            return 0
+        fi
+    done
+    
+    echo ""
 }
 
 # Helper function for SSH connections with standard options
@@ -409,9 +421,9 @@ wait_for_vm_ip() {
     local vm_ip=""
 
     while [[ ${attempt} -le ${max_attempts} ]]; do
-        log_info "   Checking for VM IP (attempt ${attempt}/${max_attempts})..."
+        log_info "   Checking VM IP assignment (attempt ${attempt}/${max_attempts})..."
 
-        # Try to get IP from terraform output
+        # First try to get IP from terraform output
         cd "${project_root}" || return 1
         vm_ip=$(make infra-status ENVIRONMENT="${environment}" 2>/dev/null | grep "vm_ip" | grep -v "No IP assigned yet" | awk -F '"' '{print $2}' || echo "")
 
@@ -420,24 +432,25 @@ wait_for_vm_ip() {
             return 0
         fi
 
-        # Also check libvirt directly as fallback
+        # Check libvirt directly as fallback
+        log_info "   Terraform state not updated yet, checking libvirt directly..."
         vm_ip=$(get_vm_ip_from_libvirt)
         if [[ -n "${vm_ip}" ]]; then
-            log_success "✅ VM IP assigned (via libvirt): ${vm_ip}"
+            log_success "✅ VM IP assigned (detected via libvirt): ${vm_ip}"
             # Refresh terraform state to sync with actual VM state
             log_info "   Refreshing terraform state to sync with VM..."
             make infra-refresh-state ENVIRONMENT="${environment}" || true
             return 0
         fi
 
-        log_info "   VM IP not yet assigned, waiting 10 seconds..."
+        log_info "   VM not yet assigned IP address, waiting 10 seconds..."
         sleep 10
         ((attempt++))
     done
 
     log_error "❌ Timeout waiting for VM IP assignment after $((max_attempts * 10)) seconds"
     log_error "   VM may still be starting or cloud-init may be running"
-    log_error "   You can check manually with: virsh domifaddr torrust-tracker-demo"
+    log_error "   You can check manually with: virsh list --all && virsh domifaddr <vm-name>"
     return 1
 }
 

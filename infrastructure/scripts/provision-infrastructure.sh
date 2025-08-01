@@ -1,6 +1,6 @@
 #!/bin/bash
 # Infrastructure provisioning script for Torrust Tracker Demo
-# Provisions base infrastructure without application deployment
+# Provisions base infrastructure using pluggable provider system
 # Twelve-Factor App compliant: Build stage only
 
 set -euo pipefail
@@ -9,16 +9,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${PROJECT_ROOT}/infrastructure/terraform"
+CONFIG_DIR="${PROJECT_ROOT}/infrastructure/config"
 
-# Default values
-ENVIRONMENT="${1:-local}"
-ACTION="${2:-apply}"
-SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
-SKIP_WAIT="${SKIP_WAIT:-false}"  # New parameter for skipping waiting
+# Parse arguments with provider support
+ENVIRONMENT="${1:-development}"
+PROVIDER="${2:-libvirt}"  # New: Provider parameter
+ACTION="${3:-apply}"      # Shifted due to provider parameter
+SKIP_WAIT="${SKIP_WAIT:-false}"
 
 # Source shared shell utilities
 # shellcheck source=../../scripts/shell-utils.sh
 source "${PROJECT_ROOT}/scripts/shell-utils.sh"
+
+# Load provider interface
+# shellcheck source=providers/provider-interface.sh
+source "${SCRIPT_DIR}/providers/provider-interface.sh"
 
 # Load environment configuration
 load_environment() {
@@ -32,15 +37,40 @@ load_environment() {
             log_error "Failed to load environment configuration"
             exit 1
         fi
+
+        # Load the generated environment file
+        local env_file="${CONFIG_DIR}/environments/${ENVIRONMENT}.env"
+        if [[ -f "${env_file}" ]]; then
+            # shellcheck source=/dev/null
+            source "${env_file}"
+            log_info "Environment variables loaded from: ${env_file}"
+        else
+            log_error "Environment file not found: ${env_file}"
+            exit 1
+        fi
     else
         log_error "Configuration script not found: ${config_script}"
         exit 1
     fi
 }
 
-# Validate prerequisites
+# Load provider configuration
+load_provider_config() {
+    local provider_config="${CONFIG_DIR}/providers/${PROVIDER}.env"
+
+    if [[ -f "${provider_config}" ]]; then
+        # shellcheck source=/dev/null
+        source "${provider_config}"
+        log_info "Provider config loaded: ${provider_config}"
+    else
+        log_info "No provider-specific config found (using defaults): ${provider_config}"
+    fi
+}
+
+# Validate prerequisites using provider system
 validate_prerequisites() {
     log_info "Validating prerequisites for infrastructure provisioning"
+    log_info "Environment: ${ENVIRONMENT}, Provider: ${PROVIDER}"
 
     # Check if OpenTofu/Terraform is available
     if ! command -v tofu >/dev/null 2>&1; then
@@ -48,19 +78,11 @@ validate_prerequisites() {
         exit 1
     fi
 
-    # Check if libvirt is available (for local environment)
-    if [[ "${ENVIRONMENT}" == "local" ]]; then
-        if ! command -v virsh >/dev/null 2>&1; then
-            log_error "virsh not found. Please install libvirt-clients."
-            exit 1
-        fi
+    # Load and validate provider
+    load_provider "${PROVIDER}"
 
-        # Check if user has libvirt access
-        if ! virsh list >/dev/null 2>&1; then
-            log_error "No libvirt access. Please add user to libvirt group and restart session."
-            exit 1
-        fi
-    fi
+    # Provider-specific validation
+    provider_validate_prerequisites
 
     log_success "Prerequisites validation passed"
 }
@@ -79,9 +101,14 @@ init_terraform() {
 
 # Provision infrastructure
 provision_infrastructure() {
-    log_info "Provisioning infrastructure for environment: ${ENVIRONMENT}"
+    log_info "Provisioning infrastructure"
+    log_info "Environment: ${ENVIRONMENT}, Provider: ${PROVIDER}, Action: ${ACTION}"
 
     cd "${TERRAFORM_DIR}"
+
+    # Generate provider-specific Terraform variables
+    local vars_file="${TERRAFORM_DIR}/${PROVIDER}.auto.tfvars"
+    provider_generate_terraform_vars "${vars_file}"
 
     case "${ACTION}" in
     "init")
@@ -90,17 +117,19 @@ provision_infrastructure() {
         ;;
     "plan")
         log_info "Planning infrastructure changes"
-        tofu plan -var-file="local.tfvars"
+        tofu plan
         ;;
     "apply")
         log_info "Preparing to apply infrastructure changes"
 
-        # Ensure sudo credentials are cached for libvirt operations
-        log_warning "Infrastructure provisioning requires administrator privileges for libvirt operations"
-        if ! ensure_sudo_cached "provision libvirt infrastructure"; then
-            log_error "Cannot proceed without administrator privileges"
-            log_error "Infrastructure provisioning requires sudo access for libvirt volume management"
-            exit 1
+        # Provider-specific sudo requirements (mainly for libvirt)
+        if [[ "${PROVIDER}" == "libvirt" ]]; then
+            log_warning "LibVirt infrastructure provisioning requires administrator privileges for volume operations"
+            if ! ensure_sudo_cached "provision libvirt infrastructure"; then
+                log_error "Cannot proceed without administrator privileges"
+                log_error "Infrastructure provisioning requires sudo access for libvirt volume management"
+                exit 1
+            fi
         fi
 
         log_info "Applying infrastructure changes"
@@ -112,7 +141,7 @@ provision_infrastructure() {
             "${SCRIPT_DIR}/ssh-utils.sh" clean-all || log_warning "SSH cleanup failed (non-critical)"
         fi
 
-        tofu apply -auto-approve -var-file="local.tfvars"
+        tofu apply -auto-approve
 
         # Wait for infrastructure to be fully ready (unless skipped)
         if [[ "${SKIP_WAIT}" != "true" ]]; then
@@ -143,6 +172,7 @@ provision_infrastructure() {
 
         if [[ -n "${vm_ip}" ]]; then
             log_success "Infrastructure provisioned successfully"
+            log_info "Provider: ${PROVIDER}"
             log_info "VM IP: ${vm_ip}"
 
             # Clean specific IP from known_hosts
@@ -154,12 +184,12 @@ provision_infrastructure() {
             log_info "Next step: make app-deploy ENVIRONMENT=${ENVIRONMENT}"
         else
             log_warning "Infrastructure provisioned but VM IP not available yet"
-            log_info "Try: make infra-status to check VM IP"
+            log_info "Try: make infra-status ENVIRONMENT=${ENVIRONMENT} PROVIDER=${PROVIDER} to check VM IP"
         fi
         ;;
     "destroy")
         log_info "Destroying infrastructure"
-        tofu destroy -auto-approve -var-file="local.tfvars"
+        tofu destroy -auto-approve
         log_success "Infrastructure destroyed"
         ;;
     *)
@@ -173,10 +203,16 @@ provision_infrastructure() {
 # Main execution
 main() {
     log_info "Starting infrastructure provisioning (Twelve-Factor Build Stage)"
-    log_info "Environment: ${ENVIRONMENT}, Action: ${ACTION}"
+    log_info "Environment: ${ENVIRONMENT}, Provider: ${PROVIDER}, Action: ${ACTION}"
 
     validate_prerequisites
     load_environment
+    load_provider_config
+    
+    # Load and validate provider
+    load_provider "${PROVIDER}"
+    provider_validate_prerequisites
+    
     provision_infrastructure
 
     log_success "Infrastructure provisioning completed"
@@ -187,17 +223,32 @@ show_help() {
     cat <<EOF
 Infrastructure Provisioning Script (Twelve-Factor Build Stage)
 
-Usage: $0 [ENVIRONMENT] [ACTION]
+Usage: $0 [ENVIRONMENT] [PROVIDER] [ACTION]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT    Environment name (development, staging, production)
+    PROVIDER       Infrastructure provider (libvirt, hetzner, aws, etc.)
     ACTION         Action to perform (init, plan, apply, destroy)
 
 Examples:
-    $0 local init     # Initialize Terraform for local environment
-    $0 local plan     # Plan infrastructure changes for local
-    $0 local apply    # Apply infrastructure changes for local
-    $0 local destroy  # Destroy local infrastructure
+    $0 development libvirt init     # Initialize Terraform for development on libvirt
+    $0 development libvirt plan     # Plan infrastructure changes
+    $0 development libvirt apply    # Apply infrastructure changes
+    $0 production hetzner apply     # Deploy production on Hetzner
+    $0 staging digitalocean destroy # Destroy staging on DigitalOcean
+
+Available providers:
+EOF
+    
+    # List available providers
+    local providers
+    providers=$(list_available_providers 2>/dev/null || echo "None configured yet")
+    echo "    ${providers}"
+    echo ""
+    
+    cat <<EOF
+Provider information:
+    Use: make provider-info PROVIDER=<name> for details
 
 Twelve-Factor Compliance:
     This script implements the BUILD stage - infrastructure provisioning only.

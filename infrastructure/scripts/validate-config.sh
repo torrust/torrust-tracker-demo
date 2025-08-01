@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Default values
-ENVIRONMENT="${1:-local}"
+ENVIRONMENT="${1:-development}"
 VERBOSE="${VERBOSE:-false}"
 
 # Source shared shell utilities
@@ -301,7 +301,7 @@ Configuration Validation Script
 Usage: $0 [ENVIRONMENT]
 
 Arguments:
-    ENVIRONMENT    Environment name (local, production)
+    ENVIRONMENT    Environment name (development, production)
 
 Examples:
     $0 local       # Validate local environment configuration

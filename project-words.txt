@@ -1,5 +1,6 @@
 AECDH
 AESGCM
+Ashburn
 Automatable
 autoport
 bantime
@@ -32,16 +33,20 @@ envsubst
 esac
 ethernets
 executability
+Falkenstein
 findtime
 fullchain
 genisoimage
+GOPATH
 healthcheck
 healthchecks
 hetznercloud
+Hillsboro
 HSTS
 INFOHASH
 initdb
 journalctl
+keygen
 keyrings
 letsencrypt
 libsqlite
@@ -59,6 +64,7 @@ myip
 mysqladmin
 netcat
 netdev
+networkd
 networkor
 newgrp
 newtrackon

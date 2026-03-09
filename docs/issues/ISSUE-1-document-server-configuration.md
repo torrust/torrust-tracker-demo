@@ -146,13 +146,14 @@ paths — and list all secrets that have been replaced with placeholders.
 
 The following secrets must be replaced with clearly-named placeholders before committing:
 
-| Secret                    | Placeholder                  |
-| ------------------------- | ---------------------------- |
-| MySQL root password       | `<MYSQL_ROOT_PASSWORD>`      |
-| Tracker admin API token   | `<TRACKER_ADMIN_API_TOKEN>`  |
-| Grafana admin password    | `<GRAFANA_ADMIN_PASSWORD>`   |
-| Let's Encrypt admin email | `<LETS_ENCRYPT_ADMIN_EMAIL>` |
-| Any SSH keys or tokens    | `<REDACTED>`                 |
+| Secret                       | Placeholder                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| MySQL root password          | `<MYSQL_ROOT_PASSWORD>`                                            |
+| MySQL torrust user password  | `<MYSQL_PASSWORD>`                                                 |
+| Tracker HTTP API admin token | `<TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN>` |
+| Grafana admin password       | `<GF_SECURITY_ADMIN_PASSWORD>`                                     |
+| Let's Encrypt email          | `<EMAIL_LETS_ENCRYPT_NOTIFICATIONS>`                               |
+| Any SSH keys or tokens       | `<REDACTED>`                                                       |
 
 ## How to Collect the Files
 

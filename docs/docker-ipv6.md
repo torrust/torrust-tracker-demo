@@ -38,6 +38,43 @@ docker-proxy receives native IPv6 UDP on its `::` socket but cannot forward to a
 container backend. Packets are accepted by ip6tables, reach docker-proxy, and are then
 silently dropped with no reply and no error log.
 
+## Packet Flow
+
+```text
+                        SERVER (eth0)
+                        ┌──────────────────────────────────────────────────────────┐
+                        │                                                          │
+  CLIENT                │  ip6tables nat PREROUTING                                │
+  2409:8a5e::1          │  ┌─────────────────────────────────┐                     │
+        │               │  │ DOCKER chain                    │                     │
+        │  UDP :6969    │  │ DNAT → fd01:db8:1::3:6969       │                     │
+        ▼               │  └────────────────┬────────────────┘                     │
+  2a01:4f8:1c0c:828e::1 │                   │                                      │
+  (floating IPv6)       │                   ▼                                      │
+        │               │  Docker bridge (fd01:db8:1::/64)                         │
+        │               │  ┌──────────────────────────────┐                        │
+        │               │  │  TRACKER CONTAINER           │                        │
+        │               │  │  fd01:db8:1::3               │                        │
+        │               │  │                              │                        │
+        │               │  │  sends reply from            │                        │
+        │               │  │  fd01:db8:1::3               │                        │
+        │               │  └──────────────┬───────────────┘                        │
+        │               │                 │                                        │
+        │               │  ip6tables nat POSTROUTING                               │
+        │               │  ┌──────────────────────────────────────────────┐        │
+        │               │  │ our SNAT rule (before6.rules)                │        │
+        │               │  │ fd01:db8:1::/64 → 2a01:4f8:1c0c:828e::1      │        │
+        │               │  │                                              │        │
+        │               │  │ (without this, Docker MASQUERADE would use   │        │
+        │               │  │  primary IPv6 2a01:4f8:1c19:620b::1 instead) │        │
+        │               │  └──────────────────────────────────────────────┘        │
+        │               │                 │                                        │
+        └───────────────┼─────────────────┘                                        │
+          reply from    │  source = 2a01:4f8:1c0c:828e::1 ✅                       │
+          correct IP    │                                                          │
+                        └──────────────────────────────────────────────────────────┘
+```
+
 ## Fix
 
 Two configuration changes are required.

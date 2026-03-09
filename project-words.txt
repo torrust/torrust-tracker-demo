@@ -1,8 +1,12 @@
 agentskills
 augmentedcode
 behaviour
+DNAT
 frontmatter
 newtrackon
+netplan
+oneshot
 repomix
+tcpdump
 torrust
 Torrust

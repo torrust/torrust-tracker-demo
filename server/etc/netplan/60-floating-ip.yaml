@@ -1,0 +1,24 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      addresses:
+        # Existing floating IPs (HTTP1)
+        - 116.202.176.169/32
+        - 2a01:4f8:1c0c:9aae::1/64
+        # New floating IPs (UDP1)
+        - 116.202.177.184/32
+        - 2a01:4f8:1c0c:828e::1/64
+      routing-policy:
+        - from: 116.202.177.184
+          table: 100
+        - from: 2a01:4f8:1c0c:828e::1
+          table: 200
+      routes:
+        - to: default
+          via: 172.31.1.1
+          table: 100
+        - to: default
+          via: fe80::1
+          table: 200          

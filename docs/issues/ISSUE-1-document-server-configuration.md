@@ -30,6 +30,7 @@ is:
 
 ```text
 /opt/torrust/
+├── .env                   ← capture (contains secrets — replace with placeholders)
 ├── docker-compose.yml
 └── storage/
     ├── backup/
@@ -111,6 +112,7 @@ server/                                               # mirrors the server files
 │           └── maintenance-backup.sh
 └── opt/
     └── torrust/
+        ├── .env
         ├── docker-compose.yml
         └── storage/
             ├── backup/
@@ -144,60 +146,62 @@ paths — and list all secrets that have been replaced with placeholders.
 
 The following secrets must be replaced with clearly-named placeholders before committing:
 
-| Secret                    | Placeholder                  |
-| ------------------------- | ---------------------------- |
-| MySQL root password       | `<MYSQL_ROOT_PASSWORD>`      |
-| Tracker admin API token   | `<TRACKER_ADMIN_API_TOKEN>`  |
-| Grafana admin password    | `<GRAFANA_ADMIN_PASSWORD>`   |
-| Let's Encrypt admin email | `<LETS_ENCRYPT_ADMIN_EMAIL>` |
-| Any SSH keys or tokens    | `<REDACTED>`                 |
+| Secret                       | Placeholder                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| MySQL root password          | `<MYSQL_ROOT_PASSWORD>`                                            |
+| MySQL torrust user password  | `<MYSQL_PASSWORD>`                                                 |
+| Tracker HTTP API admin token | `<TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN>` |
+| Grafana admin password       | `<GF_SECURITY_ADMIN_PASSWORD>`                                     |
+| Let's Encrypt email          | `<EMAIL_LETS_ENCRYPT_NOTIFICATIONS>`                               |
+| Any SSH keys or tokens       | `<REDACTED>`                                                       |
 
 ## How to Collect the Files
 
 All commands run from the local machine (using the `demotracker` SSH alias).
 
-### 1. Compose file
+### 1. Compose file and environment
 
 ```bash
-rsync -av demotracker:/opt/torrust/docker-compose.yml server/opt/torrust/
+rsync -av --mkpath demotracker:/opt/torrust/.env server/opt/torrust/
+rsync -av --mkpath demotracker:/opt/torrust/docker-compose.yml server/opt/torrust/
 ```
 
 ### 2. Service config files from `storage/`
 
 ```bash
 # Tracker
-rsync -av demotracker:/opt/torrust/storage/tracker/etc/tracker.toml \
+rsync -av --mkpath demotracker:/opt/torrust/storage/tracker/etc/tracker.toml \
     server/opt/torrust/storage/tracker/etc/
 
 # Caddy
-rsync -av demotracker:/opt/torrust/storage/caddy/etc/Caddyfile \
+rsync -av --mkpath demotracker:/opt/torrust/storage/caddy/etc/Caddyfile \
     server/opt/torrust/storage/caddy/etc/
 
 # Prometheus
-rsync -av demotracker:/opt/torrust/storage/prometheus/etc/prometheus.yml \
+rsync -av --mkpath demotracker:/opt/torrust/storage/prometheus/etc/prometheus.yml \
     server/opt/torrust/storage/prometheus/etc/
 
 # Grafana provisioning
-rsync -av demotracker:/opt/torrust/storage/grafana/provisioning/ \
+rsync -av --mkpath demotracker:/opt/torrust/storage/grafana/provisioning/ \
     server/opt/torrust/storage/grafana/provisioning/
 
 # Backup config
-rsync -av demotracker:/opt/torrust/storage/backup/etc/ \
+rsync -av --mkpath demotracker:/opt/torrust/storage/backup/etc/ \
     server/opt/torrust/storage/backup/etc/
 ```
 
 ### 3. System config files
 
 ```bash
-rsync -av demotracker:/etc/netplan/60-floating-ip.yaml server/etc/netplan/
-rsync -av demotracker:/etc/ufw/user.rules server/etc/ufw/
-rsync -av demotracker:/etc/ufw/user6.rules server/etc/ufw/
+rsync -av --mkpath --rsync-path="sudo rsync" demotracker:/etc/netplan/60-floating-ip.yaml server/etc/netplan/
+rsync -av --mkpath --rsync-path="sudo rsync" demotracker:/etc/ufw/user.rules server/etc/ufw/
+rsync -av --mkpath --rsync-path="sudo rsync" demotracker:/etc/ufw/user6.rules server/etc/ufw/
 ```
 
 ### 4. Cron schedule and backup script
 
 ```bash
-rsync -av demotracker:/etc/cron.d/tracker-backup server/etc/cron.d/
+rsync -av --mkpath demotracker:/etc/cron.d/tracker-backup server/etc/cron.d/
 mkdir -p server/usr/local/bin
 ssh demotracker sudo cat /usr/local/bin/maintenance-backup.sh \
     > server/usr/local/bin/maintenance-backup.sh
@@ -207,7 +211,7 @@ chmod +x server/usr/local/bin/maintenance-backup.sh
 ## Implementation Plan
 
 - [ ] Run all `rsync` commands above to collect files into `server/`
-- [ ] Review `Caddyfile`, `tracker.toml`, `docker-compose.yml` for secrets and replace with placeholders
+- [ ] Review `Caddyfile`, `tracker.toml`, `docker-compose.yml`, `.env` for secrets and replace with placeholders
 - [ ] Review `backup.conf` and `backup-paths.txt` for any sensitive paths
 - [ ] Review `maintenance-backup.sh` and `tracker-backup` cron file for any sensitive content
 - [ ] Create `server/README.md` explaining the mirroring convention and the placeholder list

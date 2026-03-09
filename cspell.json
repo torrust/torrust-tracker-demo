@@ -14,5 +14,9 @@
     "ignorePaths": [
         "/project-words.txt",
         "repomix-output.xml"
+    ],
+    "files": [
+        "**/*",
+        ".github/**/*"
     ]
 }

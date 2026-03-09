@@ -44,7 +44,7 @@ Format:
 ### Spell Checking
 
 - All files must pass CSpell spell checking.
-- Run: `npx cspell "**/*"`
+- Run: `npx cspell --no-progress`
 - Add project-specific terms to `project-words.txt`.
 
 ## Pull Request Guidelines

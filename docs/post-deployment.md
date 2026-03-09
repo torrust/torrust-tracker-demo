@@ -84,6 +84,8 @@ the wrong source and treat it as a timeout.
 Fix: add a SNAT rule to `/etc/ufw/before6.rules` **before** the existing `*filter` section
 so that replies from the Docker IPv6 bridge are rewritten to use the floating IP.
 
+**Configuration file**: [`server/etc/ufw/before6.rules`](../server/etc/ufw/before6.rules)
+
 Add the following block to the **very top** of `/etc/ufw/before6.rules`:
 
 ```text

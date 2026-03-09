@@ -164,6 +164,46 @@ For IPv6, the floating-IP reply source is handled by the SNAT rule in Fix 2b abo
 
 See [server/etc/netplan/60-floating-ip.yaml](../server/etc/netplan/60-floating-ip.yaml).
 
+## Note on dual-stack sockets and IPv4-mapped IPv6 addresses
+
+### What are IPv4-mapped addresses?
+
+When a process opens an IPv6 socket and binds to `::` (all interfaces), the Linux kernel
+has a feature called **dual-stack sockets** (controlled by the `IPV6_V6ONLY` flag). By
+default on Linux, `IPV6_V6ONLY` is `0`, meaning an IPv6 socket also accepts IPv4
+connections. When an IPv4 packet arrives, the kernel transparently represents its source
+address as `::ffff:x.x.x.x` before handing it to the socket.
+
+This is entirely a kernel-level mechanism — Docker does nothing special here. It emerges
+whenever any process uses a dual-stack socket.
+
+### What you saw in the logs before the fix
+
+Before Fix 2, docker-proxy was the only path for incoming traffic. It listened on a `::` dual-stack socket, so IPv4 clients were transparently mapped to `::ffff:x.x.x.x` by the
+kernel before docker-proxy forwarded them. The tracker logs therefore showed entries like
+`[::ffff:116.202.177.184]` for what were actually plain IPv4 clients.
+
+After Fix 2, docker-proxy is bypassed entirely. iptables DNAT handles IPv4 and ip6tables
+DNAT handles IPv6 — each family takes its own path — so IPv4 clients now appear as plain
+IPv4 addresses in the tracker logs.
+
+### When would you actually need dual-stack?
+
+IPv4-mapped addresses matter when the **server has no public IPv4 address at all**
+(IPv6-only server). In that scenario:
+
+- The server has one or more IPv6 addresses but no IPv4 address on `eth0`.
+- IPv4 clients reach the server through a hosting-provider NAT64/DNS64 gateway that
+  translates their IPv4 packets into IPv6 before delivery.
+- The tracker container receives all traffic as IPv6, with IPv4 client addresses
+  represented as `::ffff:x.x.x.x`.
+
+In such a setup there is only one IP family to manage, so the SNAT complexity described
+in this document does not apply. The motivation for our multi-IP setup is different:
+we use **two separate floating IPs** (one for HTTP, one for UDP) so that both tracker
+endpoints can be listed independently on [newTrackon](https://newtrackon.com/), which
+tracks one tracker per IP address.
+
 ## Applying on the server
 
 ### Fix 1 — Docker daemon (one-time setup)

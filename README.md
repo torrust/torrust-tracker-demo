@@ -22,7 +22,7 @@ BitTorrent tools in Rust. Our two main projects are:
   automatically embed the tracker URL into uploaded torrents.
 
 We have been running a combined live demo of both services since **April 24,
-2024**, available at <https://index.torrust-demo.com>. The demo serves as a
+2024**, available at <https://index.torrust-demo.com>. That demo serves as a
 reference deployment and a public integration test for the two applications
 working together.
 
@@ -64,7 +64,7 @@ Reasons for the split:
 
 | Property      | Value                                                                 |
 | ------------- | --------------------------------------------------------------------- |
-| Running since | April 24, 2024                                                        |
+| Running since | March 3, 2026                                                         |
 | Database      | MySQL                                                                 |
 | IP support    | IPv4 + IPv6                                                           |
 | Hosting       | [Hetzner](https://www.hetzner.com/)                                   |

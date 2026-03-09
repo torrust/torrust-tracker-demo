@@ -187,12 +187,38 @@ Document the root cause and fix in
 [torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer) repository
 (the canonical home for the deployment investigation docs for this server).
 
+## Fix Applied
+
+**Post-mortem**: [post-mortems/2026-03-09-udp-ipv6-docker.md](../post-mortems/2026-03-09-udp-ipv6-docker.md)
+
+Root cause confirmed on 2026-03-09:
+
+- Policy routing rules (Fix B) were **not** affected — `ip rule` and `ip route` entries
+  were still present.
+- The live ip6tables INPUT chain had **no ACCEPT rule for 6969** immediately after the
+  nightly Docker restart, even though ufw's on-disk rules were intact. Docker's chain
+  rewrite wiped the live ip6tables rules and ufw never reloaded them.
+
+**Chosen fix**: Enable `ip6tables: true` in `/etc/docker/daemon.json`.
+
+With this setting Docker manages ip6tables rules for all published ports automatically,
+mirroring its IPv4 behaviour. The fix is systemic — it applies to all containers and all
+ports without per-port configuration and survives any container restart.
+
+See [docs/docker-ipv6.md](../docker-ipv6.md) for full documentation and server
+application instructions.
+
+Files changed:
+
+- `server/etc/docker/daemon.json` — added with `{"ip6tables": true}`
+
 ## Acceptance Criteria
 
-- [ ] Root cause confirmed (which of the hypotheses applies)
-- [ ] `udp://udp1.torrust-tracker-demo.com:6969/announce` accepted by newTrackon ✅
-- [ ] The fix survives a nightly Docker Compose restart (verified by waiting 24 h or simulating
-      with `docker compose restart tracker`)
+- [x] Root cause confirmed — Docker's default `ip6tables: false` causes its chain rewrites
+      to wipe ufw's live ip6tables rules after every container restart
+- [x] `udp://udp1.torrust-tracker-demo.com:6969/announce` accepted by newTrackon ✅ (confirmed 2026-03-09)
+- [x] The fix survives a nightly Docker Compose restart (verified by simulating
+      with `docker compose stop tracker && docker compose up -d tracker` on 2026-03-09)
 - [ ] Root cause and fix documented in the deployer repo's deployment journal
 - [ ] If a deployer-level fix is needed, a follow-up issue is opened in
       [torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer)

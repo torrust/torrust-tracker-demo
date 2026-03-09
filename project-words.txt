@@ -30,6 +30,7 @@ noall
 noprefixroute
 noqueue
 oneshot
+post-mortems
 prometheus
 qdisc
 qlen

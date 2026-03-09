@@ -215,8 +215,17 @@ networks:
   metrics_network:
     driver: bridge
   # TLS termination: Caddy ↔ backend services
+  # IPv6 is enabled so Docker creates ip6tables DNAT rules for published ports,
+  # giving the tracker container an IPv6 address. This bypasses docker-proxy for
+  # native IPv6 traffic. Without this, docker-proxy silently drops native IPv6
+  # UDP packets because it cannot relay them to an IPv4-only container backend.
+  # See: docs/docker-ipv6.md
   proxy_network:
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: "fd01:db8:1::/64"
   # Dashboard queries: Prometheus ↔ Grafana
   visualization_network:
     driver: bridge

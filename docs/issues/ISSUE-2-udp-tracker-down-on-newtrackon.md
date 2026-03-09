@@ -191,7 +191,7 @@ Document the root cause and fix in
 
 **Post-mortem**: [post-mortems/2026-03-09-udp-ipv6-docker.md](../post-mortems/2026-03-09-udp-ipv6-docker.md)
 
-Root cause confirmed on 2026-03-09:
+Root cause A confirmed on 2026-03-09:
 
 - Policy routing rules (Fix B) were **not** affected — `ip rule` and `ip route` entries
   were still present.
@@ -199,26 +199,45 @@ Root cause confirmed on 2026-03-09:
   nightly Docker restart, even though ufw's on-disk rules were intact. Docker's chain
   rewrite wiped the live ip6tables rules and ufw never reloaded them.
 
-**Chosen fix**: Enable `ip6tables: true` in `/etc/docker/daemon.json`.
+**Fix A**: Enable `ip6tables: true` in `/etc/docker/daemon.json`. Verified working —
+tracker accepted by newTrackon on 2026-03-09.
 
-With this setting Docker manages ip6tables rules for all published ports automatically,
-mirroring its IPv4 behaviour. The fix is systemic — it applies to all containers and all
-ports without per-port configuration and survives any container restart.
+Root cause B confirmed same day (~24 min after fix A confirmed):
+
+Even with `ip6tables: true`, native IPv6 UDP still failed. `docker-proxy` for IPv6
+(`-host-ip ::`) had an IPv4 container backend (`-container-ip 172.21.0.3`). Cross-
+address-family UDP forwarding silently drops all native IPv6 packets. Docker only creates
+ip6tables DNAT rules (which bypass docker-proxy) when the container has an IPv6 address —
+which requires IPv6 to be enabled on the Docker bridge network.
+
+**Fix B**:
+
+1. Add `enable_ipv6: true` with subnet `fd01:db8:1::/64` to `proxy_network` in
+   `docker-compose.yml` so the container gets an IPv6 address and Docker creates DNAT
+   rules.
+2. Add a SNAT rule to `/etc/ufw/before6.rules` to rewrite reply source addresses from
+   the Docker ULA subnet to the floating IPv6 (`2a01:4f8:1c0c:828e::1`), overriding
+   Docker's MASQUERADE.
 
 See [docs/docker-ipv6.md](../docker-ipv6.md) for full documentation and server
 application instructions.
 
 Files changed:
 
-- `server/etc/docker/daemon.json` — added with `{"ip6tables": true}`
+- `server/etc/docker/daemon.json` — added with `{"ip6tables": true}` (Fix A)
+- `server/opt/torrust/docker-compose.yml` — `proxy_network` now has `enable_ipv6: true`
+  with subnet `fd01:db8:1::/64` (Fix B1)
+- Manual server step: prepend SNAT nat section to `/etc/ufw/before6.rules` (Fix B2)
 
 ## Acceptance Criteria
 
-- [x] Root cause confirmed — Docker's default `ip6tables: false` causes its chain rewrites
-      to wipe ufw's live ip6tables rules after every container restart
-- [x] `udp://udp1.torrust-tracker-demo.com:6969/announce` accepted by newTrackon ✅ (confirmed 2026-03-09)
-- [x] The fix survives a nightly Docker Compose restart (verified by simulating
-      with `docker compose stop tracker && docker compose up -d tracker` on 2026-03-09)
+- [x] Root cause A confirmed — Docker's default `ip6tables: false` causes its chain
+      rewrites to wipe ufw's live ip6tables rules after every container restart
+- [x] Root cause B confirmed — docker-proxy cross-AF UDP drops native IPv6 packets
+      silently when no container IPv6 address exists
+- [x] `udp://udp1.torrust-tracker-demo.com:6969/announce` accepted by newTrackon ✅
+      (confirmed 2026-03-09)
+- [ ] The fix survives a nightly Docker Compose restart (to verify after next nightly restart)
 - [ ] Root cause and fix documented in the deployer repo's deployment journal
 - [ ] If a deployer-level fix is needed, a follow-up issue is opened in
       [torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer)

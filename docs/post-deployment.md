@@ -69,3 +69,48 @@ sudo ip6tables -L ufw6-user-input -n
 ```
 
 See [docker-ipv6.md](docker-ipv6.md) for the full explanation and verification steps.
+
+---
+
+## 3. Docker IPv6 — SNAT for UDP tracker replies via floating IPv6 (required only for IPv6 UDP)
+
+Enabling `ip6tables` in Docker (Step 2) and adding `enable_ipv6: true` to the Docker
+Compose `proxy_network` allows Docker to create ip6tables DNAT rules for the container.
+However, when the container replies, Docker's MASQUERADE rule rewrites the source address
+to the server's **primary** IPv6 (`2a01:4f8:1c19:620b::1`) rather than the **floating**
+IPv6 (`2a01:4f8:1c0c:828e::1`). Clients that probed the floating IP receive a reply from
+the wrong source and treat it as a timeout.
+
+Fix: add a SNAT rule to `/etc/ufw/before6.rules` **before** the existing `*filter` section
+so that replies from the Docker IPv6 bridge are rewritten to use the floating IP.
+
+Add the following block to the **very top** of `/etc/ufw/before6.rules`:
+
+```text
+# NAT: rewrite source of Docker UDP tracker IPv6 replies to the floating IP
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s fd01:db8:1::/64 -o eth0 -p udp --sport 6969 \
+    -j SNAT --to-source 2a01:4f8:1c0c:828e::1
+COMMIT
+```
+
+Then reload ufw:
+
+```bash
+sudo ufw reload
+```
+
+Verify the rule is loaded:
+
+```bash
+sudo ip6tables -t nat -L POSTROUTING -n -v
+# Must show: SNAT  17  --  fd01:db8:1::/64  ::/0  udp spt:6969  to: 2a01:4f8:1c0c:828e::1
+```
+
+> `fd01:db8:1::/64` is the IPv6 subnet assigned to the `proxy_network` Docker bridge
+> in [`server/opt/torrust/docker-compose.yml`](../server/opt/torrust/docker-compose.yml).
+> If you change that subnet, update this SNAT rule to match.
+> This rule must be in `before6.rules` so it is applied before Docker's MASQUERADE rule
+> at ufw startup. Docker's MASQUERADE is added at container start; our SNAT fires first
+> and takes precedence, so the correct source address is used.

@@ -1,11 +1,16 @@
 agentskills
 augmentedcode
 behaviour
+Caddyfile
+crontab
+demotracker
 DNAT
 frontmatter
+grafana
 newtrackon
 netplan
 oneshot
+prometheus
 repomix
 tcpdump
 torrust

@@ -1,5 +1,10 @@
 # Docker IPv6 Configuration
 
+> **Post-deployment step**: This configuration is not applied by the
+> [torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer).
+> It must be applied manually after provisioning. See
+> [post-deployment.md](post-deployment.md) for all manual steps.
+
 ## Overview
 
 By default, Docker has `ip6tables` support disabled. This means Docker does not insert

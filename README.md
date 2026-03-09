@@ -75,6 +75,8 @@ supports both **IPv4 and IPv6**.
 
 The server was provisioned using
 [torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer).
+Some features (floating IP routing, Docker IPv6) require
+[manual post-deployment steps](docs/post-deployment.md) not covered by the deployer.
 
 ## Related projects
 

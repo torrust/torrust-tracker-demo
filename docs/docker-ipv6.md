@@ -40,6 +40,59 @@ silently dropped with no reply and no error log.
 
 ## Packet Flow
 
+### IPv6 client
+
+The packet is IPv6 end-to-end on the wire. No address mapping occurs inside the
+container.
+
+1. **Client sends UDP to the floating IPv6.**
+   The client resolves the tracker hostname to `2a01:4f8:1c0c:828e::1` and sends a UDP
+   announce to port 6969. That address is declared in
+   [server/etc/netplan/60-floating-ip.yaml](../server/etc/netplan/60-floating-ip.yaml#L12).
+
+2. **ip6tables DNAT forwards the packet to the container.**
+   Docker's `DOCKER` chain in ip6tables PREROUTING rewrites the destination from
+   `2a01:4f8:1c0c:828e::1:6969` to the container's IPv6 bridge address
+   `fd01:db8:1::3:6969`. conntrack records the translation.
+
+   This step requires two settings:
+   - `"ip6tables": true` in
+     [server/etc/docker/daemon.json](../server/etc/docker/daemon.json) — without this,
+     Docker never inserts ip6tables rules.
+   - `enable_ipv6: true` with subnet `fd01:db8:1::/64` on `proxy_network` in
+     [server/opt/torrust/docker-compose.yml](../server/opt/torrust/docker-compose.yml)
+     — this gives the container an IPv6 address so Docker can create the ip6tables DNAT
+     rule. Without it, docker-proxy is the only IPv6 path and it silently drops native
+     IPv6 UDP packets (see Problem 2 above).
+
+3. **Tracker container processes the request.**
+   The tracker's dual-stack socket (configured as `bind_address = "[::]:6969"` in
+   [server/opt/torrust/storage/tracker/etc/tracker.toml](../server/opt/torrust/storage/tracker/etc/tracker.toml#L53))
+   receives the packet with the client's real IPv6 source address. No address mapping
+   occurs.
+
+4. **Tracker sends a reply.**
+   The container replies: `src = fd01:db8:1::3`, `dst = <client-ipv6>`.
+
+5. **SNAT rewrites the reply source to the floating IPv6.**
+   The reply reaches ip6tables POSTROUTING. Without intervention, Docker's MASQUERADE
+   rule would rewrite `fd01:db8:1::3` to the server's primary IPv6
+   `2a01:4f8:1c19:620b::1` — the wrong address. The SNAT rule at
+   [server/etc/ufw/before6.rules line 14](../server/etc/ufw/before6.rules#L14) fires
+   first (ufw loads `before6.rules` at boot, before Docker starts) and rewrites the
+   source to the correct floating IPv6 `2a01:4f8:1c0c:828e::1`.
+
+6. **Policy routing sends the reply out via the correct gateway.**
+   The kernel selects a route for `src = 2a01:4f8:1c0c:828e::1`. The policy routing
+   rule in
+   [server/etc/netplan/60-floating-ip.yaml lines 16–17](../server/etc/netplan/60-floating-ip.yaml#L16-L17)
+   matches and selects routing table 200, which routes via gateway `fe80::1`
+   (lines 22–24).
+
+7. **Client receives the reply from the correct address.**
+   The reply arrives from `2a01:4f8:1c0c:828e::1:6969` — the same address the client
+   sent to. ✅
+
 ```text
                         SERVER (eth0)
                         ┌──────────────────────────────────────────────────────────┐
@@ -74,6 +127,73 @@ silently dropped with no reply and no error log.
           correct IP    │                                                          │
                         └──────────────────────────────────────────────────────────┘
 ```
+
+### IPv4 client
+
+The packet is IPv4 end-to-end on the wire. The `::ffff:` address representation seen
+inside the container is a kernel-level abstraction only — it never appears in any network
+packet.
+
+1. **Client sends UDP to the floating IPv4.**
+   The client resolves the tracker hostname to `116.202.177.184` and sends a UDP announce
+   to port 6969. That address is declared in
+   [server/etc/netplan/60-floating-ip.yaml](../server/etc/netplan/60-floating-ip.yaml#L11).
+
+2. **iptables DNAT forwards the packet to the container.**
+   Docker's `DOCKER` chain in iptables PREROUTING rewrites the destination from
+   `116.202.177.184:6969` to the container's IPv4 bridge address `172.x.x.x:6969`.
+   conntrack records the translation. This rule is created automatically by Docker
+   because the tracker publishes UDP port 6969 (`ports: - "6969:6969/udp"` in
+   [server/opt/torrust/docker-compose.yml](../server/opt/torrust/docker-compose.yml)).
+   No extra configuration is needed for IPv4 DNAT.
+
+3. **Tracker container processes the request.**
+   The tracker's dual-stack socket (configured as `bind_address = "[::]:6969"` in
+   [server/opt/torrust/storage/tracker/etc/tracker.toml](../server/opt/torrust/storage/tracker/etc/tracker.toml#L53))
+   receives an IPv4 packet. Because `net.ipv6.bindv6only = 0` (the Linux default), the
+   kernel presents the IPv4 source address to the application as `::ffff:<client-ipv4>`.
+   This is a purely internal kernel abstraction — the underlying packet remains IPv4
+   throughout.
+
+4. **Tracker sends a reply.**
+   The tracker replies to `::ffff:<client-ipv4>`. The kernel strips the `::ffff:` prefix
+   and sends a plain IPv4 reply: `src = 172.x.x.x`, `dst = <client-ipv4>`.
+
+5. **conntrack reverse DNAT restores the reply source.**
+   conntrack recognizes this as the return path of the tracked connection and
+   automatically rewrites `src = 172.x.x.x` → `src = 116.202.177.184`. No explicit SNAT
+   rule is needed for IPv4 — conntrack handles this symmetrically with the DNAT recorded
+   in step 2.
+
+6. **Policy routing sends the reply out via the correct gateway.**
+   The kernel selects a route for `src = 116.202.177.184`. The policy routing rule in
+   [server/etc/netplan/60-floating-ip.yaml lines 14–15](../server/etc/netplan/60-floating-ip.yaml#L14-L15)
+   matches and selects routing table 100, which routes via gateway `172.31.1.1`
+   (lines 19–21). Without this rule the kernel would use the main routing table and the
+   reply would leave with the server's primary IPv4 as source — the client would time out.
+
+7. **Client receives the reply from the correct address.**
+   The reply arrives from `116.202.177.184:6969` — the same address the client sent to.
+   ✅
+
+### Comparison: reply source restoration
+
+Both address families need the reply source set to the correct floating IP (not the
+container address or the server's primary address). The mechanism that achieves this
+differs between IPv4 and IPv6:
+
+| Step                            | IPv4 client                                                                                                                                                          | IPv6 client                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inbound DNAT                    | `dst 116.202.177.184` → `172.x.x.x` — automatic, Docker iptables                                                                                                     | `dst 2a01:4f8:1c0c:828e::1` → `fd01:db8:1::3` — requires `"ip6tables": true` + `enable_ipv6` on `proxy_network`                                                                                                                                                                                                              |
+| Reply source before POSTROUTING | `src = 172.x.x.x`                                                                                                                                                    | `src = fd01:db8:1::3`                                                                                                                                                                                                                                                                                                        |
+| Reply source restoration        | **Automatic** — conntrack recorded the inbound DNAT and undoes it on the reply path, rewriting `src = 172.x.x.x` → `src = 116.202.177.184`. No explicit rule needed. | **Explicit SNAT required** — [before6.rules line 14](../server/etc/ufw/before6.rules#L14). Without it, Docker's MASQUERADE overwrites the source with the server's primary IPv6 `2a01:4f8:1c19:620b::1` (the wrong address). The SNAT rule takes precedence because ufw loads `before6.rules` at boot, before Docker starts. |
+| Reply source after POSTROUTING  | `src = 116.202.177.184` ✅                                                                                                                                           | `src = 2a01:4f8:1c0c:828e::1` ✅                                                                                                                                                                                                                                                                                             |
+| Egress routing                  | Policy routing table 100 ([60-floating-ip.yaml lines 14–15](../server/etc/netplan/60-floating-ip.yaml#L14-L15)) — gateway `172.31.1.1`                               | Policy routing table 200 ([60-floating-ip.yaml lines 16–17](../server/etc/netplan/60-floating-ip.yaml#L16-L17)) — gateway `fe80::1`                                                                                                                                                                                          |
+
+In short: IPv4 reply source restoration is fully automatic (conntrack undoes its own
+DNAT). IPv6 reply source restoration requires an explicit SNAT rule because Docker's
+MASQUERADE would otherwise pick the wrong source address. Both address families
+additionally require policy routing to ensure replies leave via the correct gateway.
 
 ## Fix
 

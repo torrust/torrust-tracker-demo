@@ -204,6 +204,53 @@ we use **two separate floating IPs** (one for HTTP, one for UDP) so that both tr
 endpoints can be listed independently on [newTrackon](https://newtrackon.com/), which
 tracks one tracker per IP address.
 
+### Current behavior with the tracker's dual-stack socket
+
+Even after both fixes are applied, the tracker logs still show IPv4 clients as
+IPv4-mapped addresses (e.g. `[::ffff:31.173.85.40]:27628`). This is **not** a Docker
+issue — it is a property of the tracker's own socket configuration.
+
+The tracker binds every service to `[::]` (the IPv6 wildcard). On Linux the
+`IPV6_V6ONLY` socket flag defaults to `0` — controlled by the kernel parameter
+`net.ipv6.bindv6only`, which is `0` on this server:
+
+```text
+$ sysctl net.ipv6.bindv6only
+net.ipv6.bindv6only = 0
+```
+
+This creates a **dual-stack socket**: a single socket that accepts both IPv4 and IPv6
+connections. When an IPv4 packet arrives,
+the kernel transparently maps the client address into the
+[IPv4-mapped IPv6 address space](https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2)
+(`::ffff:0:0/96`) before handing it to the application. The application — the tracker
+— only ever sees one socket and one address family: `inet6`.
+
+Observed in the logs:
+
+```text
+# IPv4 client — mapped to ::ffff:
+client_socket_addr=[::ffff:31.173.85.40]:27628  server_socket_addr=[::]:6969
+
+# Native IPv6 client — no mapping
+client_socket_addr=[2a0a:4cc0:c0:d0::a3]:11017  server_socket_addr=[::]:6969
+```
+
+#### Implication for Prometheus metrics
+
+Because all sockets report `inet6`, the Prometheus label
+`server_binding_address_ip_family` is **always `inet6`** regardless of whether the
+connecting client is IPv4 or IPv6. A Grafana query split by this label would only ever
+produce a single series — there is no `inet` data.
+
+To distinguish between IPv4 and IPv6 clients in metrics, the tracker would need to open
+**two separate sockets per port** — one bound to `0.0.0.0` (IPv4 only) and one bound to
+`[::]` with `IPV6_V6ONLY=1` (IPv6 only). That is a tracker-level configuration change,
+not a Docker or OS change.
+
+In the current setup, the correct label for filtering per-service instance in Grafana is
+`server_binding_port` (e.g. `6969` for UDP1, `6868` for UDP2).
+
 ## Applying on the server
 
 ### Fix 1 — Docker daemon (one-time setup)

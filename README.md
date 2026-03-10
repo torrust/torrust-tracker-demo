@@ -78,6 +78,71 @@ The server was provisioned using
 Some features (floating IP routing, Docker IPv6) require
 [manual post-deployment steps](docs/post-deployment.md) not covered by the deployer.
 
+## Architecture
+
+The diagram below shows the three levels of network isolation (floating IPs,
+server IPs, Docker networking), the software components involved in packet
+handling (OS kernel, UFW, Docker), and all real IPv4/IPv6 addresses.
+
+<!-- cspell:disable -->
+
+```mermaid
+flowchart TB
+    subgraph internet["Internet"]
+        client(["Client"])
+    end
+
+    subgraph hetzner["Floating IPs · Hetzner Cloud Routing"]
+        direction LR
+        http1["<b>http1</b><br/>IPv4: 116.202.176.169<br/>IPv6: 2a01:4f8:1c0c:9aae::1"]
+        udp1["<b>udp1</b><br/>IPv4: 116.202.177.184<br/>IPv6: 2a01:4f8:1c0c:828e::1"]
+    end
+
+    subgraph vm["VM Server · Hetzner CCX23 · nbg1-dc3"]
+        eth0["<b>eth0</b><br/>Server IPv4: 46.225.234.201<br/>Server IPv6: 2a01:4f8:1c19:620b::1<br/><i>+ floating IPs attached via netplan</i>"]
+
+        kernel["<b>OS Kernel</b> · Linux 6.8<br/>iptables · ip6tables<br/>netplan policy routing (tables 100, 200)"]
+
+        ufw["<b>UFW</b><br/>TCP :22 SSH · UDP :6969 Tracker"]
+
+        subgraph docker["Docker 28.2.2 · ip6tables: true"]
+            subgraph proxynet["proxy_network · bridge · IPv6: fd01:db8:1::/64"]
+                caddy["Caddy<br/>:80 · :443"]
+                tracker["Tracker<br/>:6969/udp · :6868/udp<br/>:7070 · :1212"]
+                grafana["Grafana<br/>:3000"]
+            end
+
+            subgraph dbnet["database_network · bridge"]
+                mysql["MySQL 8.4"]
+            end
+
+            subgraph metricsnet["metrics_network · bridge"]
+                prom["Prometheus<br/>:9090"]
+            end
+        end
+    end
+
+    client -- "HTTPS :443" --> http1
+    client -- "UDP :6969" --> udp1
+    http1 --> eth0
+    udp1 --> eth0
+    eth0 --> kernel
+    kernel --> ufw
+    ufw --> docker
+
+    caddy -. "reverse proxy" .-> tracker
+    caddy -. "reverse proxy" .-> grafana
+    tracker --> mysql
+    tracker --> prom
+    prom --> grafana
+```
+
+<!-- cspell:enable -->
+
+For detailed packet flow (especially IPv6 UDP with DNAT and SNAT), see
+[docs/docker-ipv6.md](docs/docker-ipv6.md). For full IP and DNS tables, see
+[docs/infrastructure.md](docs/infrastructure.md).
+
 ## Related projects
 
 | Repository                                                                              | Description                                    |

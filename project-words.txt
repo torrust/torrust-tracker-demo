@@ -1,6 +1,8 @@
 ADDRTYPE
 agentskills
+Alertmanager
 augmentedcode
+Brevo
 behaviour
 Caddyfile
 conntrack
@@ -9,13 +11,16 @@ codel
 ctstate
 demotracker
 deogmiudufm
+dockerized
 DNAT
 dport
 efivarfs
 efivars
 ethernets
+Freshping
 frontmatter
 fswc
+Gatus
 grafana
 healthcheck
 leecher
@@ -55,3 +60,4 @@ ulnp
 UNCONN
 userland
 veth
+Vigil

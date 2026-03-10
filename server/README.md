@@ -50,3 +50,35 @@ The following are excluded — they contain runtime data, large binaries, or add
 | `/opt/torrust/storage/mysql/data/`    | MySQL data files            |
 | `/opt/torrust/storage/tracker/lib/`   | SQLite database             |
 | `/opt/torrust/storage/tracker/log/`   | Log files                   |
+
+## Key Configuration Notes
+
+### Docker IPv6 (`etc/docker/daemon.json`)
+
+`ip6tables: true` is required to prevent Docker chain rewrites from wiping ufw's live
+ip6tables rules after every container restart. Without it, all IPv6 UDP traffic is
+silently dropped after each restart.
+
+### Docker IPv6 \u2014 `proxy_network` (`opt/torrust/docker-compose.yml`)
+
+`enable_ipv6: true` with subnet `fd01:db8:1::/64` on `proxy_network` gives the tracker
+container an IPv6 address, which causes Docker to create ip6tables DNAT rules that bypass
+docker-proxy for native IPv6 traffic. Without this, docker-proxy silently drops all native
+IPv6 UDP packets because it cannot relay them to an IPv4-only container backend.
+
+### Docker IPv6 \u2014 SNAT for floating IPv6 (manual server step)
+
+A `*nat POSTROUTING SNAT` rule must be prepended to `/etc/ufw/before6.rules` on the
+server to rewrite reply source addresses from the Docker ULA bridge subnet
+(`fd01:db8:1::/64`) to the floating IPv6 (`2a01:4f8:1c0c:828e::1`). Without it, Docker's
+MASQUERADE rewrites replies to the primary server IPv6 and clients probing the floating IP
+time out.
+
+See [docs/docker-ipv6.md](../docs/docker-ipv6.md) for the full explanation and all
+application steps.
+
+### Floating IP routing (`etc/netplan/60-floating-ip.yaml`)
+
+Each Hetzner floating IP requires a policy routing table entry so that replies leave via
+the same floating IP rather than the primary server IP. Adding a new floating IP requires
+updating this file and running `sudo netplan apply`.

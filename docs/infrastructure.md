@@ -72,6 +72,8 @@ Defined in [`server/etc/netplan/60-floating-ip.yaml`](../server/etc/netplan/60-f
 Managed by UFW. Rules are in
 [`server/etc/ufw/user.rules`](../server/etc/ufw/user.rules) (IPv4) and
 [`server/etc/ufw/user6.rules`](../server/etc/ufw/user6.rules) (IPv6).
+Custom pre-filter rules (including the SNAT for IPv6 UDP) are in
+[`server/etc/ufw/before6.rules`](../server/etc/ufw/before6.rules).
 
 Port 443 (HTTPS) is not in the UFW user rules — it is exposed directly by the
 Caddy container via Docker's `iptables` integration.

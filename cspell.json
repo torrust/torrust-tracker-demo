@@ -13,7 +13,10 @@
     ],
     "ignorePaths": [
         "/project-words.txt",
-        "repomix-output.xml"
+        "repomix-output.xml",
+        "server/etc/ufw/before6.rules",
+        "server/etc/ufw/user.rules",
+        "server/etc/ufw/user6.rules"
     ],
     "files": [
         "**/*",

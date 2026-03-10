@@ -1,3 +1,4 @@
+ADDRTYPE
 agentskills
 augmentedcode
 behaviour
@@ -20,6 +21,7 @@ healthcheck
 leecher
 Leechers
 logfile
+misrouted
 mkpath
 mysqladmin
 netnsid
@@ -30,12 +32,18 @@ noall
 noprefixroute
 noqueue
 oneshot
+pkts
+post-mortems
+POSTROUTING
+PREROUTING
 prometheus
 qdisc
 qlen
 QUIC
 repomix
 rgba
+SNAT
+SNATs
 sourceable
 tcpdump
 tera
@@ -43,4 +51,7 @@ timepicker
 tmpfs
 torrust
 Torrust
+ulnp
+UNCONN
+userland
 veth

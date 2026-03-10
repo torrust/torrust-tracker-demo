@@ -139,7 +139,46 @@ flowchart TB
 
 <!-- cspell:enable -->
 
-For detailed packet flow (especially IPv6 UDP with DNAT and SNAT), see
+### IPv6 UDP Packet Flow
+
+The trickiest traffic path is a native IPv6 UDP announce. The sequence below
+shows every hop and address rewrite between the client and the tracker
+container, including the DNAT on ingress and the SNAT on egress that keeps the
+reply source equal to the floating IP the client originally contacted.
+
+<!-- cspell:disable -->
+
+```mermaid
+sequenceDiagram
+    participant C as Client<br/>2409:8a5e::1
+    participant H as Hetzner<br/>Floating IP routing
+    participant E as eth0<br/>2a01:4f8:1c0c:828e::1
+    participant PRE as ip6tables<br/>PREROUTING
+    participant BR as Docker bridge<br/>fd01:db8:1::/64
+    participant T as Tracker container<br/>fd01:db8:1::3
+    participant POST as ip6tables<br/>POSTROUTING
+
+    Note over C,T: Ingress — client request
+    C->>H: UDP :6969<br/>src 2409:8a5e::1<br/>dst 2a01:4f8:1c0c:828e::1
+    H->>E: Hetzner routes floating IP<br/>to VM server
+    E->>PRE: packet enters kernel
+    PRE->>BR: DNAT: dst rewritten<br/>2a01:4f8:1c0c:828e::1 → fd01:db8:1::3
+    BR->>T: forwarded on bridge<br/>dst fd01:db8:1::3:6969
+
+    Note over C,T: Egress — tracker reply
+    T->>POST: reply<br/>src fd01:db8:1::3<br/>dst 2409:8a5e::1
+    Note over POST: SNAT (before6.rules):<br/>src rewritten<br/>fd01:db8:1::3 → 2a01:4f8:1c0c:828e::1
+    POST->>E: src = 2a01:4f8:1c0c:828e::1 ✅
+    E->>H: packet leaves eth0
+    H->>C: reply from floating IP ✅<br/>src 2a01:4f8:1c0c:828e::1
+
+    Note over POST: Without this SNAT rule,<br/>Docker MASQUERADE would use<br/>primary IPv6 2a01:4f8:1c19:620b::1<br/>→ client sees wrong source → timeout
+```
+
+<!-- cspell:enable -->
+
+For the full explanation of why both `ip6tables: true` in the Docker daemon and
+the SNAT rule in `before6.rules` are required, see
 [docs/docker-ipv6.md](docs/docker-ipv6.md). For full IP and DNS tables, see
 [docs/infrastructure.md](docs/infrastructure.md).
 

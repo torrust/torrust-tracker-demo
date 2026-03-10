@@ -38,6 +38,199 @@ docker-proxy receives native IPv6 UDP on its `::` socket but cannot forward to a
 container backend. Packets are accepted by ip6tables, reach docker-proxy, and are then
 silently dropped with no reply and no error log.
 
+## Fix
+
+Two configuration changes are required.
+
+### Fix 1 — Enable `ip6tables` in the Docker daemon
+
+Create `/etc/docker/daemon.json`:
+
+```json
+{
+  "ip6tables": true
+}
+```
+
+With this setting, Docker manages ip6tables rules for published ports (same as it already
+does for IPv4 with iptables). ufw's INPUT chain rules are preserved after Docker chain
+rewrites because Docker now inserts its own FORWARD chain rules for published ports.
+
+The configuration file is tracked in this repository at
+[server/etc/docker/daemon.json](../server/etc/docker/daemon.json).
+
+**Apply on the server:**
+
+```bash
+# Copy daemon.json to the server
+sudo cp /path/to/daemon.json /etc/docker/daemon.json
+
+# Restart the Docker daemon
+# Containers with restart: unless-stopped will come back up automatically
+sudo systemctl restart docker
+
+# Verify Docker is running
+sudo systemctl status docker
+```
+
+### Fix 2 — Enable IPv6 on the Docker bridge network + SNAT for reply source
+
+Enabling `ip6tables: true` alone is not sufficient. Docker only creates ip6tables DNAT
+rules when the container has an IPv6 address. Without IPv6 on the Docker network, the
+container has only IPv4 bridge addresses and docker-proxy is still the only IPv6 path
+(which silently drops native IPv6 UDP, see Problem 2 above).
+
+**Step 2a — Enable IPv6 on `proxy_network`** in `docker-compose.yml`:
+
+```yaml
+proxy_network:
+  driver: bridge
+  enable_ipv6: true
+  ipam:
+    config:
+      - subnet: "fd01:db8:1::/64"
+```
+
+With an IPv6 address on the container, Docker creates ip6tables DNAT rules that bypass
+docker-proxy entirely for native IPv6 traffic, exactly as iptables DNAT does for IPv4.
+
+This is tracked in
+[server/opt/torrust/docker-compose.yml](../server/opt/torrust/docker-compose.yml).
+
+**Apply on the server:**
+
+```bash
+cd /opt/torrust
+docker compose down
+docker compose up -d
+```
+
+> `docker compose down` removes the old IPv4-only `proxy_network`. `up` recreates it with
+> IPv6 enabled and a new ULA subnet (`fd01:db8:1::/64`). The tracker container will
+> receive a new IPv6 address on this bridge.
+
+**Step 2b — Add SNAT to `/etc/ufw/before6.rules`** to rewrite reply source to floating IP:
+
+Docker's MASQUERADE rule rewrites container reply sources to the server's primary IPv6
+(`2a01:4f8:1c19:620b::1`). Clients probing the floating IPv6 (`2a01:4f8:1c0c:828e::1`)
+would receive a reply from the wrong address and time out. Add this block at the **very
+top** of `/etc/ufw/before6.rules`, before the existing `*filter` section:
+
+```text
+# NAT: rewrite source of Docker UDP tracker IPv6 replies to the floating IP
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s fd01:db8:1::/64 -o eth0 -p udp --sport 6969 \
+    -j SNAT --to-source 2a01:4f8:1c0c:828e::1
+COMMIT
+```
+
+This rule fires before Docker's MASQUERADE because ufw loads `before6.rules` at startup,
+before Docker starts. The SNAT takes precedence and replies leave via the correct floating
+IP.
+
+**Apply on the server:**
+
+```bash
+sudo sed -i '1s/^/# NAT: Docker UDP tracker IPv6 reply source → floating IP\n*nat\n:POSTROUTING ACCEPT [0:0]\n-A POSTROUTING -s fd01:db8:1:\/64 -o eth0 -p udp --sport 6969 -j SNAT --to-source 2a01:4f8:1c0c:828e::1\nCOMMIT\n\n/' /etc/ufw/before6.rules
+sudo ufw reload
+```
+
+Or edit manually — the file should begin with:
+
+```text
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s fd01:db8:1::/64 -o eth0 -p udp --sport 6969 \
+    -j SNAT --to-source 2a01:4f8:1c0c:828e::1
+COMMIT
+
+# rules.before
+# ...(existing content follows)
+```
+
+### Verification
+
+After applying all three steps, verify end-to-end:
+
+**1. ufw ip6tables rules still present:**
+
+```bash
+sudo ip6tables -L ufw6-user-input -n
+```
+
+Expected:
+
+```text
+Chain ufw6-user-input (1 references)
+target     prot opt source               destination
+ACCEPT     6    --  ::/0                 ::/0                 tcp dpt:22
+ACCEPT     17   --  ::/0                 ::/0                 udp dpt:6969
+```
+
+**2. Container has an IPv6 address on the Docker bridge:**
+
+```bash
+docker inspect tracker --format '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}} {{end}}'
+```
+
+Expected: a non-empty address starting with `fd01:db8:1::` (the ULA subnet).
+
+**3. ip6tables DNAT rule exists for port 6969:**
+
+```bash
+sudo ip6tables -t nat -L PREROUTING -n -v | grep 6969
+```
+
+Expected: a DNAT rule redirecting to the container's IPv6 address.
+
+**4. SNAT rule exists in POSTROUTING:**
+
+```bash
+sudo ip6tables -t nat -L POSTROUTING -n -v | grep 6969
+```
+
+Expected:
+
+```text
+SNAT  17  --  fd01:db8:1::/64  ::/0  udp spt:6969  to:2a01:4f8:1c0c:828e::1
+```
+
+**5. Simulate a nightly restart and verify all rules survive:**
+
+```bash
+cd /opt/torrust
+docker compose stop tracker
+docker compose up -d tracker
+sudo ip6tables -L ufw6-user-input -n
+sudo ip6tables -t nat -L POSTROUTING -n -v | grep 6969
+```
+
+Both the INPUT ACCEPT rule and the SNAT rule must still be present.
+
+## Scope and limitations
+
+Fix 1 (`ip6tables: true`) is a **daemon-level** setting. It applies automatically to:
+
+- All containers, on all Docker-published ports, without any per-container or per-port
+  configuration.
+
+Fix 2 (`enable_ipv6` on `proxy_network` + SNAT) is **per-`proxy_network`** and
+**per-floating-IP**:
+
+- Future UDP trackers on new ports that use `proxy_network` get IPv6 DNAT automatically.
+- If a new floating IPv6 is added, an additional SNAT rule for that address is required
+  in `before6.rules`.
+
+**Floating IP asymmetric routing** is a separate concern for IPv4. When a published port
+is reachable via a Hetzner floating IPv4, replies must leave via the same floating IPv4
+rather than the server's primary IP. This is handled by policy routing tables in netplan,
+and is not part of this document.
+
+For IPv6, the floating-IP reply source is handled by the SNAT rule in Fix 2b above.
+
+See [server/etc/netplan/60-floating-ip.yaml](../server/etc/netplan/60-floating-ip.yaml).
+
 ## Packet Flow
 
 ### IPv6 client
@@ -162,8 +355,8 @@ packet.
 5. **conntrack reverse DNAT restores the reply source.**
    conntrack recognizes this as the return path of the tracked connection and
    automatically rewrites `src = 172.x.x.x` → `src = 116.202.177.184`. No explicit SNAT
-   rule is needed for IPv4 — conntrack handles this symmetrically with the DNAT recorded
-   in step 2.
+   rule is needed for IPv4 — conntrack recorded the inbound DNAT in step 2 and undoes
+   it on the reply path, rewriting the reply source back to the floating IP.
 
 6. **Policy routing sends the reply out via the correct gateway.**
    The kernel selects a route for `src = 116.202.177.184`. The policy routing rule in
@@ -182,107 +375,18 @@ Both address families need the reply source set to the correct floating IP (not 
 container address or the server's primary address). The mechanism that achieves this
 differs between IPv4 and IPv6:
 
-| Step                            | IPv4 client                                                                                                                                                          | IPv6 client                                                                                                                                                                                                                                                                                                                  |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Inbound DNAT                    | `dst 116.202.177.184` → `172.x.x.x` — automatic, Docker iptables                                                                                                     | `dst 2a01:4f8:1c0c:828e::1` → `fd01:db8:1::3` — requires `"ip6tables": true` + `enable_ipv6` on `proxy_network`                                                                                                                                                                                                              |
-| Reply source before POSTROUTING | `src = 172.x.x.x`                                                                                                                                                    | `src = fd01:db8:1::3`                                                                                                                                                                                                                                                                                                        |
-| Reply source restoration        | **Automatic** — conntrack recorded the inbound DNAT and undoes it on the reply path, rewriting `src = 172.x.x.x` → `src = 116.202.177.184`. No explicit rule needed. | **Explicit SNAT required** — [before6.rules line 14](../server/etc/ufw/before6.rules#L14). Without it, Docker's MASQUERADE overwrites the source with the server's primary IPv6 `2a01:4f8:1c19:620b::1` (the wrong address). The SNAT rule takes precedence because ufw loads `before6.rules` at boot, before Docker starts. |
-| Reply source after POSTROUTING  | `src = 116.202.177.184` ✅                                                                                                                                           | `src = 2a01:4f8:1c0c:828e::1` ✅                                                                                                                                                                                                                                                                                             |
-| Egress routing                  | Policy routing table 100 ([60-floating-ip.yaml lines 14–15](../server/etc/netplan/60-floating-ip.yaml#L14-L15)) — gateway `172.31.1.1`                               | Policy routing table 200 ([60-floating-ip.yaml lines 16–17](../server/etc/netplan/60-floating-ip.yaml#L16-L17)) — gateway `fe80::1`                                                                                                                                                                                          |
+| Step | IPv4 client | IPv6 client |
+| ---- | ----------- | ----------- |
+| Inbound DNAT | `dst 116.202.177.184` → `172.x.x.x` — automatic, Docker iptables | `dst 2a01:4f8:1c0c:828e::1` → `fd01:db8:1::3` — requires `"ip6tables": true` + `enable_ipv6` on `proxy_network` |
+| Reply source before POSTROUTING | `src = 172.x.x.x` | `src = fd01:db8:1::3` |
+| Reply source restoration | **Automatic** — conntrack recorded the inbound DNAT and undoes it on the reply path, rewriting `src = 172.x.x.x` → `src = 116.202.177.184`. No explicit rule needed. | **Explicit SNAT required** — [before6.rules line 14](../server/etc/ufw/before6.rules#L14). Without it, Docker's MASQUERADE overwrites the source with the server's primary IPv6 `2a01:4f8:1c19:620b::1` (the wrong address). The SNAT rule takes precedence because ufw loads `before6.rules` at boot, before Docker starts. |
+| Reply source after POSTROUTING | `src = 116.202.177.184` ✅ | `src = 2a01:4f8:1c0c:828e::1` ✅ |
+| Egress routing | Policy routing table 100 ([60-floating-ip.yaml lines 14–15](../server/etc/netplan/60-floating-ip.yaml#L14-L15)) — gateway `172.31.1.1` | Policy routing table 200 ([60-floating-ip.yaml lines 16–17](../server/etc/netplan/60-floating-ip.yaml#L16-L17)) — gateway `fe80::1` |
 
 In short: IPv4 reply source restoration is fully automatic (conntrack undoes its own
 DNAT). IPv6 reply source restoration requires an explicit SNAT rule because Docker's
 MASQUERADE would otherwise pick the wrong source address. Both address families
 additionally require policy routing to ensure replies leave via the correct gateway.
-
-## Fix
-
-Two configuration changes are required.
-
-### Fix 1 — Enable `ip6tables` in the Docker daemon
-
-Create `/etc/docker/daemon.json`:
-
-```json
-{
-  "ip6tables": true
-}
-```
-
-With this setting, Docker manages ip6tables rules for published ports (same as it already
-does for IPv4 with iptables). ufw's INPUT chain rules are preserved after Docker chain
-rewrites because Docker now inserts its own FORWARD chain rules for published ports.
-
-The configuration file is tracked in this repository at
-[server/etc/docker/daemon.json](../server/etc/docker/daemon.json).
-
-### Fix 2 — Enable IPv6 on the Docker bridge network + SNAT for reply source
-
-Enabling `ip6tables: true` alone is not sufficient. Docker only creates ip6tables DNAT
-rules when the container has an IPv6 address. Without IPv6 on the Docker network, the
-container has only IPv4 bridge addresses and docker-proxy is still the only IPv6 path
-(which silently drops native IPv6 UDP, see Problem 2 above).
-
-**Step 2a — Enable IPv6 on `proxy_network`** in `docker-compose.yml`:
-
-```yaml
-proxy_network:
-  driver: bridge
-  enable_ipv6: true
-  ipam:
-    config:
-      - subnet: "fd01:db8:1::/64"
-```
-
-With an IPv6 address on the container, Docker creates ip6tables DNAT rules that bypass
-docker-proxy entirely for native IPv6 traffic, exactly as iptables DNAT does for IPv4.
-
-This is tracked in
-[server/opt/torrust/docker-compose.yml](../server/opt/torrust/docker-compose.yml).
-
-**Step 2b — Add SNAT to `/etc/ufw/before6.rules`** to rewrite reply source to floating IP:
-
-Docker's MASQUERADE rule rewrites container reply sources to the server's primary IPv6
-(`2a01:4f8:1c19:620b::1`). Clients probing the floating IPv6 (`2a01:4f8:1c0c:828e::1`)
-would receive a reply from the wrong address and time out. Add this block at the **very
-top** of `/etc/ufw/before6.rules`, before the existing `*filter` section:
-
-```text
-# NAT: rewrite source of Docker UDP tracker IPv6 replies to the floating IP
-*nat
-:POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s fd01:db8:1::/64 -o eth0 -p udp --sport 6969 \
-    -j SNAT --to-source 2a01:4f8:1c0c:828e::1
-COMMIT
-```
-
-This rule fires before Docker's MASQUERADE because ufw loads `before6.rules` at startup,
-before Docker starts. The SNAT takes precedence and replies leave via the correct floating
-IP.
-
-## Scope
-
-Fix 1 (`ip6tables: true`) is a **daemon-level** setting. It applies automatically to:
-
-- All containers, on all Docker-published ports, without any per-container or per-port
-  configuration.
-
-Fix 2 (`enable_ipv6` on `proxy_network` + SNAT) is **per-`proxy_network`** and
-**per-floating-IP**:
-
-- Future UDP trackers on new ports that use `proxy_network` get IPv6 DNAT automatically.
-- If a new floating IPv6 is added, an additional SNAT rule for that address is required
-  in `before6.rules`.
-
-## What this does NOT cover
-
-**Floating IP asymmetric routing** is a separate concern for IPv4. When a published port
-is reachable via a Hetzner floating IPv4, replies must leave via the same floating IPv4
-rather than the server's primary IP. This is handled by policy routing tables in netplan.
-
-For IPv6, the floating-IP reply source is handled by the SNAT rule in Fix 2b above.
-
-See [server/etc/netplan/60-floating-ip.yaml](../server/etc/netplan/60-floating-ip.yaml).
 
 ## Note on dual-stack sockets and IPv4-mapped IPv6 addresses
 
@@ -370,117 +474,3 @@ not a Docker or OS change.
 
 In the current setup, the correct label for filtering per-service instance in Grafana is
 `server_binding_port` (e.g. `6969` for UDP1, `6868` for UDP2).
-
-## Applying on the server
-
-### Fix 1 — Docker daemon (one-time setup)
-
-```bash
-# Copy daemon.json to the server
-sudo cp /path/to/daemon.json /etc/docker/daemon.json
-
-# Restart the Docker daemon
-# Containers with restart: unless-stopped will come back up automatically
-sudo systemctl restart docker
-
-# Verify Docker is running
-sudo systemctl status docker
-```
-
-### Fix 2a — Enable IPv6 on proxy_network
-
-Update `docker-compose.yml` on the server to match
-[server/opt/torrust/docker-compose.yml](../server/opt/torrust/docker-compose.yml), then
-recreate the network:
-
-```bash
-cd /opt/torrust
-docker compose down
-docker compose up -d
-```
-
-> `docker compose down` removes the old IPv4-only `proxy_network`. `up` recreates it with
-> IPv6 enabled and a new ULA subnet (`fd01:db8:1::/64`). The tracker container will
-> receive a new IPv6 address on this bridge.
-
-### Fix 2b — SNAT in before6.rules
-
-Add the following block at the **very top** of `/etc/ufw/before6.rules` (before the
-existing `*filter` line):
-
-```bash
-sudo sed -i '1s/^/# NAT: Docker UDP tracker IPv6 reply source → floating IP\n*nat\n:POSTROUTING ACCEPT [0:0]\n-A POSTROUTING -s fd01:db8:1:\/64 -o eth0 -p udp --sport 6969 -j SNAT --to-source 2a01:4f8:1c0c:828e::1\nCOMMIT\n\n/' /etc/ufw/before6.rules
-sudo ufw reload
-```
-
-Or edit manually — the file should begin with:
-
-```text
-*nat
-:POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s fd01:db8:1::/64 -o eth0 -p udp --sport 6969 \
-    -j SNAT --to-source 2a01:4f8:1c0c:828e::1
-COMMIT
-
-# rules.before
-# ...(existing content follows)
-```
-
-### Verification
-
-After applying all three steps, verify end-to-end:
-
-**1. ufw ip6tables rules still present:**
-
-```bash
-sudo ip6tables -L ufw6-user-input -n
-```
-
-Expected:
-
-```text
-Chain ufw6-user-input (1 references)
-target     prot opt source               destination
-ACCEPT     6    --  ::/0                 ::/0                 tcp dpt:22
-ACCEPT     17   --  ::/0                 ::/0                 udp dpt:6969
-```
-
-**2. Container has an IPv6 address on the Docker bridge:**
-
-```bash
-docker inspect tracker --format '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}} {{end}}'
-```
-
-Expected: a non-empty address starting with `fd01:db8:1::` (the ULA subnet).
-
-**3. ip6tables DNAT rule exists for port 6969:**
-
-```bash
-sudo ip6tables -t nat -L PREROUTING -n -v | grep 6969
-```
-
-Expected: a DNAT rule redirecting to the container's IPv6 address.
-
-**4. SNAT rule exists in POSTROUTING:**
-
-```bash
-sudo ip6tables -t nat -L POSTROUTING -n -v | grep 6969
-```
-
-Expected:
-
-```text
-SNAT  17  --  fd01:db8:1::/64  ::/0  udp spt:6969  to:2a01:4f8:1c0c:828e::1
-```
-
-**5. Simulate a nightly restart and verify all rules survive:**
-
-```bash
-cd /opt/torrust
-docker compose stop tracker
-docker compose up -d tracker
-sudo ip6tables -L ufw6-user-input -n
-sudo ip6tables -t nat -L POSTROUTING -n -v | grep 6969
-```
-
-Both the INPUT ACCEPT rule and the SNAT rule must still be present.

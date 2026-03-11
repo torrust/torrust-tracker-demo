@@ -21,4 +21,4 @@ network:
           table: 100
         - to: default
           via: fe80::1
-          table: 200          
+          table: 200

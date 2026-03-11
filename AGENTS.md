@@ -14,6 +14,34 @@ tracker-only; the index demo lives in a separate repository.
 For a more complete reference of the combined Index + Tracker setup, see the
 original [torrust/torrust-demo](https://github.com/torrust/torrust-demo) repo.
 
+## Repository Structure
+
+### `server/`
+
+Contains **only files that are actually deployed on the live server**, mirroring
+their exact paths (e.g. `server/etc/...`, `server/opt/...`). These are static
+configuration files managed in version control and deployed to the server.
+
+Do **not** place generated artifacts, dashboards, or documentation here.
+Files that live in application databases (e.g. Grafana dashboards stored in
+Grafana's own database) must **not** go in `server/` even if they relate to
+a server-side service.
+
+### `docs/`
+
+Documentation only: architecture decision records, issue notes, post-mortems,
+and other reference material. Do **not** place backup exports here.
+
+### `backups/`
+
+Versioned backup exports of data managed by server-side applications
+(i.e. data that lives in application databases, not in config files).
+Examples: Grafana dashboards exported from the Grafana UI.
+Organized by application: `backups/grafana/dashboards/`, etc.
+
+These backups are **not deployed to the server** — they exist solely for
+recovery and sharing purposes.
+
 ## Code Conventions
 
 ### Commit Messages

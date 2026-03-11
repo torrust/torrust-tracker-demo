@@ -19,6 +19,11 @@ Live demo tracker endpoints:
 > was an IPv6 routing misconfiguration during that period that prevented
 > newtrackon from receiving responses. See the
 > [post-mortem](docs/post-mortems/2026-03-09-udp-ipv6-docker.md) for details.
+> Uptime figures should also be read in the context of server size and request
+> load — a tracker running on a small server that is receiving more requests
+> than it can handle will report low uptime even if the software itself is
+> healthy. See [docs/infrastructure.md](docs/infrastructure.md) for the exact
+> server specification used in this demo.
 
 ## Background
 

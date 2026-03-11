@@ -1,5 +1,7 @@
 # Torrust Tracker Demo
 
+[![Linting](https://github.com/torrust/torrust-tracker-demo/actions/workflows/linting.yml/badge.svg)](https://github.com/torrust/torrust-tracker-demo/actions/workflows/linting.yml)
+
 This repository contains the configuration needed to run the live
 [Torrust Tracker](https://github.com/torrust/torrust-tracker) demo.
 
@@ -190,6 +192,34 @@ the SNAT rule in `before6.rules` are required, see
 | [torrust/torrust-index](https://github.com/torrust/torrust-index)                       | The index software                             |
 | [torrust/torrust-demo](https://github.com/torrust/torrust-demo)                         | Original combined demo (Index + Tracker)       |
 | [torrust/torrust-tracker-deployer](https://github.com/torrust/torrust-tracker-deployer) | Deployment tooling used to provision this demo |
+
+## Linting
+
+This project uses [torrust-linting](https://crates.io/crates/torrust-linting)
+as a unified linter for Markdown, YAML, spell checking, and shell scripts.
+A CI workflow runs all linters automatically on every push and pull request.
+
+### Install the linter
+
+```sh
+cargo install torrust-linting --locked
+```
+
+This installs a binary called `linter` on your `$PATH`.
+
+### Run linters locally
+
+```sh
+./scripts/lint.sh
+```
+
+This runs markdown, YAML, spell check, and shell script linters in sequence.
+
+> **Note:** Do not run `linter all` — this repo is not a Rust project, so the
+> Rust-specific linters (clippy, rustfmt) will fail.
+
+Add any new project-specific words to `project-words.txt` (one word per line)
+to suppress false positives from the spell checker.
 
 ## Contributing
 

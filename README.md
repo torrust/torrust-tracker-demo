@@ -12,6 +12,14 @@ Live demo tracker endpoints:
 
 > The tracker is listed on [newtrackon](https://newtrackon.com/) for public uptime tracking.
 
+![Newtrackon listing showing both trackers](docs/media/newtrackon-trackers.png)
+
+> **Note:** The low uptime shown for the UDP tracker (`udp1`) reflects the fact
+> that it was added only 24 hours before this screenshot was taken, and there
+> was an IPv6 routing misconfiguration during that period that prevented
+> newtrackon from receiving responses. See the
+> [post-mortem](docs/post-mortems/2026-03-09-udp-ipv6-docker.md) for details.
+
 ## Background
 
 [Torrust](https://github.com/torrust) is an open-source organization building

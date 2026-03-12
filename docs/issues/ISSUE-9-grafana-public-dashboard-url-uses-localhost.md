@@ -1,6 +1,7 @@
 # Grafana Public Dashboard URLs Use `localhost` Instead of Real Domain
 
 **Issue**: [#9](https://github.com/torrust/torrust-tracker-demo/issues/9)
+**Related**: [torrust/torrust-tracker-deployer#415](https://github.com/torrust/torrust-tracker-deployer/issues/415) — fix should also be applied upstream in the deployer
 
 ## Problem
 
@@ -110,7 +111,7 @@ exports in `backups/grafana/dashboards/`:
 | HTTP Tracker 1   | `backups/grafana/dashboards/03-http-tracker-1.png`   |
 
 Compose those three into a single side-by-side (or grid) image and save it to
-`docs/media/grafana-dashboards-preview.png`. This composite will be the hero image
+`docs/media/grafana-dashboards.webp`. This composite will be the hero image
 shown in the README. The individual screenshots in `backups/grafana/dashboards/`
 serve as detailed references and can be linked from the README section as well.
 
@@ -128,7 +129,7 @@ Example structure:
 
 Live public dashboards are available without a Grafana account:
 
-[![Grafana dashboards preview](docs/media/grafana-dashboards-preview.png)](https://grafana.torrust-tracker-demo.com)
+[![Grafana dashboards preview](docs/media/grafana-dashboards.webp)](https://grafana.torrust-tracker-demo.com)
 
 | Dashboard        | Public link                                                                         | Screenshot                                                 |
 | ---------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------- |

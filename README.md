@@ -25,6 +25,18 @@ Live demo tracker endpoints:
 > healthy. See [docs/infrastructure.md](docs/infrastructure.md) for the exact
 > server specification used in this demo.
 
+## Grafana Dashboards
+
+Live public dashboards are available without a Grafana account:
+
+[![Grafana dashboards preview](docs/media/grafana-dashboards.webp)](https://grafana.torrust-tracker-demo.com)
+
+| Dashboard        | Public link                                                                                         | Screenshot                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Tracker Overview | [open](https://grafana.torrust-tracker-demo.com/public-dashboards/186b355b56cd482d9c441a0affdb8ecd) | [view](backups/grafana/dashboards/01-tracker-overview.png) |
+| UDP Tracker 1    | [open](https://grafana.torrust-tracker-demo.com/public-dashboards/6d493d22396c4e3cbaeec5669ed2ae69) | [view](backups/grafana/dashboards/02-udp-tracker-1.png)    |
+| HTTP Tracker 1   | [open](https://grafana.torrust-tracker-demo.com/public-dashboards/ca57cd298a0240c5b7b7965b3c47ebcf) | [view](backups/grafana/dashboards/03-http-tracker-1.png)   |
+
 ## Background
 
 [Torrust](https://github.com/torrust) is an open-source organization building

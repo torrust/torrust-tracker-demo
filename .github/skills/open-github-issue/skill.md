@@ -25,6 +25,10 @@ Create the draft under `docs/issues/` using the naming conventions below.
 - Ready to open soon: `docs/issues/ISSUE-NNN-short-description.md` (use `NNN` as placeholder)
 - Long-running or complex: `docs/issues/drafts/short-description.md` (no issue number prefix)
 
+> **Important**: never guess or assume the issue number. The real number is only known
+> after Step 4 (opening the issue on GitHub). Always use literal `NNN` in both the
+> filename and the `**Issue**:` line until the GitHub API returns the assigned number.
+
 **Draft file structure** (use Markdown, no fixed template required):
 
 ```markdown

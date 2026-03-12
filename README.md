@@ -246,6 +246,28 @@ This runs markdown, YAML, spell check, and shell script linters in sequence.
 Add any new project-specific words to `project-words.txt` (one word per line)
 to suppress false positives from the spell checker.
 
+## Disclaimer
+
+This demo tracker is provided **for documentation and educational purposes
+only**. It is intended to demonstrate how to deploy and operate the
+[Torrust Tracker](https://github.com/torrust/torrust-tracker), and not to
+provide a persistent or general-purpose public tracking service.
+
+This software is provided solely for lawful purposes. Users must ensure
+compliance with all applicable laws and regulations regarding copyright and
+intellectual property. The Torrust organization and its contributors do not
+condone or support the use of this tracker for any illegal activities, including
+but not limited to the distribution of copyrighted, protected, or otherwise
+illegal content.
+
+By using this tracker, you agree to use it responsibly and in compliance with
+all applicable legal requirements. Misuse of this tracker for illegal purposes
+may lead to legal consequences, for which the Torrust organization and its
+contributors are not liable.
+
+**Tracker data (peer lists, announce history) may be reset at any time without
+notice.**
+
 ## Contributing
 
 Feedback, issues, and pull requests are welcome. If you spot a problem with the

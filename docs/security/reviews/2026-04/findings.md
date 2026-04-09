@@ -8,6 +8,36 @@ files.
 
 ## Confirmed Findings
 
+### Finding: Public Grafana host discloses operational metadata before auth
+
+- Severity: Low
+- Surface: Grafana public exposure
+- Preconditions: Unauthenticated access to the public Grafana hostname
+- Attack path: Request public routes such as `/api/health` and `/login` on
+  `https://grafana.torrust-tracker-demo.com/` and inspect the returned JSON and
+  frontend boot data
+- Evidence:
+  - `GET https://grafana.torrust-tracker-demo.com/api/health` returns
+    `HTTP/2 200` and exposes `database: ok`, version `12.3.1`, and commit
+    `3a1c80ca7ce612f309fdc99338dd3c5e486339be`
+  - The unauthenticated `/login` page exposes Grafana boot-data flags showing
+    `anonymousEnabled: false`, `disableLoginForm: false`,
+    `disableUserSignUp: true`, `publicDashboardsEnabled: true`,
+    `pluginAdminEnabled: true`, `latestVersion: 12.4.2`, and `hasUpdate: true`
+  - The same boot data exposes edition and plugin/app metadata, including the
+    preinstalled drilldown apps
+  - Protected JSON routes such as `/api/frontend/settings` and `/api/search`
+    return proper `401` responses, which shows the disclosure is coming from
+    intentionally public routes rather than from a server error path
+- Impact: The public host gives unauthenticated visitors a clearer fingerprint
+  of the Grafana deployment, including exact version, commit, update lag, and
+  enabled feature or plugin surface, which can help attackers prioritize known
+  issues or tailor follow-on probing.
+- Remediation: Restrict or proxy-filter public Grafana routes that are not
+  needed for the demo, especially `/api/health`, and reduce unauthenticated
+  boot-data exposure where practical.
+- Status: Open
+
 ### Finding: Public HTTPS hosts do not advertise HSTS
 
 - Severity: Low
@@ -19,6 +49,9 @@ files.
   advertise `Strict-Transport-Security`, the browser is not instructed to pin
   HTTPS for future visits
 - Evidence:
+  - [../../../server/opt/torrust/docker-compose.yml](../../../server/opt/torrust/docker-compose.yml)
+    explicitly publishes port `80` as `# HTTP (ACME HTTP-01 challenge)` for the
+    Caddy service
   - `http://api.torrust-tracker-demo.com/`,
     `http://http1.torrust-tracker-demo.com/`,
     `http://http2.torrust-tracker-demo.com/`, and
@@ -29,13 +62,15 @@ files.
     `grafana.torrust-tracker-demo.com` did not include a
     `Strict-Transport-Security` header
   - [../../../server/opt/torrust/storage/caddy/etc/Caddyfile](../../../server/opt/torrust/storage/caddy/etc/Caddyfile)
-    contains reverse-proxy site blocks for the public hosts but no header
-    directive that would add HSTS
+    contains reverse-proxy site blocks for the public hosts and automatic
+    Let's Encrypt handling, but no header directive that would add HSTS
 - Impact: Plaintext-to-HTTPS redirect behavior is present, but first-visit
   users remain more exposed to downgrade or SSL-stripping attacks than they
   would be with HSTS enabled.
 - Remediation: Add an HSTS policy on the public HTTPS hosts, ideally with a
-  conservative initial max-age that can be increased after verification.
+  conservative initial max-age that can be increased after verification. This
+  does not require closing port `80`; the current config explicitly keeps port
+  `80` open for ACME HTTP-01 certificate issuance and renewal.
 - Status: Open
 
 ### Finding: Mutable container tags reduce deployment traceability
@@ -56,6 +91,11 @@ files.
     `torrust/tracker-backup:latest`
   - The tracker service block includes an inline comment stating that the
     `develop` tag is mutable and introduces deployment non-reproducibility
+  - Upstream deployer issue `torrust/torrust-tracker-deployer#254` explicitly
+    tracks replacing `torrust/tracker:develop` with `torrust/tracker:v4.0.0`
+    after the stable tracker release, and documents that `develop` is not a
+    good choice for production deployments because it can introduce breaking
+    changes at any time
   - Other core services in the same compose file are pinned to explicit version
     tags, which shows the mutable tags are an exception rather than the general
     deployment pattern
@@ -64,7 +104,11 @@ files.
   that differs from what operators believe is running.
 - Remediation: Pin deployed images to immutable digests or at least fixed
   release tags, and record the exact deployed revision in the review evidence.
-- Status: Open
+  The already-open upstream path is to switch the tracker image from
+  `develop` to `v4.0.0` once that stable release is available.
+- Status: Open. Upstream already tracks the tracker-tag remediation in
+  `torrust/torrust-tracker-deployer#254`, but the live demo config still uses a
+  mutable tracker tag today and the backup image remains on `latest`.
 
 ### Finding: Public tracker API host returns 500 with internal auth error text
 

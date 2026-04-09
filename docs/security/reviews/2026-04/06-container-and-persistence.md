@@ -38,15 +38,26 @@
 
 - No confirmed finding yet. The current configuration creates several
   persistence and lateral-movement paths that need runtime and source review.
+- Non-finding from static config review: the repository shows some deliberate
+  network separation between proxy, database, metrics, and visualization
+  networks, even though the tracker remains the most connected internet-facing
+  service.
+- Non-finding from static config review: the backup workflow is explicit and
+  auditable rather than hidden, but it still needs runtime evidence to confirm
+  file ownership, container users, and writable-path constraints.
 
 ## Open Questions
 
 - Which services run as root inside their containers?
 - Are any mounts writable beyond what the service strictly needs?
 - Can a tracker compromise reach MySQL or Prometheus with useful credentials?
+- Which files under the mounted storage paths are writable by each service at
+  runtime?
 
 ## Next Actions
 
 - Review container users, capabilities, and network reachability from runtime
   evidence.
 - Review backup scripts for secret exposure and privilege-escalation paths.
+- Collect `docker ps`, `docker inspect`, and runtime mount information from the
+  live host to verify the actual privilege model.

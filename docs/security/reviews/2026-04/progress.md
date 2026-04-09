@@ -11,9 +11,9 @@
 | Caddy and HTTPS | In progress | Confirmed low-severity finding: public hosts redirect HTTP to HTTPS but do not advertise HSTS |
 | Tracker API | In progress | Public exact `/api/health_check` returns 200; most other tested API-host paths, including path variants and unmatched paths, return auth-shaped 500 responses |
 | HTTP and UDP tracker | In progress | Both HTTP tracker hosts mirror expected announce and health behavior; UDP IPv4 responds to connect probes and some malformed packets get bounded error frames; IPv6 timed out |
-| Grafana | In progress | Public hostname exposes `/login` and `/api/health`; login form is enabled while anonymous browsing is disabled |
-| SSH and host | Not started | Needs host runtime evidence |
-| Container and persistence | In progress | Compose topology and mounts reviewed |
+| Grafana | In progress | Confirmed low-severity finding: public host exposes `/api/health` and login boot-data metadata; login form is enabled while anonymous browsing is disabled |
+| SSH and host | Blocked | Repository evidence reviewed; host authentication and service posture need runtime data |
+| Container and persistence | In progress | Static config review complete; runtime privilege and mount details still needed |
 | Supply chain | In progress | Confirmed low-severity finding: tracker and backup images use mutable tags in deployed compose config |
 
 ## Evidence Requested
@@ -60,6 +60,13 @@
 - The supply-chain review now has a confirmed low-severity finding because the
   deployed compose config uses mutable tags for the tracker and backup
   services, weakening deployment traceability.
+- Upstream deployer issue `torrust/torrust-tracker-deployer#254` already tracks
+  replacing `torrust/tracker:develop` with `torrust/tracker:v4.0.0` after the
+  stable release, which strengthens the rationale for the tracker-tag portion
+  of the finding.
+- A quick upstream issue search did not reveal an equivalent dedicated task for
+  pinning `torrust/tracker-backup:latest`; the nearest hits were the broader
+  image-update issue `#317` and backup-image CVE issue `#431`.
 - Tracker, Caddy, Grafana, and backup all rely on mounted persistent storage.
 - HTTP tracker routes trust reverse-proxy headers for client IP attribution.
 - The latest edge review pass promoted missing HSTS on the public HTTPS hosts
@@ -102,6 +109,9 @@
     - `buildInfo.latestVersion: 12.4.2`
     - `buildInfo.hasUpdate: true`
     - `pluginAdminEnabled: true`
+  - The Grafana review now has a confirmed low-severity finding because those
+    public routes disclose version, commit, update, and feature metadata before
+    authentication
   - Two documented public dashboard URLs returned `HTTP 200`
   - The third documented public dashboard URL loaded after a longer timeout
   - Grafana unauthenticated routes `/api/live/ws`, `/api/frontend/settings`,
@@ -167,6 +177,8 @@
 
 - Live runtime evidence has not been collected yet.
 - The deployed tracker source revision is still unknown.
+- The remaining host, SSH, image-digest, and container-privilege questions
+  cannot be resolved further from repository and public-endpoint evidence alone.
 
 ## Next Actions
 
@@ -178,12 +190,12 @@
   current upstream code.
 - Confirm whether the deployed tracker image matches the current upstream API
   router and auth middleware layout.
+- Decide whether a dedicated upstream task should be opened to pin the backup
+  image away from `torrust/tracker-backup:latest`.
 - Decide whether HSTS should be added directly in Caddy or through the
   deployer-generated template path.
-- Decide whether the public Grafana `/api/health` exposure should be treated as
-  acceptable observability or unnecessary public information disclosure.
-- Decide whether the public Grafana `/api/health` and boot-data disclosure are
-  acceptable for this demo or should be reduced.
+- Decide whether `/api/health` and login boot-data disclosure should be reduced
+  or explicitly accepted as part of the public demo design.
 - Determine whether the live UDP timeout cases reflect expected parser or
   request-class handling, packet loss, or deployed-runtime divergence from
   current upstream behavior.

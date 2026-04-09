@@ -33,6 +33,8 @@
   `grafana.torrust-tracker-demo.com`.
 - Confirmed Caddy proxies the tracker API to `tracker:1212` and Grafana to
   `grafana:3000`.
+- Confirmed the committed compose config intentionally publishes port `80` for
+  Caddy as `HTTP (ACME HTTP-01 challenge)`.
 - Confirmed no catch-all site block is present in the committed Caddyfile.
 - Confirmed live responses:
   - API root returns `HTTP/2 500`
@@ -59,6 +61,10 @@
 - Confirmed finding recorded: the public HTTPS hosts redirect plaintext traffic
   to HTTPS but do not advertise HSTS, which leaves first-visit clients exposed
   to downgrade or SSL-stripping risk on hostile networks.
+- Non-finding: port `80` is intentionally exposed for automatic certificate
+  issuance and renewal via ACME HTTP-01, so the current HSTS finding is about
+  missing browser-side HTTPS pinning rather than the mere existence of an HTTP
+  listener.
 - No Caddy routing misconfiguration is confirmed yet. Current evidence supports
   the configured host mapping and expected route separation.
 - No evidence yet of an unexpected extra virtual host or cross-host route leak.
@@ -73,6 +79,8 @@
   tracker router, by Caddy path handling, or by a deployed revision mismatch?
 - Is the public Grafana health endpoint an intentional exposure or just a side
   effect of exposing the full Grafana UI?
+- Could the deployment move to another ACME challenge mode later, or is HTTP-01
+  the intended long-term certificate path for this setup?
 
 ## Next Actions
 

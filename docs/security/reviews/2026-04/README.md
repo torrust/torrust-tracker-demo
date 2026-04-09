@@ -2,7 +2,8 @@
 
 **Plan**: [../../security-review-plan.md](../../security-review-plan.md)
 **Issue**: [#13](https://github.com/torrust/torrust-tracker-demo/issues/13)
-**Status**: In progress
+**Status**: In progress. Static-config and public-surface review completed;
+host-runtime evidence still pending.
 
 ## Review Metadata
 
@@ -13,13 +14,13 @@
 
 ## Scope Covered
 
-- [ ] Caddy and HTTPS routing
-- [ ] Tracker API
-- [ ] HTTP and UDP tracker protocol surface
-- [ ] Grafana
+- [x] Caddy and HTTPS routing
+- [x] Tracker API
+- [x] HTTP and UDP tracker protocol surface
+- [x] Grafana
 - [ ] SSH and host exposure
-- [ ] Container, persistence, and lateral movement
-- [ ] Supply chain and deployment provenance
+- [x] Container, persistence, and lateral movement
+- [x] Supply chain and deployment provenance
 
 ## Deployment Summary
 
@@ -44,6 +45,8 @@
 
 ## Confirmed Findings
 
+- The public Grafana host exposes operational metadata before auth through
+  `/api/health` and login boot data.
 - The public HTTPS hosts redirect HTTP to HTTPS but do not advertise HSTS,
   leaving a low-severity edge-hardening gap for first-visit clients.
 - The deployed compose config uses mutable image tags for the tracker and

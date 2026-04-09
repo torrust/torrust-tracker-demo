@@ -67,32 +67,27 @@
 
 ## Findings or Non-Findings
 
-- No confirmed finding yet. Public Grafana exposure is intentional, and the
-  current evidence shows the public host exposes both the login page and public
-  dashboards rather than only a dashboard-only anonymous surface.
+- Confirmed finding recorded: the public Grafana host exposes operational
+  metadata before auth through `/api/health` and login-page boot data.
 - No confirmed finding yet. Current evidence suggests that anonymous Grafana UI
   browsing is disabled, self-sign-up is disabled, and public dashboards are the
   intended unauthenticated surface.
-- No confirmed finding yet. The public login surface is definitely exposed, and
-  the health endpoint and login bootstrap disclose version, commit, update
-  status, and plugin metadata, but I have not yet classified that as a
-  separate issue.
+- Non-finding so far: protected JSON API routes return proper `401` responses
+  rather than leaking the same data through error handling.
 
 ## Open Questions
 
 - Is anonymous browsing limited strictly to public dashboards?
 - Are any plugins installed beyond the base image?
-- Should `/api/health` be publicly reachable on the demo hostname?
+- Should `/api/health` remain publicly reachable on the demo hostname?
 - Does the public password reset route create unnecessary account-management
   surface for a demo that does not intend public users to log in?
-- Is the login-page boot-data disclosure acceptable for this demo, given that it
-  reveals upgrade status and preinstalled plugin/app metadata?
+- Should the login-page boot-data disclosure be reduced for the demo, given
+  that it reveals upgrade status and preinstalled plugin/app metadata?
 
 ## Next Actions
 
 - Collect live Grafana auth configuration and plugin details.
 - Review the public host behavior and login exposure.
-- Review whether the publicly exposed version, commit, and health data are
-  acceptable for the demo threat model.
-- Decide whether the login bootstrap data should be reduced or whether this is
-  acceptable for an intentionally public Grafana deployment.
+- Decide whether `/api/health` and the login bootstrap data should be reduced
+  or accepted as part of the public demo design.

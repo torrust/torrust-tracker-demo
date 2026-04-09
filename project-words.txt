@@ -42,6 +42,7 @@ leecher
 logfile
 misrouted
 mkpath
+Mailgun
 mysqladmin
 netnsid
 netplan
@@ -66,6 +67,7 @@ tera
 timepicker
 tmpfs
 torrust
+tulpn
 ulnp
 userland
 veth

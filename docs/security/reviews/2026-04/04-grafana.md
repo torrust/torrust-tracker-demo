@@ -23,6 +23,8 @@
 - [../../../server/opt/torrust/docker-compose.yml](../../../server/opt/torrust/docker-compose.yml)
 - [../../../server/opt/torrust/storage/caddy/etc/Caddyfile](../../../server/opt/torrust/storage/caddy/etc/Caddyfile)
 - [../../../README.md](../../../README.md)
+- Live responses from `/`, `/login`, `/public-dashboards/`, `/api/health`, and
+  `/robots.txt` on the public Grafana host
 
 ## Checks Performed
 
@@ -31,17 +33,29 @@
 - Confirmed Grafana admin user and password are injected through environment
   variables.
 - Confirmed the README intentionally advertises public dashboards.
+- Confirmed live route behavior:
+  - `/` returns `302` to `/login`
+  - `/login` returns `200`
+  - `/public-dashboards/` returns `302`
+  - `/api/health` returns `200`
+  - `/robots.txt` returns `200`
+- Confirmed `/api/health` body exposes `database: ok`, version `12.3.1`, and
+  commit `3a1c80ca7ce612f309fdc99338dd3c5e486339be`.
 
 ## Findings or Non-Findings
 
 - No confirmed finding yet. Public Grafana exposure is intentional, but the
   exact auth boundary still needs runtime confirmation.
+- No confirmed finding yet. The public login surface is definitely exposed, and
+  the health endpoint discloses version and database status, but I have not yet
+  classified that as a separate issue.
 
 ## Open Questions
 
 - Is anonymous browsing limited strictly to public dashboards?
 - Is the Grafana login page reachable on the public host?
 - Are any plugins installed beyond the base image?
+- Should `/api/health` be publicly reachable on the demo hostname?
 
 ## Next Actions
 

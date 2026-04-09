@@ -21,6 +21,7 @@ Vigil
 agentskills
 augmentedcode
 behaviour
+bencoded
 bindv6only
 clippy
 codel

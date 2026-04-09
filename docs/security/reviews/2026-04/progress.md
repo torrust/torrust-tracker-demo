@@ -8,10 +8,10 @@
 
 | Surface | Status | Notes |
 | ------- | ------ | ----- |
-| Caddy and HTTPS | In progress | Live root-path checks completed for API, Grafana, and HTTP tracker |
-| Tracker API | In progress | Live unauthenticated requests return 500 with internal error text |
-| HTTP and UDP tracker | In progress | `/announce` confirmed reachable over HTTPS |
-| Grafana | In progress | Public hostname redirects to `/login` |
+| Caddy and HTTPS | In progress | Root-path and focused path checks completed on public HTTP hosts |
+| Tracker API | In progress | Tested paths consistently return 500 with internal unauthorized error text |
+| HTTP and UDP tracker | In progress | `/announce` and `/health_check` confirmed reachable over HTTPS |
+| Grafana | In progress | Public hostname exposes `/login` and `/api/health` |
 | SSH and host | Not started | Needs host runtime evidence |
 | Container and persistence | In progress | Compose topology and mounts reviewed |
 | Supply chain | In progress | Mutable tags identified from compose |
@@ -42,6 +42,8 @@
 - [../../../server/etc/ufw/before6.rules](../../../server/etc/ufw/before6.rules)
 - Live HTTP response headers and bodies for `api.torrust-tracker-demo.com`,
   `grafana.torrust-tracker-demo.com`, and `http1.torrust-tracker-demo.com`
+- Focused path enumeration results for the API host, Grafana host, and HTTP
+  tracker host
 
 ## Working Notes
 
@@ -57,10 +59,24 @@
   - `https://api.torrust-tracker-demo.com/` returns `HTTP/2 500`
   - `https://api.torrust-tracker-demo.com/health_check` returns `HTTP/2 500`
   - API root body exposes `Unhandled rejection: Err { reason: "unauthorized" }`
+  - Tested API paths `/login`, `/api`, `/api/`, `/stats`, `/metrics`,
+    `/health_check`, `/announce`, `/swagger`, `/openapi.json`, and
+    `/robots.txt` all return `HTTP 500`
   - `https://grafana.torrust-tracker-demo.com/` returns `HTTP/2 302` with
     `Location: /login`
+  - `https://grafana.torrust-tracker-demo.com/login` returns `HTTP/2 200`
+  - `https://grafana.torrust-tracker-demo.com/api/health` returns `HTTP/2 200`
+  - Grafana `/api/health` body exposes database status, version `12.3.1`, and
+    commit `3a1c80ca7ce612f309fdc99338dd3c5e486339be`
   - `https://http1.torrust-tracker-demo.com/` returns `HTTP/2 404`
   - `https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 200`
+  - `https://http1.torrust-tracker-demo.com/health_check` returns `HTTP/2 200`
+    with body `{"status":"Ok"}`
+  - `https://http1.torrust-tracker-demo.com/announce` without query params
+    returns a bencoded failure response describing missing query params
+  - `OPTIONS https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 405`
+    with `Allow: GET,HEAD`
+  - `OPTIONS https://api.torrust-tracker-demo.com/` still returns `HTTP/2 500`
 
 ## Blockers
 
@@ -75,3 +91,5 @@
   handling.
 - Determine whether the API `500 unauthorized` behavior is expected router
   behavior or a bug in upstream error handling.
+- Decide whether the public Grafana `/api/health` exposure should be treated as
+  acceptable observability or unnecessary public information disclosure.

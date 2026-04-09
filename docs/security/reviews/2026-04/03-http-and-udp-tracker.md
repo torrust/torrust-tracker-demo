@@ -33,17 +33,31 @@
   published through Caddy virtual hosts.
 - Confirmed `on_reverse_proxy = true` is enabled globally in the tracker
   configuration.
+- Confirmed live HTTP tracker behavior:
+  - `/` returns `HTTP 404`
+  - `/announce` returns `HTTP 200`
+  - `/health_check` returns `HTTP 200` with body `{"status":"Ok"}`
+  - `/stats`, `/metrics`, and `/robots.txt` return `HTTP 404`
+  - `/announce` without query params returns a bencoded failure response
+    explaining that query params are missing
+  - `OPTIONS /announce` returns `HTTP 405` with `Allow: GET,HEAD`
 
 ## Findings or Non-Findings
 
 - No confirmed finding yet. The committed configuration establishes the exposed
   protocol surfaces but not their parser safety.
+- No new finding yet. The public HTTP tracker appears to expose only the
+  expected tracker route plus a health endpoint.
+- The HTTP tracker route behavior looks comparatively well-bounded: unsupported
+  methods are rejected with `405`, and malformed requests return tracker-level
+  error content instead of a generic server failure.
 
 ## Open Questions
 
 - How does the deployed tracker handle malformed HTTP and UDP announce or scrape
   requests?
 - Are there request-size or rate controls in the tracker implementation?
+- Is the public HTTP health endpoint an intentional part of the demo exposure?
 
 ## Next Actions
 

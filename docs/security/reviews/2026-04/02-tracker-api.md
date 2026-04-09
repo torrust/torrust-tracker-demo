@@ -24,6 +24,8 @@
 - [../../../server/opt/torrust/docker-compose.yml](../../../server/opt/torrust/docker-compose.yml)
 - Live responses from `https://api.torrust-tracker-demo.com/` and
   `https://api.torrust-tracker-demo.com/health_check`
+- Live responses from additional tested API paths such as `/api`, `/stats`,
+  `/metrics`, `/swagger`, and `/openapi.json`
 
 ## Checks Performed
 
@@ -36,6 +38,13 @@
   `HTTP/2 500`.
 - Confirmed the API root response body exposes internal error text:
   `Unhandled rejection: Err { reason: "unauthorized" }`.
+- Confirmed the same `HTTP 500` behavior across all tested API paths:
+  `/login`, `/api`, `/api/`, `/stats`, `/metrics`, `/health_check`,
+  `/announce`, `/swagger`, `/openapi.json`, and `/robots.txt`.
+- Confirmed `/swagger` also returns the same body text:
+  `Unhandled rejection: Err { reason: "unauthorized" }`.
+- Confirmed `OPTIONS /` also returns `HTTP/2 500`, which suggests the problem is
+  not limited to one specific GET route.
 
 ## Findings or Non-Findings
 
@@ -48,6 +57,9 @@
 - Which routes require the admin token, and how is token comparison performed?
 - Should `/health_check` be public, private, or unavailable through the public
   API hostname?
+- Why do apparently nonexistent or unrelated paths also map to the same `500`
+  unauthorized response?
+- Why is method handling also routed into the same unauthorized failure path?
 
 ## Next Actions
 
@@ -55,3 +67,5 @@
 - Review all HTTP API routes, auth boundaries, and error handling paths.
 - Check whether unauthorized responses should map to `401`, `403`, or `404`
   instead of `500`.
+- Determine whether the router or fallback handler is converting every request
+  into an authenticated API failure.

@@ -18,6 +18,8 @@ files.
 - Evidence:
   - `GET /` returns `HTTP/2 500`
   - `GET /health_check` returns `HTTP/2 500`
+  - Tested paths `/login`, `/api`, `/api/`, `/stats`, `/metrics`, `/announce`,
+    `/swagger`, `/openapi.json`, and `/robots.txt` also return `HTTP/2 500`
   - API root body exposes `Unhandled rejection: Err { reason: "unauthorized" }`
 - Impact: The service exposes internal error text and uses a server error for
   an authorization failure, which leaks implementation behavior and complicates

@@ -31,8 +31,9 @@
 
 ## Findings or Non-Findings
 
-- No confirmed finding yet. Mutable tags are a documented review priority and a
-  likely future finding unless deployment provenance is established elsewhere.
+- Confirmed finding recorded: the deployed compose config uses mutable image
+  tags for the tracker and backup services, which reduces deployment
+  reproducibility and weakens rollback and incident-response traceability.
 
 ## Open Questions
 
@@ -44,3 +45,4 @@
 
 - Collect live image digests and deployed revisions.
 - Review upstream release and image provenance for the deployed services.
+- Verify which digests are currently cached or running on the live host.

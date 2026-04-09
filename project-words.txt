@@ -59,6 +59,10 @@ pkts
 post-mortems
 prometheus
 pyroscope
+datagrams
+HSTS
+nosniff
+parseable
 qdisc
 qlen
 repomix

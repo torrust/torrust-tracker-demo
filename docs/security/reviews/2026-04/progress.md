@@ -8,13 +8,13 @@
 
 | Surface | Status | Notes |
 | ------- | ------ | ----- |
-| Caddy and HTTPS | In progress | Root-path and focused path checks completed on public HTTP hosts |
-| Tracker API | In progress | Public `/api/health_check` returns 200; protected v1 routes return 500 with internal unauthorized error text |
-| HTTP and UDP tracker | In progress | `/announce` and `/health_check` confirmed reachable over HTTPS |
+| Caddy and HTTPS | In progress | Root-path and focused path checks completed; tested hosts redirect HTTP to HTTPS with 308, and HSTS classification remains open |
+| Tracker API | In progress | Public exact `/api/health_check` returns 200; most other tested API-host paths, including path variants and unmatched paths, return auth-shaped 500 responses |
+| HTTP and UDP tracker | In progress | Both HTTP tracker hosts mirror expected announce and health behavior; UDP IPv4 responds to connect probes and some malformed packets get bounded error frames; IPv6 timed out |
 | Grafana | In progress | Public hostname exposes `/login` and `/api/health` |
 | SSH and host | Not started | Needs host runtime evidence |
 | Container and persistence | In progress | Compose topology and mounts reviewed |
-| Supply chain | In progress | Mutable tags identified from compose |
+| Supply chain | In progress | Confirmed low-severity finding: tracker and backup images use mutable tags in deployed compose config |
 
 ## Evidence Requested
 
@@ -46,6 +46,8 @@
   tracker host
 - Upstream tracker source snippets for the API router, auth middleware, and
   health-check handler
+- Upstream tracker source snippets for HTTP announce extraction and UDP packet,
+  connect, and error handling
 
 ## Working Notes
 
@@ -55,12 +57,21 @@
 - The tracker container uses the mutable image tag `torrust/tracker:develop`.
 - The backup service uses `torrust/tracker-backup:latest`, which is also
   mutable.
+- The supply-chain review now has a confirmed low-severity finding because the
+  deployed compose config uses mutable tags for the tracker and backup
+  services, weakening deployment traceability.
 - Tracker, Caddy, Grafana, and backup all rely on mounted persistent storage.
 - HTTP tracker routes trust reverse-proxy headers for client IP attribution.
+- The latest HTTP/UDP and edge review pass did not add a new confirmed finding;
+  it narrowed expected parser behavior and recorded an open hardening question
+  around missing HSTS.
 - Live checks observed:
   - `https://api.torrust-tracker-demo.com/` returns `HTTP/2 500`
   - `https://api.torrust-tracker-demo.com/health_check` returns `HTTP/2 500`
   - `https://api.torrust-tracker-demo.com/api/health_check` returns `HTTP/2 200`
+  - `https://api.torrust-tracker-demo.com/api/health_check/` returns `HTTP/2 500`
+  - `https://api.torrust-tracker-demo.com/api/health_check/foo` returns `HTTP/2 500`
+  - `http://api.torrust-tracker-demo.com/` returns `HTTP/1.1 308 Permanent Redirect`
   - API root body exposes `Unhandled rejection: Err { reason: "unauthorized" }`
   - Tested API paths `/login`, `/api`, `/api/`, `/stats`, `/metrics`,
     `/health_check`, `/announce`, `/swagger`, `/openapi.json`, and
@@ -68,15 +79,22 @@
   - Tested protected API paths `/api/v1/stats`, `/api/v1/torrents`,
     `/api/v1/whitelist`, and `/api/v1/keys` all return `HTTP 500` without a
     token
+  - Clearly unmatched paths `/api/v1/notfound`, `/api/v1/foo/bar`,
+    `/api/notfound`, `/swagger`, and `/` also return `HTTP 500`
   - `/api/v1/stats` also returns distinct internal error strings for different
     auth failures: `unauthorized`, `token not valid`, and
     `unknown token provided`
+  - Invalid bearer tokens also change the response bodies on unmatched paths
+    from `unauthorized` to `token not valid`
   - `https://grafana.torrust-tracker-demo.com/` returns `HTTP/2 302` with
     `Location: /login`
+  - `http://grafana.torrust-tracker-demo.com/` returns `HTTP/1.1 308 Permanent Redirect`
   - `https://grafana.torrust-tracker-demo.com/login` returns `HTTP/2 200`
   - `https://grafana.torrust-tracker-demo.com/api/health` returns `HTTP/2 200`
   - Grafana `/api/health` body exposes database status, version `12.3.1`, and
     commit `3a1c80ca7ce612f309fdc99338dd3c5e486339be`
+  - Grafana root responses include `x-content-type-options: nosniff` and
+    `x-frame-options: deny`
   - Grafana frontend boot data on `/login` exposes:
     - `anonymousEnabled: false`
     - `disableLoginForm: false`
@@ -92,26 +110,59 @@
   - Grafana protected JSON routes return standard JSON `401` responses with
     `auth.unauthorized`, not internal server errors
   - `https://http1.torrust-tracker-demo.com/` returns `HTTP/2 404`
+  - `http://http1.torrust-tracker-demo.com/` returns `HTTP/1.1 308 Permanent Redirect`
   - `https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 200`
   - `https://http1.torrust-tracker-demo.com/health_check` returns `HTTP/2 200`
     with body `{"status":"Ok"}`
+  - `https://http2.torrust-tracker-demo.com/announce` returns `HTTP/2 200`
+  - `https://http2.torrust-tracker-demo.com/health_check` returns `HTTP/2 200`
+    with body `{"status":"Ok"}`
   - `https://http1.torrust-tracker-demo.com/announce` without query params
     returns a bencoded failure response describing missing query params
+  - `HEAD https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 200`
   - `OPTIONS https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 405`
     with `Allow: GET,HEAD`
+  - `POST https://http1.torrust-tracker-demo.com/announce` returns `HTTP/2 405`
+    with `Allow: GET,HEAD`
+  - Malformed announce query params return bencoded parser errors, including
+    invalid `info_hash` length diagnostics
+  - Upstream HTTP announce extraction intentionally returns those parser errors
+    as tracker-formatted bencoded bodies on `HTTP 200`
+  - A valid BitTorrent UDP connect probe to IPv4 `udp1.torrust-tracker-demo.com:6969`
+    returns a 16-byte connect response with the expected transaction ID
+  - Additional UDP probes showed more specific malformed-input behavior:
+    - An 8-byte garbage packet returned a UDP error response with action `3`,
+      transaction ID `0`, and parser text `Couldn't parse action`
+    - A 12-byte garbage packet returned a UDP error response with action `3`,
+      transaction ID `0`, and parser text `Invalid action`
+    - Invalid-action, wrong-protocol, and random 16-byte payloads timed out in
+      this review environment
+  - The same valid UDP connect probe to the advertised IPv6 address timed out
+  - Upstream UDP `handle_packet(...)` parses requests through
+    `Request::parse_bytes(...)` and routes parse failures into the UDP error
+    handler
+  - Upstream UDP connect handling echoes the request transaction ID and derives
+    the returned connection cookie from the remote socket fingerprint and issue
+    time
+  - No `Strict-Transport-Security` header was observed on the tested root
+    responses for the API, HTTP tracker, or Grafana hosts
   - `OPTIONS https://api.torrust-tracker-demo.com/` still returns `HTTP/2 500`
 - Upstream API source observations:
   - `packages/axum-rest-tracker-api-server/src/routes.rs` exposes public
     `GET /api/health_check`
-  - The same router applies auth middleware across the v1 API routes
+  - The same router adds the versioned API routes first, wraps that router with
+    auth middleware, and only then adds the exact public
+    `GET /api/health_check` route
   - `packages/axum-rest-tracker-api-server/src/v1/middlewares/auth.rs` maps
     missing or invalid tokens to `unhandled_rejection_response(...)`
+  - The auth middleware returns early on missing or invalid auth data instead
+    of always calling `next.run(request).await`
   - The current upstream behavior therefore explains the live `500`
-    unauthorized response on protected v1 paths
-  - Axum `Router::layer` only applies to existing routes and runs after routing,
-    so unrelated-path `500` responses still need an explanation beyond default
-    framework behavior
+    unauthorized response on protected v1 paths and on API-host paths that fall
+    into the auth-wrapped router instead of the exact public health route
   - The committed Caddy config does not rewrite the API-host request path
+  - The remaining runtime question is narrower: whether the deployed image
+    matches the current upstream router and middleware layout
 
 ## Blockers
 
@@ -122,11 +173,20 @@
 
 - Request live runtime evidence from the operator.
 - Obtain the exact deployed tracker revision.
-- Start source-backed review of Caddy, tracker API, and tracker protocol
-  handling.
-- Determine whether the API-host `500 unauthorized` behavior for unrelated paths
-  is only router-layer behavior or also involves fallback routing.
+- Collect the exact image digests currently deployed for the tracker and backup
+  services.
+- Continue source-backed review where runtime behavior still diverges from the
+  current upstream code.
+- Confirm whether the deployed tracker image matches the current upstream API
+  router and auth middleware layout.
+- Decide whether missing HSTS on the public HTTPS hosts is just a demo
+  hardening gap or a low-severity finding worth recording.
 - Decide whether the public Grafana `/api/health` exposure should be treated as
   acceptable observability or unnecessary public information disclosure.
 - Decide whether the public Grafana `/api/health` and boot-data disclosure are
   acceptable for this demo or should be reduced.
+- Determine whether the live UDP timeout cases reflect expected parser or
+  request-class handling, packet loss, or deployed-runtime divergence from
+  current upstream behavior.
+- Determine whether the UDP IPv6 timeout is an intentional limitation or an
+  operational regression on the public tracker host.

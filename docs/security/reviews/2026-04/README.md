@@ -44,8 +44,11 @@
 
 ## Confirmed Findings
 
-- Public tracker v1 API unauthenticated requests return `500` and expose
-  internal unauthorized error text instead of a proper client error.
+- The deployed compose config uses mutable image tags for the tracker and
+  backup services, which reduces deployment traceability and rollback
+  confidence.
+- Public tracker API host requests return `500` and expose internal auth error
+  text instead of proper client errors, including on apparently unrelated paths.
 
 ## Rejected Hypotheses
 
@@ -55,16 +58,21 @@
 
 - Request live runtime evidence listed in `progress.md`.
 - Obtain the exact deployed tracker revision.
-- Continue source-backed review of the public API and tracker request handling.
-- Validate whether the current API authorization error mapping and routing on
-  unrelated paths are both upstream behaviors.
+- Collect the exact image digests currently deployed for the tracker and backup
+  services.
+- Continue source-backed review of the public API, edge behavior, and tracker
+  request handling.
+- Confirm whether the deployed tracker image matches the current upstream API
+  router and auth middleware layout.
 
 ## Open Questions
 
 - Which exact tracker source revision backs the deployed `torrust/tracker:develop`
   image?
-- Why do unrelated API-host paths such as `/` and `/swagger` still hit the same
-  unauthorized `500` path instead of a clean `404`?
+- Which exact image digests are currently running for the tracker and backup
+  services?
+- Is the absence of HSTS on the public HTTPS hosts an acceptable demo tradeoff
+  or a low-severity hardening finding?
 - Is Grafana login enabled on the public hostname or restricted to public
   dashboards only?
 - What SSH authentication policy is active on the host?

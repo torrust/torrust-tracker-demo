@@ -48,9 +48,17 @@
 - Confirmed unauthenticated versioned API routes also return the same `HTTP 500`
   behavior, including `/api/v1/stats`, `/api/v1/torrents`,
   `/api/v1/whitelist`, and `/api/v1/keys`.
+- Confirmed clearly unmatched paths also return auth-shaped `HTTP 500`
+  responses, including `/api/v1/notfound`, `/api/v1/foo/bar`,
+  `/api/notfound`, `/swagger`, and `/`.
 - Confirmed the same `HTTP 500` behavior across additional tested API-host
   paths: `/login`, `/api`, `/api/`, `/stats`, `/metrics`, `/health_check`,
   `/announce`, `/swagger`, `/openapi.json`, and `/robots.txt`.
+- Confirmed path-shape behavior around the public health route:
+  - Exact `GET /api/health_check` returns `HTTP/2 200`
+  - `GET /api/health_check/` returns `HTTP/2 500` with the same auth-shaped
+    body as the protected routes
+  - `GET /api/health_check/foo` also returns the same auth-shaped `HTTP/2 500`
 - Confirmed `/swagger` also returns the same body text:
   `Unhandled rejection: Err { reason: "unauthorized" }`.
 - Confirmed `OPTIONS /` also returns `HTTP/2 500`, which suggests the problem is
@@ -61,20 +69,28 @@
   maps missing tokens, invalid tokens, and malformed auth headers to
   `unhandled_rejection_response(...)`, which returns `500` with internal error
   text such as `unauthorized`.
-- Confirmed axum `Router::layer` applies only to existing routes and runs after
-  routing, so unrelated-path `500` responses are not explained by default axum
-  layer behavior alone.
+- Confirmed the current upstream router is built by adding the versioned API
+  routes first, wrapping that router with the auth middleware, and only then
+  adding the exact public `/api/health_check` route.
+- Confirmed the upstream auth middleware returns early on missing or invalid
+  auth data instead of always calling `next.run(request).await`, which explains
+  why requests that land inside the auth-wrapped router can fail with the same
+  auth-shaped `500` before any downstream `404` is produced.
 - Confirmed the live deployment exposes all three internal auth failure strings
   on `/api/v1/stats`:
   - No token: `Unhandled rejection: Err { reason: "unauthorized" }`
   - Invalid bearer token: `Unhandled rejection: Err { reason: "token not valid" }`
   - Unsupported auth scheme: `Unhandled rejection: Err { reason: "unknown token provided" }`
+- Confirmed invalid bearer tokens also change the response bodies on clearly
+  unmatched paths such as `/api/v1/notfound`, `/api/notfound`, `/swagger`, and
+  `/`, which is consistent with the current auth middleware returning before a
+  downstream `404` can be generated.
 
 ## Findings or Non-Findings
 
 - Confirmed finding recorded: unauthenticated access to the versioned tracker
-  API currently returns `500` and exposes internal error text instead of a
-  proper client error.
+  API host currently returns `500` and exposes internal error text instead of a
+  proper client error, including on apparently unrelated or unmatched paths.
 - Non-finding: the dedicated public API health endpoint at `/api/health_check`
   is reachable and returns `200`, which is consistent with the upstream route
   table.
@@ -83,9 +99,8 @@
 
 - Which exact tracker revision backs the deployed `torrust/tracker:develop`
   image?
-- Is the current API-host `500` behavior for unrelated paths caused entirely by
-  router-level auth layering, or is there also a fallback-route issue in the
-  deployed build?
+- Exactly which request set is captured by the auth-wrapped router versus the
+  standalone public health route in the deployed build?
 - Should the public API hostname expose only `/api/health_check` and `/api/v1/*`,
   or are there additional intended routes that are not documented here?
 
@@ -93,8 +108,8 @@
 
 - Map the deployed behavior against the exact upstream commit shipped in the
   running image.
-- Review whether non-versioned and clearly unrelated API-host paths should be
-  reaching the auth middleware at all.
+- Confirm whether the deployed image matches the current upstream router and
+  middleware layout.
 - Check whether unauthorized responses should map to `401`, `403`, or `404`
   instead of `500`.
 - Continue probing only the documented `/api/health_check` and `/api/v1/*`

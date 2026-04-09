@@ -8,7 +8,7 @@
 
 | Surface | Status | Notes |
 | ------- | ------ | ----- |
-| Caddy and HTTPS | In progress | Root-path and focused path checks completed; tested hosts redirect HTTP to HTTPS with 308, and HSTS classification remains open |
+| Caddy and HTTPS | In progress | Confirmed low-severity finding: public hosts redirect HTTP to HTTPS but do not advertise HSTS |
 | Tracker API | In progress | Public exact `/api/health_check` returns 200; most other tested API-host paths, including path variants and unmatched paths, return auth-shaped 500 responses |
 | HTTP and UDP tracker | In progress | Both HTTP tracker hosts mirror expected announce and health behavior; UDP IPv4 responds to connect probes and some malformed packets get bounded error frames; IPv6 timed out |
 | Grafana | In progress | Public hostname exposes `/login` and `/api/health` |
@@ -62,9 +62,8 @@
   services, weakening deployment traceability.
 - Tracker, Caddy, Grafana, and backup all rely on mounted persistent storage.
 - HTTP tracker routes trust reverse-proxy headers for client IP attribution.
-- The latest HTTP/UDP and edge review pass did not add a new confirmed finding;
-  it narrowed expected parser behavior and recorded an open hardening question
-  around missing HSTS.
+- The latest edge review pass promoted missing HSTS on the public HTTPS hosts
+  from an open hardening question to a confirmed low-severity finding.
 - Live checks observed:
   - `https://api.torrust-tracker-demo.com/` returns `HTTP/2 500`
   - `https://api.torrust-tracker-demo.com/health_check` returns `HTTP/2 500`
@@ -179,8 +178,8 @@
   current upstream code.
 - Confirm whether the deployed tracker image matches the current upstream API
   router and auth middleware layout.
-- Decide whether missing HSTS on the public HTTPS hosts is just a demo
-  hardening gap or a low-severity finding worth recording.
+- Decide whether HSTS should be added directly in Caddy or through the
+  deployer-generated template path.
 - Decide whether the public Grafana `/api/health` exposure should be treated as
   acceptable observability or unnecessary public information disclosure.
 - Decide whether the public Grafana `/api/health` and boot-data disclosure are

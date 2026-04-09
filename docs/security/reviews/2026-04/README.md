@@ -44,6 +44,8 @@
 
 ## Confirmed Findings
 
+- The public HTTPS hosts redirect HTTP to HTTPS but do not advertise HSTS,
+  leaving a low-severity edge-hardening gap for first-visit clients.
 - The deployed compose config uses mutable image tags for the tracker and
   backup services, which reduces deployment traceability and rollback
   confidence.
@@ -71,8 +73,6 @@
   image?
 - Which exact image digests are currently running for the tracker and backup
   services?
-- Is the absence of HSTS on the public HTTPS hosts an acceptable demo tradeoff
-  or a low-severity hardening finding?
 - Is Grafana login enabled on the public hostname or restricted to public
   dashboards only?
 - What SSH authentication policy is active on the host?

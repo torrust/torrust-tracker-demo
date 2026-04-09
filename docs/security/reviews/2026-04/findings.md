@@ -8,6 +8,36 @@ files.
 
 ## Confirmed Findings
 
+### Finding: Public HTTPS hosts do not advertise HSTS
+
+- Severity: Low
+- Surface: Edge HTTPS hardening
+- Preconditions: A user's first or non-pinned visit to one of the public HTTPS
+  hosts over an attacker-controlled or hostile network
+- Attack path: Induce the client to connect over plaintext HTTP first or strip
+  the upgrade before HSTS has ever been cached; because the public hosts do not
+  advertise `Strict-Transport-Security`, the browser is not instructed to pin
+  HTTPS for future visits
+- Evidence:
+  - `http://api.torrust-tracker-demo.com/`,
+    `http://http1.torrust-tracker-demo.com/`,
+    `http://http2.torrust-tracker-demo.com/`, and
+    `http://grafana.torrust-tracker-demo.com/` all redirect to HTTPS with
+    `HTTP 308`
+  - Tested HTTPS root responses for `api.torrust-tracker-demo.com`,
+    `http1.torrust-tracker-demo.com`, `http2.torrust-tracker-demo.com`, and
+    `grafana.torrust-tracker-demo.com` did not include a
+    `Strict-Transport-Security` header
+  - [../../../server/opt/torrust/storage/caddy/etc/Caddyfile](../../../server/opt/torrust/storage/caddy/etc/Caddyfile)
+    contains reverse-proxy site blocks for the public hosts but no header
+    directive that would add HSTS
+- Impact: Plaintext-to-HTTPS redirect behavior is present, but first-visit
+  users remain more exposed to downgrade or SSL-stripping attacks than they
+  would be with HSTS enabled.
+- Remediation: Add an HSTS policy on the public HTTPS hosts, ideally with a
+  conservative initial max-age that can be increased after verification.
+- Status: Open
+
 ### Finding: Mutable container tags reduce deployment traceability
 
 - Severity: Low

@@ -44,7 +44,8 @@
 
 ## Confirmed Findings
 
-- None recorded yet.
+- Public tracker API unauthenticated requests return `500` and expose internal
+  unauthorized error text instead of a proper client error.
 
 ## Rejected Hypotheses
 
@@ -55,6 +56,8 @@
 - Request live runtime evidence listed in `progress.md`.
 - Obtain the tracker source repository and deployed revision.
 - Begin source-backed review of the public API and tracker request handling.
+- Validate whether the API authorization error mapping is an upstream bug and
+  identify the correct expected response.
 
 ## Open Questions
 

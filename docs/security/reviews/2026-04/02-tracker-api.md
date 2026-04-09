@@ -22,6 +22,8 @@
 - [../../../server/opt/torrust/storage/caddy/etc/Caddyfile](../../../server/opt/torrust/storage/caddy/etc/Caddyfile)
 - [../../../server/opt/torrust/storage/tracker/etc/tracker.toml](../../../server/opt/torrust/storage/tracker/etc/tracker.toml)
 - [../../../server/opt/torrust/docker-compose.yml](../../../server/opt/torrust/docker-compose.yml)
+- Live responses from `https://api.torrust-tracker-demo.com/` and
+  `https://api.torrust-tracker-demo.com/health_check`
 
 ## Checks Performed
 
@@ -30,18 +32,26 @@
   `TORRUST_TRACKER_CONFIG_OVERRIDE_HTTP_API__ACCESS_TOKENS__ADMIN`.
 - Confirmed repository config alone does not identify the full public route
   surface; source review is required.
+- Confirmed live unauthenticated requests to `/` and `/health_check` return
+  `HTTP/2 500`.
+- Confirmed the API root response body exposes internal error text:
+  `Unhandled rejection: Err { reason: "unauthorized" }`.
 
 ## Findings or Non-Findings
 
-- No confirmed finding yet. Public API exposure is intentional and requires
-  source review to judge risk.
+- Confirmed finding recorded: unauthenticated public API requests currently
+  return `500` and expose internal error text instead of a proper client error.
 
 ## Open Questions
 
 - Which API routes exist on the deployed tracker revision?
 - Which routes require the admin token, and how is token comparison performed?
+- Should `/health_check` be public, private, or unavailable through the public
+  API hostname?
 
 ## Next Actions
 
 - Obtain the tracker source repository and deployed revision.
 - Review all HTTP API routes, auth boundaries, and error handling paths.
+- Check whether unauthorized responses should map to `401`, `403`, or `404`
+  instead of `500`.

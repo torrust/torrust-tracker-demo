@@ -8,7 +8,23 @@ files.
 
 ## Confirmed Findings
 
-No confirmed findings recorded yet.
+### Finding: Public tracker API returns 500 with internal unauthorized error text
+
+- Severity: Low
+- Surface: Tracker API
+- Preconditions: Unauthenticated access to the public API hostname
+- Attack path: Send an unauthenticated request to `https://api.torrust-tracker-demo.com/`
+  or `https://api.torrust-tracker-demo.com/health_check`
+- Evidence:
+  - `GET /` returns `HTTP/2 500`
+  - `GET /health_check` returns `HTTP/2 500`
+  - API root body exposes `Unhandled rejection: Err { reason: "unauthorized" }`
+- Impact: The service exposes internal error text and uses a server error for
+  an authorization failure, which leaks implementation behavior and complicates
+  monitoring, alerting, and incident triage.
+- Remediation: Map unauthorized requests to the appropriate client error
+  response and avoid returning internal exception text in the response body.
+- Status: Open
 
 ## Accepted Risks
 

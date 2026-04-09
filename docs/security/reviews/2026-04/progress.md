@@ -11,7 +11,7 @@
 | Caddy and HTTPS | In progress | Confirmed low-severity finding: public hosts redirect HTTP to HTTPS but do not advertise HSTS |
 | Tracker API | In progress | Public exact `/api/health_check` returns 200; most other tested API-host paths, including path variants and unmatched paths, return auth-shaped 500 responses |
 | HTTP and UDP tracker | In progress | Both HTTP tracker hosts mirror expected announce and health behavior; UDP IPv4 responds to connect probes and some malformed packets get bounded error frames; IPv6 timed out |
-| Grafana | In progress | Public hostname exposes `/login` and `/api/health` |
+| Grafana | In progress | Public hostname exposes `/login` and `/api/health`; login form is enabled while anonymous browsing is disabled |
 | SSH and host | Not started | Needs host runtime evidence |
 | Container and persistence | In progress | Compose topology and mounts reviewed |
 | Supply chain | In progress | Confirmed low-severity finding: tracker and backup images use mutable tags in deployed compose config |

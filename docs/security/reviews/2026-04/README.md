@@ -73,6 +73,4 @@
   image?
 - Which exact image digests are currently running for the tracker and backup
   services?
-- Is Grafana login enabled on the public hostname or restricted to public
-  dashboards only?
 - What SSH authentication policy is active on the host?

@@ -67,8 +67,9 @@
 
 ## Findings or Non-Findings
 
-- No confirmed finding yet. Public Grafana exposure is intentional, but the
-  exact auth boundary still needs runtime confirmation.
+- No confirmed finding yet. Public Grafana exposure is intentional, and the
+  current evidence shows the public host exposes both the login page and public
+  dashboards rather than only a dashboard-only anonymous surface.
 - No confirmed finding yet. Current evidence suggests that anonymous Grafana UI
   browsing is disabled, self-sign-up is disabled, and public dashboards are the
   intended unauthenticated surface.
@@ -80,7 +81,6 @@
 ## Open Questions
 
 - Is anonymous browsing limited strictly to public dashboards?
-- Is the Grafana login page reachable on the public host?
 - Are any plugins installed beyond the base image?
 - Should `/api/health` be publicly reachable on the demo hostname?
 - Does the public password reset route create unnecessary account-management

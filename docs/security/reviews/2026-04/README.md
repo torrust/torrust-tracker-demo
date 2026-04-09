@@ -44,8 +44,8 @@
 
 ## Confirmed Findings
 
-- Public tracker API unauthenticated requests return `500` and expose internal
-  unauthorized error text instead of a proper client error.
+- Public tracker v1 API unauthenticated requests return `500` and expose
+  internal unauthorized error text instead of a proper client error.
 
 ## Rejected Hypotheses
 
@@ -54,15 +54,17 @@
 ## Follow-Up Actions
 
 - Request live runtime evidence listed in `progress.md`.
-- Obtain the tracker source repository and deployed revision.
-- Begin source-backed review of the public API and tracker request handling.
-- Validate whether the API authorization error mapping is an upstream bug and
-  identify the correct expected response.
+- Obtain the exact deployed tracker revision.
+- Continue source-backed review of the public API and tracker request handling.
+- Validate whether the current API authorization error mapping and routing on
+  unrelated paths are both upstream behaviors.
 
 ## Open Questions
 
 - Which exact tracker source revision backs the deployed `torrust/tracker:develop`
   image?
+- Why do unrelated API-host paths such as `/` and `/swagger` still hit the same
+  unauthorized `500` path instead of a clean `404`?
 - Is Grafana login enabled on the public hostname or restricted to public
   dashboards only?
 - What SSH authentication policy is active on the host?

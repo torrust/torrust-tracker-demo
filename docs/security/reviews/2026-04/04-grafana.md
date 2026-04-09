@@ -25,6 +25,7 @@
 - [../../../README.md](../../../README.md)
 - Live responses from `/`, `/login`, `/public-dashboards/`, `/api/health`, and
   `/robots.txt` on the public Grafana host
+- Frontend boot-data settings embedded in the unauthenticated `/login` page
 
 ## Checks Performed
 
@@ -41,14 +42,40 @@
   - `/robots.txt` returns `200`
 - Confirmed `/api/health` body exposes `database: ok`, version `12.3.1`, and
   commit `3a1c80ca7ce612f309fdc99338dd3c5e486339be`.
+- Confirmed unauthenticated route behavior:
+  - `/api/live/ws` returns `401`
+  - `/api/frontend/settings` returns `401`
+  - `/api/search` returns `401`
+  - `/signup` and `/user/password/send-reset-email` are routable and return `200`
+- Confirmed unauthenticated protected JSON routes return normal Grafana auth
+  errors rather than internal server errors:
+  - `/api/frontend/settings` returns JSON `401` with `auth.unauthorized`
+  - `/api/search` returns JSON `401` with `auth.unauthorized`
+- Confirmed frontend boot data on `/login` includes:
+  - `anonymousEnabled: false`
+  - `disableLoginForm: false`
+  - `disableUserSignUp: true`
+  - `publicDashboardsEnabled: true`
+- Confirmed the same boot data also exposes additional operational details:
+  - `buildInfo.latestVersion: 12.4.2`
+  - `buildInfo.hasUpdate: true`
+  - `pluginAdminEnabled: true`
+  - Preinstalled app/plugin identifiers for logs, traces, metrics, and
+    pyroscope drilldown apps
+- Confirmed the three public dashboard URLs documented in the repository are
+  reachable without authentication, although one required a longer timeout.
 
 ## Findings or Non-Findings
 
 - No confirmed finding yet. Public Grafana exposure is intentional, but the
   exact auth boundary still needs runtime confirmation.
+- No confirmed finding yet. Current evidence suggests that anonymous Grafana UI
+  browsing is disabled, self-sign-up is disabled, and public dashboards are the
+  intended unauthenticated surface.
 - No confirmed finding yet. The public login surface is definitely exposed, and
-  the health endpoint discloses version and database status, but I have not yet
-  classified that as a separate issue.
+  the health endpoint and login bootstrap disclose version, commit, update
+  status, and plugin metadata, but I have not yet classified that as a
+  separate issue.
 
 ## Open Questions
 
@@ -56,8 +83,16 @@
 - Is the Grafana login page reachable on the public host?
 - Are any plugins installed beyond the base image?
 - Should `/api/health` be publicly reachable on the demo hostname?
+- Does the public password reset route create unnecessary account-management
+  surface for a demo that does not intend public users to log in?
+- Is the login-page boot-data disclosure acceptable for this demo, given that it
+  reveals upgrade status and preinstalled plugin/app metadata?
 
 ## Next Actions
 
 - Collect live Grafana auth configuration and plugin details.
 - Review the public host behavior and login exposure.
+- Review whether the publicly exposed version, commit, and health data are
+  acceptable for the demo threat model.
+- Decide whether the login bootstrap data should be reduced or whether this is
+  acceptable for an intentionally public Grafana deployment.

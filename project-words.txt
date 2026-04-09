@@ -31,6 +31,7 @@ ctstate
 demotracker
 deogmiudufm
 dockerized
+drilldown
 dport
 dtolnay
 efivarfs
@@ -57,6 +58,7 @@ oneshot
 pkts
 post-mortems
 prometheus
+pyroscope
 qdisc
 qlen
 repomix
@@ -64,6 +66,7 @@ rgba
 rustfmt
 shellcheck
 sourceable
+signup
 tcpdump
 tera
 timepicker

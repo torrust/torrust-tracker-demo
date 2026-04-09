@@ -4,6 +4,7 @@ Brevo
 Caddyfile
 DNAT
 EADDRINUSE
+EACCES
 Freshping
 Gatus
 Leechers

@@ -4,6 +4,7 @@ Brevo
 Caddyfile
 DNAT
 EADDRINUSE
+EACCES
 Freshping
 Gatus
 Leechers
@@ -20,6 +21,7 @@ Vigil
 agentskills
 augmentedcode
 behaviour
+bencoded
 bindv6only
 clippy
 codel
@@ -29,6 +31,7 @@ ctstate
 demotracker
 deogmiudufm
 dockerized
+drilldown
 dport
 dtolnay
 efivarfs
@@ -42,6 +45,7 @@ leecher
 logfile
 misrouted
 mkpath
+Mailgun
 mysqladmin
 netnsid
 netplan
@@ -54,6 +58,11 @@ oneshot
 pkts
 post-mortems
 prometheus
+pyroscope
+datagrams
+HSTS
+nosniff
+parseable
 qdisc
 qlen
 repomix
@@ -61,11 +70,13 @@ rgba
 rustfmt
 shellcheck
 sourceable
+signup
 tcpdump
 tera
 timepicker
 tmpfs
 torrust
+tulpn
 ulnp
 userland
 veth

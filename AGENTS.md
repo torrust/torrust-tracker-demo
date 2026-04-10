@@ -67,16 +67,26 @@ Format:
 ### Markdown
 
 - All Markdown files must pass the markdown linter.
-- Run: `npx markdownlint-cli2 "**/*.md"`
+- Preferred command: `./scripts/lint.sh`
+- Direct command: `npx markdownlint-cli2 "**/*.md"`
 
 ### Spell Checking
 
 - All files must pass CSpell spell checking.
-- Run: `npx cspell --no-progress`
+- Preferred command: `./scripts/lint.sh`
+- Direct command: `npx cspell --no-progress`
 - Add project-specific terms to `project-words.txt`.
+
+### Linting Summary
+
+- The canonical lint entry point is `./scripts/lint.sh`.
+- Install the wrapper with `cargo install torrust-linting --locked`.
+- Install `yamllint` and `shellcheck` on `$PATH` before running the script.
+- If npm install steps fail with `EACCES`, use a user-local npm prefix.
+- See [docs/linting.md](docs/linting.md) for installation and troubleshooting.
 
 ## Pull Request Guidelines
 
 - Title must follow the Conventional Commits format: `<type>[scope]: <description>`
-- Run the markdown linter and spell checker before opening a PR.
+- Run `./scripts/lint.sh` before opening a PR.
 - Reference related issues in the PR body using `Refs: #<issue>`.

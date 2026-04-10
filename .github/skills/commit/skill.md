@@ -23,16 +23,26 @@ Also requires: Node.js ≥ 20, `yamllint`, and `shellcheck` available on `$PATH`
 ## Run Linters Before Committing
 
 ```sh
-./scripts/lint.sh
+./scripts/pre-commit.sh
 ```
 
-This runs markdown, YAML, spell check, and shell script linters in sequence.
-Stops on first failure.
+This is the pre-commit entry point and currently delegates to `./scripts/lint.sh`.
+It runs markdown, YAML, spell check, and shell script linters in sequence and
+stops on first failure.
+
+The repository also provides a tracked Git hook at `.githooks/pre-commit`.
+Enable it locally with:
+
+```sh
+git config core.hooksPath .githooks
+```
 
 Fix all reported issues before committing. Add any new project-specific words to
 `project-words.txt` (one word per line).
 
 ## Commit Message Format
+
+All commits must be GPG-signed.
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 

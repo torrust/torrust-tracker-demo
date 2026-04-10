@@ -14,6 +14,30 @@ Run all linters with:
 This is the preferred command for local validation before committing or opening
 a pull request.
 
+## Pre-commit Script
+
+The repository also provides a pre-commit wrapper:
+
+```sh
+./scripts/pre-commit.sh
+```
+
+For now this script delegates directly to `./scripts/lint.sh`.
+
+## Git Pre-commit Hook
+
+A tracked Git hook is included at `.githooks/pre-commit` and runs
+`./scripts/pre-commit.sh` automatically before `git commit`.
+
+Enable the tracked hooks once per local clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+After that, `git commit` will execute the repository's pre-commit checks
+automatically.
+
 The script runs these linters in order:
 
 ```sh
@@ -73,7 +97,7 @@ Run this before committing:
 ```sh
 export NPM_CONFIG_PREFIX="$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
-./scripts/lint.sh
+./scripts/pre-commit.sh
 ```
 
 If the script passes, the repository is clean for Markdown, YAML, spelling, and
@@ -167,6 +191,8 @@ Use spaces for wrapped list items and paragraph continuations.
 ## Files Involved
 
 - [scripts/lint.sh](../scripts/lint.sh)
+- [scripts/pre-commit.sh](../scripts/pre-commit.sh)
+- [.githooks/pre-commit](../.githooks/pre-commit)
 - [project-words.txt](../project-words.txt)
 - [cspell.json](../cspell.json)
 - [.markdownlint.json](../.markdownlint.json)
@@ -175,6 +201,7 @@ Use spaces for wrapped list items and paragraph continuations.
 ## Notes
 
 - `./scripts/lint.sh` is the canonical repository command.
+- `./scripts/pre-commit.sh` is the hook-friendly entry point for commit-time checks.
 - If you document new product names, services, or command tokens, update
   `project-words.txt` as part of the same change.
 - Run the full script again after fixing targeted issues to ensure the complete

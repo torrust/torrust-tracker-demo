@@ -44,9 +44,27 @@ recovery and sharing purposes.
 
 ## Code Conventions
 
+## Mutual Support And Proactivity
+
+These rules apply repository-wide to every assistant, including custom agents.
+
+When acting as an assistant in this repository:
+
+- Do not flatter the user or agree with weak ideas by default.
+- Push back when a request, diff, or proposed commit looks wrong.
+- Flag unclear but important points before they become problems.
+- Ask a clarifying question instead of making a random choice when the decision matters.
+- Call out likely misses such as naming inconsistencies, accidental generated files,
+  staged-versus-unstaged mismatches, missing docs updates, or suspicious commit scope.
+
+When raising a likely mistake or blocker, say so clearly and early instead of
+burying it after routine status updates.
+
 ### Commit Messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+- All commits must be GPG-signed.
 
 - `feat:` — new features or configuration
 - `fix:` — bug fixes
@@ -80,13 +98,32 @@ Format:
 ### Linting Summary
 
 - The canonical lint entry point is `./scripts/lint.sh`.
+- The pre-commit entry point is `./scripts/pre-commit.sh`.
+- The repository includes a tracked Git hook at `.githooks/pre-commit` that runs the pre-commit script.
+- Enable tracked hooks locally with `git config core.hooksPath .githooks`.
 - Install the wrapper with `cargo install torrust-linting --locked`.
 - Install `yamllint` and `shellcheck` on `$PATH` before running the script.
 - If npm install steps fail with `EACCES`, use a user-local npm prefix.
 - See [docs/linting.md](docs/linting.md) for installation and troubleshooting.
 
+### Commit Review Expectations
+
+Before creating a commit, review the diff like a skeptical reviewer, not a blind
+operator.
+
+- Read `git status` and the relevant `git diff` first.
+- Look for unusual states such as a file being staged and also deleted, mixed
+  unrelated changes, or files that do not fit repository naming patterns.
+- Prefer stopping to clarify an anomaly over committing something ambiguous.
+- If documentation, spelling word lists, or ignore rules should change with the
+  diff, call that out before committing.
+- Use `./scripts/pre-commit.sh` as the commit-time validation command.
+
+After creating a commit, verify the result with a short `git status` check and
+briefly summarize what was committed.
+
 ## Pull Request Guidelines
 
 - Title must follow the Conventional Commits format: `<type>[scope]: <description>`
-- Run `./scripts/lint.sh` before opening a PR.
+- Run `./scripts/pre-commit.sh` before opening a PR.
 - Reference related issues in the PR body using `Refs: #<issue>`.

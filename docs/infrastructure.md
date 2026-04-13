@@ -4,6 +4,8 @@ Documents the hardware, network, and DNS configuration of the live demo server.
 
 For raw command outputs (`ip addr`, `df -h`, etc.) see
 [infrastructure-raw-outputs.md](infrastructure-raw-outputs.md).
+For server resize and observed request-rate history see
+[infrastructure-resize-history.md](infrastructure-resize-history.md).
 
 ## Server
 
@@ -18,7 +20,8 @@ For raw command outputs (`ip addr`, `df -h`, etc.) see
 | RAM           | 16 GB                                          |
 | Local disk    | 160 GB NVMe SSD                                |
 | Volume        | 50 GB, mounted at `/opt/torrust/storage`       |
-| Price         | €23.99/month                                   |
+| Traffic       | 20 TB                                          |
+| Price         | €0.051/h - €31.49/month                        |
 | Datacenter    | `nbg1-dc3`                                     |
 | City          | Nuremberg, Germany                             |
 | Network zone  | `eu-central`                                   |

@@ -37,6 +37,7 @@ request to run `git commit`.
 - Do not rewrite or revert unrelated user changes.
 - Do not create empty, vague, or non-conventional commit messages.
 - Do not commit secrets, backup junk, or accidental files.
+- **Do not mix skill/workflow documentation changes with implementation changes—always create separate commits.**
 
 ## Output Format
 

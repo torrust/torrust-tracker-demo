@@ -10,6 +10,17 @@ metadata:
 
 Always run the linters locally before committing to avoid CI failures.
 
+## Commit Scope Separation
+
+**Critical rule**: Never mix skill/workflow documentation changes (`.github/skills/`, `.github/agents/`, AGENTS.md) with implementation changes in a single commit.
+
+When a change affects both documentation/skills and implementation:
+
+1. **First commit**: Update the skill/documentation files only (type: `docs`)
+2. **Second commit**: Implement the feature or fix (type: `feat`, `fix`, etc.)
+
+This keeps changes logically separated and makes the commit history easier to review.
+
 ## Prerequisites
 
 Install the linter binary once:
@@ -53,3 +64,5 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 Types: `feat`, `fix`, `docs`, `chore`, `refactor`.
+
+When updating documentation for skills or workflows, use `docs` type. Implementation changes use their appropriate type (`feat`, `fix`, etc.) in a separate commit.

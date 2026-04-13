@@ -39,16 +39,15 @@ canonical title. Derive the normalized branch name from it.
 
 **Always show the branch name to the user and wait for explicit approval before creating it.**
 
-### Step 3 — Create and switch to the branch
+### Step 3 — Create and switch to the branch locally
+
+Create the branch locally only (do not push to remote at this stage):
 
 ```bash
 git checkout -b <branch-name>
 ```
 
-### Step 4 — Push the branch to origin (optional, do when first committing)
+### Step 4 — Push to remote when creating the pull request
 
-```bash
-git push -u origin <branch-name>
-```
-
-The branch is typically pushed with the first commit rather than immediately after creation.
+The branch is pushed to origin only when creating the pull request. Do not push the branch
+to remote immediately after creation—wait until the PR workflow.

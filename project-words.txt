@@ -54,6 +54,7 @@ newtrackon
 noall
 noprefixroute
 noqueue
+oneline
 oneshot
 pkts
 post-mortems

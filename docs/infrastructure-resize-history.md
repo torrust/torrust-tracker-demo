@@ -23,10 +23,10 @@ investigations (especially for UDP uptime on newTrackon).
 
 ## Timeline
 
-| Date (UTC) | Change type           | Server plan | vCPU | RAM   | HTTP1 req/s | UDP1 req/s | Total req/s | Req/s per vCPU | UDP newTrackon uptime | Notes                                                                                | Related                                                          |
-| ---------- | --------------------- | ----------- | ---- | ----- | ----------- | ---------- | ----------- | -------------- | --------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| 2026-04-13 | Baseline (pre-resize) | CCX23       | 4    | 16 GB | ~1300       | ~1500      | ~2800       | ~700           | 92.20%                | High combined load. Capacity pressure suspected at current normalized request rate.  | [#19](https://github.com/torrust/torrust-tracker-demo/issues/19) |
-| 2026-04-13 | Planned target resize | CCX33       | 8    | 32 GB | ~1300       | ~1500      | ~2800       | ~350           | 92.20%                | Selected next plan: 30 TB traffic, €0.100/h - €62.49/mo. Value assumes similar load. | [#21](https://github.com/torrust/torrust-tracker-demo/issues/21) |
+| Date (UTC) | Change type           | Server plan | vCPU | RAM   | HTTP1 req/s | UDP1 req/s | Total req/s | Req/s per vCPU | UDP newTrackon uptime | Notes                                                                                           | Related                                                          |
+| ---------- | --------------------- | ----------- | ---- | ----- | ----------- | ---------- | ----------- | -------------- | --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 2026-04-13 | Baseline (pre-resize) | CCX23       | 4    | 16 GB | ~1350       | ~1507      | ~2857       | ~714           | 92.20%                | Baseline from Prometheus 5m rate snapshot at 2026-04-13T15:27:46Z. Capacity pressure suspected. | [#19](https://github.com/torrust/torrust-tracker-demo/issues/19) |
+| 2026-04-13 | Planned target resize | CCX33       | 8    | 32 GB | ~1350       | ~1507      | ~2857       | ~357           | 92.20%                | Selected next plan: 30 TB traffic, €0.100/h - €62.49/mo. Assumes similar load after resize.     | [#21](https://github.com/torrust/torrust-tracker-demo/issues/21) |
 
 ## Decision Criteria (Suggested)
 

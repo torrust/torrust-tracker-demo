@@ -64,7 +64,7 @@ The `--body` parameter supports markdown. Use `Fixes #<issue-number>` to auto-li
 
 GitHub CLI will output the PR URL:
 
-```
+```text
 https://github.com/torrust/torrust-tracker-demo/pull/<number>
 ```
 

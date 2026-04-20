@@ -5,6 +5,7 @@ Caddyfile
 DNAT
 EADDRINUSE
 EACCES
+ERRO
 Freshping
 Gatus
 Leechers
@@ -22,6 +23,7 @@ agentskills
 augmentedcode
 behaviour
 bencoded
+bleve
 bindv6only
 clippy
 codel
@@ -31,6 +33,7 @@ ctstate
 demotracker
 deogmiudufm
 dockerized
+defence
 drilldown
 dport
 dtolnay
@@ -55,6 +58,7 @@ noall
 noprefixroute
 noqueue
 oneline
+organised
 oneshot
 pkts
 post-mortems
@@ -67,6 +71,7 @@ parseable
 qdisc
 qlen
 repomix
+realised
 rgba
 rustfmt
 shellcheck
@@ -79,5 +84,6 @@ tmpfs
 torrust
 tulpn
 ulnp
+usagestats
 userland
 veth

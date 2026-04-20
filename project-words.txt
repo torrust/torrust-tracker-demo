@@ -48,6 +48,7 @@ mkpath
 Mailgun
 mysqladmin
 netnsid
+netfilter
 netplan
 networkd
 newtrackon

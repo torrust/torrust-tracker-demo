@@ -3,7 +3,7 @@ name: open-github-issue
 description: Step-by-step process for creating and opening a GitHub issue in the torrust-tracker-demo repository. Use when asked to open, create, or file an issue. Covers writing the draft file, human review, opening on GitHub, renaming the file, and committing. Triggers on "open issue", "create issue", "new issue", "file issue", "draft issue".
 metadata:
   author: torrust
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Opening a GitHub Issue
@@ -39,7 +39,7 @@ Create the draft under `docs/issues/` using the naming conventions below.
 # <Title>
 
 **Issue**: _(to be filled after publication)_
-**Related**: <links to related issues in this or other repos, if any>
+**Related**: <links to related issues in this or other repos — omit this line entirely if there are none>
 
 ## Overview
 
@@ -54,12 +54,14 @@ Create the draft under `docs/issues/` using the naming conventions below.
 
 ### Step 2 — Run linters
 
+Use the canonical lint script (see the `run-linters` skill for prerequisites and troubleshooting):
+
 ```bash
-npx markdownlint-cli2 "**/*.md"
-npx cspell --no-progress
+./scripts/lint.sh
 ```
 
-Fix any errors. Add new project-specific words to `project-words.txt` (one word per line).
+Fix any errors. Add new project-specific words to `project-words.txt` (one word per line, keep the
+file sorted). Re-run the linter after editing `project-words.txt` to confirm the errors are gone.
 
 ### Step 3 — Human review
 
@@ -80,6 +82,11 @@ Use the GitHub API/tool to create the issue:
 - Note the assigned issue number from the response.
 - If opening is canceled or fails, do not invent a number and do not rename the draft file.
 
+> **Multiple issues in one session**: when one issue will reference another (e.g. a follow-up
+> issue that links back to a root cause issue), open them in dependency order — open the
+> referenced issue first, record its number, then open the referencing issue with the real link.
+> Never guess or placeholder the number of an issue that has not been opened yet.
+
 ### Step 5 — Rename the draft file and update the issue link
 
 ```bash
@@ -87,7 +94,8 @@ Use the GitHub API/tool to create the issue:
 mv docs/issues/drafts/short-description.md docs/issues/ISSUE-<N>-short-description.md
 ```
 
-Update the `**Issue**:` line inside the file to a full link:
+Update the `**Issue**:` line inside the file to a full link, and update `**Related**:` if it
+contains placeholder text:
 
 ```markdown
 **Issue**: [#<N>](https://github.com/torrust/torrust-tracker-demo/issues/<N>)
@@ -96,13 +104,14 @@ Update the `**Issue**:` line inside the file to a full link:
 ### Step 6 — Lint again, then commit and push
 
 ```bash
-npx markdownlint-cli2 "**/*.md"
-npx cspell --no-progress
+./scripts/lint.sh
 ```
 
 ```bash
+# Stage the issue file; also stage project-words.txt if new words were added
 git add docs/issues/ISSUE-<N>-short-description.md
-git commit -m "docs: add draft issue for <short description>
+git add project-words.txt   # only if modified
+git commit -m "docs: add issue file for <short description>
 
 Refs: #<N>"
 git push

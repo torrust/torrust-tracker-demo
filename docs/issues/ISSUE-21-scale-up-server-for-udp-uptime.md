@@ -21,6 +21,17 @@ Current public uptime observed in newTrackon for UDP is below target:
 This issue tracks a controlled resize experiment to determine whether capacity
 is the main bottleneck and to restore/maintain UDP uptime at or above 99%.
 
+## Current State (2026-04-21)
+
+- Resize (CCX23 -> CCX33) is complete and stable.
+- Conntrack overflow root cause was identified and fixed on 2026-04-20.
+- newTrackon rolling UDP uptime is still **85.70%**.
+- Recent probe samples in [newTrackon raw](https://newtrackon.com/raw) are
+  currently reporting successful announces.
+
+Interpretation: the rolling uptime percentage is still catching up after prior
+timeouts. Continue D+2 through D+7 monitoring before final pass/fail.
+
 ## Goal
 
 Increase UDP tracker uptime to at least 99.0% over a rolling 7-day window while

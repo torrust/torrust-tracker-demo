@@ -24,9 +24,11 @@ and reduced sustained reliability pressure.
 - [x] Partial: improved but below target — resize alone was insufficient; conntrack overflow was the actual bottleneck
 - [ ] No improvement: continue with next bottleneck path
 
-**Status (2026-04-20):** Conntrack fix applied on D+1. UDP uptime recovery expected once newTrackon
-records post-fix probe results over the following 24–48 hours. 7-day window must
-complete before a final pass/fail decision can be made.
+**Status (2026-04-21):** Conntrack fix applied on D+1 and appears active. Rolling UDP
+uptime on newTrackon is still 85.70% on D+2, while recent probes in
+[newTrackon raw](https://newtrackon.com/raw) are currently successful. This
+supports a lagging rolling-window effect; 7-day monitoring must complete before
+a final pass/fail decision.
 
 ## Follow-up Actions
 

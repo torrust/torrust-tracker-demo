@@ -6,6 +6,8 @@ For raw command outputs (`ip addr`, `df -h`, etc.) see
 [infrastructure-raw-outputs.md](infrastructure-raw-outputs.md).
 For server resize and observed request-rate history see
 [infrastructure-resize-history.md](infrastructure-resize-history.md).
+For UDP packet-loss diagnosis and conntrack tuning guidance see
+[udp-conntrack-runbook.md](udp-conntrack-runbook.md).
 
 ## Server
 

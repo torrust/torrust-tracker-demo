@@ -69,8 +69,10 @@ qdisc
 qlen
 repomix
 rgba
+runbook
 rustfmt
 shellcheck
+snmp
 sourceable
 signup
 tcpdump

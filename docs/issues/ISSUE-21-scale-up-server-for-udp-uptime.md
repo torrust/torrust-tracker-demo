@@ -32,7 +32,9 @@ is the main bottleneck and to restore/maintain UDP uptime at or above 99%.
 
 Outcome: **Success**. See
 [03-pre-post-comparison.md](evidence/ISSUE-21/03-pre-post-comparison.md) for
-the final decision record.
+the final decision record. Permanent follow-up documentation now lives in
+[udp-conntrack-runbook.md](../../udp-conntrack-runbook.md), with a reusable
+workspace skill at `.github/skills/check-udp-conntrack/skill.md`.
 
 ## Goal
 
@@ -118,7 +120,7 @@ The next available option selected for this experiment is:
 - [x] At least 7 days of post-resize observations recorded.
 - [x] UDP newTrackon uptime reaches and stays >= 99.0% during evaluation window.
 - [x] Pre/post comparison documented with clear conclusion.
-- [ ] Resize workflow skill added and referenced.
+- [x] Resize workflow skill added and referenced.
 
 ## Possible Outcomes
 

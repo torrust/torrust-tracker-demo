@@ -39,5 +39,7 @@ investigations (especially for UDP uptime on newTrackon).
 
 1. Track UDP uptime daily for at least 7 days.
 2. Re-check host load and UDP receive buffer errors.
+   For conntrack-specific diagnosis and remediation, use
+   [udp-conntrack-runbook.md](udp-conntrack-runbook.md).
 3. Compare tracker error/aborted counters before vs after resize.
 4. Record final conclusion in this file and in the related issue.

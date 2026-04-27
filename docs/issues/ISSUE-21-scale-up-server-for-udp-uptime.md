@@ -11,8 +11,8 @@
 ## Overview
 
 Observed traffic and evidence suggest the current server size (CCX23, 4 vCPU,
-16 GB RAM) is likely under pressure for current request volume (roughly
-1300 HTTP req/s + 1500 UDP req/s).
+16 GB RAM) is likely under pressure for current request volume (about
+1350 HTTP req/s + 1507 UDP req/s at the latest baseline snapshot).
 
 Current public uptime observed in newTrackon for UDP is below target:
 
@@ -21,6 +21,21 @@ Current public uptime observed in newTrackon for UDP is below target:
 This issue tracks a controlled resize experiment to determine whether capacity
 is the main bottleneck and to restore/maintain UDP uptime at or above 99%.
 
+## Current State (2026-04-27) — RESOLVED
+
+- Resize (CCX23 -> CCX33) complete and stable.
+- Conntrack overflow root cause identified and fixed on 2026-04-20
+  (`nf_conntrack_max` 262144 → 1048576, UDP timeouts reduced, module pre-load
+  added).
+- 7-day post-fix observation window complete.
+- newTrackon rolling UDP uptime reached **99.9%** — above the 99.0% target.
+
+Outcome: **Success**. See
+[03-pre-post-comparison.md](evidence/ISSUE-21/03-pre-post-comparison.md) for
+the final decision record. Permanent follow-up documentation now lives in
+[udp-conntrack-runbook.md](../../udp-conntrack-runbook.md), with a reusable
+workspace skill at `.github/skills/check-udp-conntrack/skill.md`.
+
 ## Goal
 
 Increase UDP tracker uptime to at least 99.0% over a rolling 7-day window while
@@ -28,15 +43,17 @@ keeping service behavior stable.
 
 ## Current Throughput Baseline (Pre-Resize)
 
-Observed request rates (Grafana, recent 3h window):
+Observed request rates at baseline snapshot (`2026-04-13T15:27:46Z`):
 
-- HTTP1: ~1300 req/s
-- UDP1: ~1500 req/s
-- Combined: ~2800 req/s
+- Source: Prometheus instant query using 5-minute rate windows
+
+- HTTP1: ~1350 req/s
+- UDP1: ~1507 req/s
+- Combined: ~2857 req/s
 
 On the current CCX23 (4 vCPU), this is approximately:
 
-- ~700 req/s per vCPU (combined)
+- ~714 req/s per vCPU (combined)
 
 This baseline must be preserved in the resize history so future sizing
 decisions can be based on both absolute load and normalized load per vCPU.
@@ -98,12 +115,12 @@ The next available option selected for this experiment is:
 
 ## Acceptance Criteria
 
-- [ ] Resize executed and documented in resize history.
-- [ ] No critical service regression immediately after resize.
-- [ ] At least 7 days of post-resize observations recorded.
-- [ ] UDP newTrackon uptime reaches and stays >= 99.0% during evaluation window.
-- [ ] Pre/post comparison documented with clear conclusion.
-- [ ] Resize workflow skill added and referenced.
+- [x] Resize executed and documented in resize history.
+- [x] No critical service regression immediately after resize.
+- [x] At least 7 days of post-resize observations recorded.
+- [x] UDP newTrackon uptime reaches and stays >= 99.0% during evaluation window.
+- [x] Pre/post comparison documented with clear conclusion.
+- [x] Resize workflow skill added and referenced.
 
 ## Possible Outcomes
 

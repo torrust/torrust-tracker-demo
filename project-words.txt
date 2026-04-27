@@ -25,9 +25,11 @@ behaviour
 bencoded
 bleve
 bindv6only
+bitmask
 clippy
 codel
 conntrack
+cpus
 crontab
 ctstate
 demotracker
@@ -37,6 +39,7 @@ defence
 drilldown
 dport
 dtolnay
+hotspot
 efivarfs
 efivars
 ethernets
@@ -51,6 +54,7 @@ mkpath
 Mailgun
 mysqladmin
 netnsid
+netfilter
 netplan
 networkd
 newtrackon
@@ -65,6 +69,7 @@ post-mortems
 prometheus
 pyroscope
 datagrams
+demux
 HSTS
 nosniff
 parseable
@@ -73,10 +78,13 @@ qlen
 repomix
 realised
 rgba
+runbook
 rustfmt
 shellcheck
+snmp
 sourceable
 signup
+sysfs
 tcpdump
 tera
 timepicker
@@ -86,4 +94,6 @@ tulpn
 ulnp
 usagestats
 userland
+userspace
 veth
+virtio

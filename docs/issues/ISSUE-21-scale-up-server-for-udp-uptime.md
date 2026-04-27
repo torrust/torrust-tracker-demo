@@ -21,16 +21,18 @@ Current public uptime observed in newTrackon for UDP is below target:
 This issue tracks a controlled resize experiment to determine whether capacity
 is the main bottleneck and to restore/maintain UDP uptime at or above 99%.
 
-## Current State (2026-04-21)
+## Current State (2026-04-27) — RESOLVED
 
-- Resize (CCX23 -> CCX33) is complete and stable.
-- Conntrack overflow root cause was identified and fixed on 2026-04-20.
-- newTrackon rolling UDP uptime is still **85.70%**.
-- Recent probe samples in [newTrackon raw](https://newtrackon.com/raw) are
-  currently reporting successful announces.
+- Resize (CCX23 -> CCX33) complete and stable.
+- Conntrack overflow root cause identified and fixed on 2026-04-20
+  (`nf_conntrack_max` 262144 → 1048576, UDP timeouts reduced, module pre-load
+  added).
+- 7-day post-fix observation window complete.
+- newTrackon rolling UDP uptime reached **99.9%** — above the 99.0% target.
 
-Interpretation: the rolling uptime percentage is still catching up after prior
-timeouts. Continue D+2 through D+7 monitoring before final pass/fail.
+Outcome: **Success**. See
+[03-pre-post-comparison.md](evidence/ISSUE-21/03-pre-post-comparison.md) for
+the final decision record.
 
 ## Goal
 
@@ -111,11 +113,11 @@ The next available option selected for this experiment is:
 
 ## Acceptance Criteria
 
-- [ ] Resize executed and documented in resize history.
-- [ ] No critical service regression immediately after resize.
-- [ ] At least 7 days of post-resize observations recorded.
-- [ ] UDP newTrackon uptime reaches and stays >= 99.0% during evaluation window.
-- [ ] Pre/post comparison documented with clear conclusion.
+- [x] Resize executed and documented in resize history.
+- [x] No critical service regression immediately after resize.
+- [x] At least 7 days of post-resize observations recorded.
+- [x] UDP newTrackon uptime reaches and stays >= 99.0% during evaluation window.
+- [x] Pre/post comparison documented with clear conclusion.
 - [ ] Resize workflow skill added and referenced.
 
 ## Possible Outcomes

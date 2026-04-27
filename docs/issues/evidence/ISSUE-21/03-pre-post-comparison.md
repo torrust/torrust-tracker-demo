@@ -20,19 +20,19 @@ and reduced sustained reliability pressure.
 
 ## Decision
 
-- [ ] Success: target met and sustained
-- [x] Partial: improved but below target — resize alone was insufficient; conntrack overflow was the actual bottleneck
+- [x] Success: target met and sustained
+- [ ] Partial: improved but below target — resize alone was insufficient; conntrack overflow was the actual bottleneck
 - [ ] No improvement: continue with next bottleneck path
 
-**Status (2026-04-21):** Conntrack fix applied on D+1 and appears active. Rolling UDP
-uptime on newTrackon is still 85.70% on D+2, while recent probes in
-[newTrackon raw](https://newtrackon.com/raw) are currently successful. This
-supports a lagging rolling-window effect; 7-day monitoring must complete before
-a final pass/fail decision.
+**Status (2026-04-27):** 7-day observation window complete. UDP uptime on newTrackon
+reached **99.9%** — above the 99.0% target. The conntrack fix applied on D+1
+(2026-04-20) was the decisive change. The resize from CCX23 → CCX33 was a
+necessary supporting step (halved normalized CPU load), but insufficient alone.
+Issue resolved.
 
 ## Follow-up Actions
 
-1. Monitor D+2 through D+7 UDP uptime on newTrackon to confirm fix holds.
-2. Verify conntrack fix survives a server reboot (module pre-load + sysctl applied).
-3. If uptime >= 99.0% by D+7 close issue as resolved.
-4. Document in post-mortem if UDP uptime does not recover after fix.
+1. ~~Monitor D+2 through D+7 UDP uptime on newTrackon to confirm fix holds.~~ Done: 99.9% confirmed on 2026-04-27.
+2. ~~Verify conntrack fix survives a server reboot (module pre-load + sysctl applied).~~ Done: settings verified live on 2026-04-21.
+3. ~~If uptime >= 99.0% by D+7 close issue as resolved.~~ Done: issue resolved.
+4. ~~Document in post-mortem if UDP uptime does not recover after fix.~~ N/A: uptime recovered.

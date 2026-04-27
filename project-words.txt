@@ -23,9 +23,11 @@ augmentedcode
 behaviour
 bencoded
 bindv6only
+bitmask
 clippy
 codel
 conntrack
+cpus
 crontab
 ctstate
 demotracker
@@ -34,6 +36,7 @@ dockerized
 drilldown
 dport
 dtolnay
+hotspot
 efivarfs
 efivars
 ethernets
@@ -62,6 +65,7 @@ post-mortems
 prometheus
 pyroscope
 datagrams
+demux
 HSTS
 nosniff
 parseable
@@ -75,6 +79,7 @@ shellcheck
 snmp
 sourceable
 signup
+sysfs
 tcpdump
 tera
 timepicker
@@ -83,4 +88,6 @@ torrust
 tulpn
 ulnp
 userland
+userspace
 veth
+virtio

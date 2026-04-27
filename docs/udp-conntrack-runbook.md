@@ -181,14 +181,141 @@ never sees them.
 
 ## Separate Future Tuning: RPS/RFS
 
-RPS and RFS are not part of the current fix, but they may matter if one CPU is
-dominated by softirq work while other CPUs remain idle.
+RPS and RFS are not part of the current deployed fix. They address a different
+bottleneck: one CPU being saturated by kernel softirq work while other CPUs sit
+idle. They solve a different problem from conntrack table saturation.
 
-- RPS spreads receive-side softirq work across CPUs
-- RFS tries to steer packets toward the CPU currently running the application thread that reads the socket
+### How To Detect The Need For RPS/RFS
 
-Use them only if softirq concentration becomes the next bottleneck. They solve a
-different problem from conntrack table saturation.
+Run the load distribution check:
+
+```bash
+ssh demotracker '
+  uptime &&
+  nproc &&
+  mpstat -P ALL 1 1 &&
+  vmstat 1 3
+'
+```
+
+Signals that RPS/RFS may help:
+
+- one CPU shows `%soft` near or above 80–90% while other CPUs have significant
+  `%idle`
+- `vmstat` shows very high interrupt counts (`in` column) and many context
+  switches (`cs` column)
+- `ps` shows `ksoftirqd/<N>` for a single CPU near the top of CPU consumers
+
+This pattern was first observed on this server on 2026-04-27:
+
+```text
+CPU2:  %usr=4.76  %sys=4.76  %soft=80.95  %idle=9.52
+```
+
+All other CPUs were at approximately 44% idle at the same time.
+
+### Why It Happens
+
+The Hetzner VM's virtio-net NIC has a single RX queue. Linux assigns that
+queue's hardware interrupt to one CPU. All softirq processing for every incoming
+packet — UDP and TCP — flows through that one core.
+
+The softirq work includes:
+
+- NIC DMA and descriptor processing
+- IP and UDP checksums
+- conntrack lookup and Docker DNAT
+- socket demux and receive-buffer copy
+
+Until one of the RX-steering features is enabled, the kernel has no way to
+distribute this work.
+
+### How To Estimate Whether This Is A Real Bottleneck
+
+At current peak UDP traffic of ~750 req/s and HTTP of ~2000 req/s, the softirq
+CPU (CPU2) was at about 81%. Saturation would occur if that figure approaches
+100% consistently.
+
+A rough rule of thumb: if total req/s grows by roughly 2.5× from the 2026-04-27
+baseline (~2750 req/s combined) without any RPS/RFS tuning, CPU2 may saturate
+and become the next source of packet loss.
+
+### How To Fix It — RPS
+
+RPS tells the kernel to re-queue softirq processing for each packet onto a
+different CPU, chosen by hashing the packet's 4-tuple (src IP, src port, dst
+IP, dst port).
+
+Check the NIC and queue name first:
+
+```bash
+ssh demotracker 'ls /sys/class/net/'
+ssh demotracker 'ls /sys/class/net/eth0/queues/'
+```
+
+Enable RPS across all 8 CPUs:
+
+```bash
+ssh demotracker 'echo ff | sudo tee /sys/class/net/eth0/queues/rx-0/rps_cpus'
+```
+
+The value `ff` is a bitmask: `0xff` = all 8 CPUs. Adjust for the actual CPU
+count if the server is resized.
+
+### How To Fix It — RFS
+
+RFS extends RPS by tracking which CPU most recently ran the application socket
+thread and steers softirq toward that CPU. This reduces cache misses when the
+kernel hands the packet to userspace.
+
+Enable RFS:
+
+```bash
+ssh demotracker '
+  sudo sysctl -w net.core.rps_sock_flow_entries=32768 &&
+  echo 4096 | sudo tee /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
+'
+```
+
+### Making RPS/RFS Persistent
+
+The `/sys/class/net/...` paths do not survive reboot. To persist them, add a
+`systemd` service or a `@reboot` cron entry, and record the kernel parameter in
+`/etc/sysctl.d/`.
+
+Example cron entry (`/etc/cron.d/rps`):
+
+```text
+@reboot root echo ff > /sys/class/net/eth0/queues/rx-0/rps_cpus && echo 4096 > /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
+```
+
+If this is deployed permanently, add the config to:
+
+- `server/etc/sysctl.d/` for the `net.core.rps_sock_flow_entries` setting
+- `server/etc/cron.d/` for the sysfs writes
+
+### Validate After Enabling
+
+Re-run `mpstat -P ALL 1 5` and confirm that:
+
+- `%soft` is spread across multiple CPUs instead of concentrated on one
+- the formerly saturated CPU drops below 70–80%
+- external UDP uptime remains stable or improves
+
+### Why RPS/RFS Does Not Break Conntrack
+
+RPS reorders which CPU handles softirq, but does not bypass conntrack or DNAT.
+Each packet still goes through the full kernel stack; it just does so on a
+different CPU. The conntrack settings from `99-conntrack.conf` remain in effect
+independently.
+
+### Why This Is Separate From The Conntrack Fix
+
+Conntrack overflow causes packet **drops** — the kernel silently discards the
+packet before it ever enters a socket buffer. RPS/RFS addresses CPU **hotspot**
+— one core being too busy to process incoming packets fast enough. Both can
+cause UDP timeouts, but the diagnostic signals are different and the fixes do
+not overlap.
 
 ## Reference Values From The 2026-04-27 Verification
 

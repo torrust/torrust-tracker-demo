@@ -95,10 +95,13 @@ step.
 
 ### Phase 2 — First isolated experiment: disable HTTP/3
 
-- [ ] Remove `"443:443/udp"` from the Caddy service in `server/opt/torrust/docker-compose.yml`.
-- [ ] Apply only that change on the live server and restart only Caddy.
+- [x] Remove `"443:443/udp"` from the Caddy service in `server/opt/torrust/docker-compose.yml`.
+- [x] Apply only that change on the live server and restart only Caddy.
 - [ ] Observe CPU, request rates, and external service health for an agreed window.
 - [ ] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
+
+Execution and immediate post-change checks are recorded in
+`docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`.
 
 Rationale: this is a small, isolated change that affects only HTTP/3/QUIC support and does not
 change normal HTTPS or the tracker's UDP listener on port 6969.

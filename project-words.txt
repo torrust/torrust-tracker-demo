@@ -47,11 +47,13 @@ frontmatter
 fswc
 grafana
 healthcheck
+ksoftirqd
 leecher
 logfile
 misrouted
 mkpath
 Mailgun
+mpstat
 mysqladmin
 netnsid
 netfilter

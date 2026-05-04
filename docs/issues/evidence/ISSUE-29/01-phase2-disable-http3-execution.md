@@ -110,13 +110,48 @@ From `https://newtrackon.com/raw` during this window:
 
 Agreed observation windows for Phase 2:
 
-| Checkpoint | Target time (UTC)        | Status  |
-| ---------- | ------------------------ | ------- |
-| T+1 h      | 2026-05-04 16:31         | pending |
-| T+next day | 2026-05-05 (any morning) | pending |
+| Checkpoint | Target time (UTC)        | Status   |
+| ---------- | ------------------------ | -------- |
+| T+1 h      | 2026-05-04 16:31         | complete |
+| T+next day | 2026-05-05 (any morning) | pending  |
 
 Capture the same metrics at each checkpoint: `mpstat`, `docker stats`, Prometheus
 HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
+
+## T+1 h Observation (2026-05-04T16:54:13Z)
+
+Capture timestamp (UTC): `2026-05-04T16:54:13Z` (~1 h 36 min after change).
+
+- Host load average: `8.52 / 8.25 / 8.03`
+- `mpstat` all CPUs: `%usr=34.11`, `%sys=15.43`, `%soft=19.58`, `%idle=30.61`
+- `mpstat` CPU2: `%soft=100.00`, `%idle=0.00` — **unchanged from pre-change**
+- Container CPU snapshot:
+  - `caddy`: `321.33%`
+  - `tracker`: `95.47%`
+  - `mysql`: `7.06%`
+  - `grafana`: `0.32%`
+  - `prometheus`: `0.00%`
+- `ps` top processes: `caddy 301%`, `torrust-tracker 88.9%`, `ksoftirqd/2 15.0%`
+- Prometheus rates:
+  - HTTP1 request rate: `1834.0 req/s`
+  - UDP1 request rate: `2440.0 req/s`
+
+### External probe sample (newtrackon.com/raw)
+
+- `https://http1.torrust-tracker-demo.com:443/announce` -> `Working`
+- `udp://udp1.torrust-tracker-demo.com:6969/announce` -> `Working`
+
+### Assessment
+
+**No improvement observed.** CPU2 remains 100% softirq (`ksoftirqd/2` still
+pinned). Load, Caddy CPU (~320%), and tracker CPU (~95%) are all within the same
+range as before the change. Removing the Caddy UDP 443 port had no measurable
+effect on the softirq saturation, ruling out HTTP/3 (QUIC) as the root cause.
+
+The Phase 2 change is safe to keep (it was correct hygiene — we have no HTTP/3
+listener anyway), but it did not solve the CPU problem. The investigation must
+continue with Phase 3 (RPS/RFS CPU affinity) or a deeper look at why Caddy
+alone is consuming ~300% CPU at the observed request rate.
 
 Keep this single change in place until both checkpoints are completed before
 deciding whether to keep HTTP/3 disabled permanently or revert.

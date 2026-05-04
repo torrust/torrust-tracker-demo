@@ -97,8 +97,10 @@ step.
 
 - [x] Remove `"443:443/udp"` from the Caddy service in `server/opt/torrust/docker-compose.yml`.
 - [x] Apply only that change on the live server and restart only Caddy.
-- [ ] Observe CPU, request rates, and external service health at T+1 h (≈ 2026-05-04 16:31 UTC)
-      and again the following day (2026-05-05).
+- [x] Observe CPU, request rates, and external service health at T+1 h (≈ 2026-05-04 16:31 UTC).
+      **Result: no improvement. CPU2 still 100% softirq; Caddy ~321%; load ~8.5. HTTP/3 is not
+      the cause.** See `01-phase2-disable-http3-execution.md` T+1 h section.
+- [ ] Observe the following day (2026-05-05) to confirm no delayed effect.
 - [ ] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
 
 Execution and immediate post-change checks are recorded in

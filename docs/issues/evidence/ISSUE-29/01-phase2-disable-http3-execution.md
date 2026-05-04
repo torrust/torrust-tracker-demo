@@ -106,8 +106,17 @@ From `https://newtrackon.com/raw` during this window:
 - `https://http1.torrust-tracker-demo.com:443/announce` -> `Working`
 - `udp://udp1.torrust-tracker-demo.com:6969/announce` -> `Working`
 
-## Next Step
+## Observation Schedule
 
-Phase 2 observation remains open. Keep this single change in place and collect
-an agreed observation window before deciding whether to keep HTTP/3 disabled
-permanently or revert.
+Agreed observation windows for Phase 2:
+
+| Checkpoint | Target time (UTC)        | Status  |
+| ---------- | ------------------------ | ------- |
+| T+1 h      | 2026-05-04 16:31         | pending |
+| T+next day | 2026-05-05 (any morning) | pending |
+
+Capture the same metrics at each checkpoint: `mpstat`, `docker stats`, Prometheus
+HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
+
+Keep this single change in place until both checkpoints are completed before
+deciding whether to keep HTTP/3 disabled permanently or revert.

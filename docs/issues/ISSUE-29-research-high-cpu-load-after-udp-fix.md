@@ -97,7 +97,8 @@ step.
 
 - [x] Remove `"443:443/udp"` from the Caddy service in `server/opt/torrust/docker-compose.yml`.
 - [x] Apply only that change on the live server and restart only Caddy.
-- [ ] Observe CPU, request rates, and external service health for an agreed window.
+- [ ] Observe CPU, request rates, and external service health at T+1 h (≈ 2026-05-04 16:31 UTC)
+      and again the following day (2026-05-05).
 - [ ] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
 
 Execution and immediate post-change checks are recorded in

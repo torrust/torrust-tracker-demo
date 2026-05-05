@@ -294,10 +294,9 @@ This keeps production reproducible and reviewable.
 
 At this draft stage, we still need:
 
-1. Phase 3 T+1h checkpoint.
-2. Phase 3 T+next-day checkpoint.
-3. Final decision: keep RPS/RFS permanently (likely) or adjust values.
-4. Final conclusion on long-term headroom under sustained load.
+1. Phase 3 T+next-day checkpoint.
+2. Final decision: keep RPS/RFS permanently (likely) or adjust values.
+3. Final conclusion on long-term headroom under sustained load.
 
 ## Suggested Blog Structure (for torrust.com/blog)
 
@@ -313,6 +312,9 @@ At this draft stage, we still need:
 - Issue plan: `docs/issues/ISSUE-29-research-high-cpu-load-after-udp-fix.md`
 - Phase 2 evidence: `docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`
 - Phase 3 evidence: `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`
+- Htop snapshots:
+  - `docs/issues/evidence/ISSUE-29/2026-05-04-htop-snapshot.png`
+  - `docs/issues/evidence/ISSUE-29/2026-05-05-htop-snapshot.png`
 - Background runbook: `docs/udp-conntrack-runbook.md`
 - Previous related blog post:
   - https://torrust.com/blog/nf-conntrack-overflow-docker-udp-tracker

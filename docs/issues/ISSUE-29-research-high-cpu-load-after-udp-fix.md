@@ -115,10 +115,13 @@ change normal HTTPS or the tracker's UDP listener on port 6969.
 
 ### Phase 3 — Second isolated experiment: enable RPS/RFS
 
-- [ ] If CPU pressure remains high after Phase 2, enable RPS and RFS as documented in
+- [x] If CPU pressure remains high after Phase 2, enable RPS and RFS as documented in
       `docs/udp-conntrack-runbook.md`.
-- [ ] Persist the configuration in the tracked server config.
-- [ ] Re-check whether softirq is still concentrated on one CPU.
+- [x] Persist the configuration in the tracked server config.
+- [x] Re-check whether softirq is still concentrated on one CPU.
+      **Immediate result: improved.** CPU2 `%soft` dropped from `100%` to `48.51%`
+      and softirq work spread across all 8 CPUs. See
+      `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`.
 - [ ] Observe for an agreed window before taking further action.
 
 Rationale: this directly targets the observed one-core softirq saturation while leaving the

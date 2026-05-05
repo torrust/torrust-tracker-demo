@@ -1,0 +1,7 @@
+# Persist RPS/RFS sysfs settings across reboot.
+# See: docs/udp-conntrack-runbook.md and ISSUE-29.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+@reboot root echo ff > /sys/class/net/eth0/queues/rx-0/rps_cpus && echo 4096 > /sys/class/net/eth0/queues/rx-0/rps_flow_cnt

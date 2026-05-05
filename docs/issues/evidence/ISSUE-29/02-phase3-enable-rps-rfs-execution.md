@@ -271,13 +271,13 @@ Note: capture was taken at approximately T+2h18m after the Phase 3 change
 
 ### Container CPU snapshot
 
-| Container   | CPU %   |
-| ----------- | ------- |
-| `caddy`     | 455.65% |
-| `tracker`   | 133.08% |
-| `mysql`     | 10.16%  |
-| `grafana`   | 0.55%   |
-| `prometheus`| 0.05%   |
+| Container    | CPU %   |
+| ------------ | ------- |
+| `caddy`      | 455.65% |
+| `tracker`    | 133.08% |
+| `mysql`      | 10.16%  |
+| `grafana`    | 0.55%   |
+| `prometheus` | 0.05%   |
 
 ### Prometheus request rates
 

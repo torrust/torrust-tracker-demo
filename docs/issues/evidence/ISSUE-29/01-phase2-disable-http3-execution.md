@@ -110,10 +110,10 @@ From `https://newtrackon.com/raw` during this window:
 
 Agreed observation windows for Phase 2:
 
-| Checkpoint | Target time (UTC)        | Status   |
-| ---------- | ------------------------ | -------- |
-| T+1 h      | 2026-05-04 16:31         | complete |
-| T+next day | 2026-05-05 (any morning) | pending  |
+| Checkpoint | Target time (UTC)    | Status   |
+| ---------- | -------------------- | -------- |
+| T+1 h      | 2026-05-04 16:31     | complete |
+| T+next day | 2026-05-05 06:16 UTC | complete |
 
 Capture the same metrics at each checkpoint: `mpstat`, `docker stats`, Prometheus
 HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
@@ -155,3 +155,43 @@ alone is consuming ~300% CPU at the observed request rate.
 
 Keep this single change in place until both checkpoints are completed before
 deciding whether to keep HTTP/3 disabled permanently or revert.
+
+## T+next-day Observation (2026-05-05T06:16:14Z)
+
+Capture timestamp (UTC): `2026-05-05T06:16:14Z` (~14 h 46 min after change).
+
+- Host load average: `8.69 / 8.45 / 8.51`
+- `mpstat` all CPUs: `%usr=29.57`, `%sys=14.92`, `%soft=19.71`, `%idle=35.67`
+- `mpstat` CPU2: `%soft=98.02`, `%idle=1.98` — **unchanged from T+1 h**
+- Container CPU snapshot:
+  - `caddy`: `308.89%`
+  - `tracker`: `93.22%`
+  - `mysql`: `7.58%`
+  - `grafana`: `0.32%`
+  - `prometheus`: `0.00%`
+- `ps` top processes: `caddy 296%`, `torrust-tracker 88.7%`, `ksoftirqd/2 17.8%`
+- Prometheus rates:
+  - HTTP1 request rate: `1909.11 req/s`
+  - UDP1 request rate: `2178.98 req/s`
+
+### External probe sample (newtrackon.com/raw)
+
+- `https://http1.torrust-tracker-demo.com:443/announce` -> `Working`
+- `udp://udp1.torrust-tracker-demo.com:6969/announce` -> `Working`
+
+### Assessment
+
+**Confirmed: Phase 2 had no effect.** After ~15 hours all metrics are
+statistically identical to both the pre-change baseline and the T+1 h snapshot.
+CPU2 remains saturated at ~98% softirq (`ksoftirqd/2` pinned), Caddy is still
+~300–310% CPU, and tracker ~88–95%. Load average is stable at ~8.5.
+
+**Phase 2 decision: keep the change.** Removing `443:443/udp` from Caddy was
+correct hygiene (no HTTP/3 listener was in use), but it is not the source of
+the CPU issue. The change causes no regressions and removes an unused
+port mapping.
+
+**Root cause is elsewhere.** The softirq saturation on a single CPU is
+consistent with all UDP/TCP packet processing being steered to one core.
+Confirmed that RPS/RFS are currently disabled on this host. **Phase 3 (enable
+RPS/RFS)** is the next isolated change to attempt.

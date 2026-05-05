@@ -100,8 +100,12 @@ step.
 - [x] Observe CPU, request rates, and external service health at T+1 h (≈ 2026-05-04 16:31 UTC).
       **Result: no improvement. CPU2 still 100% softirq; Caddy ~321%; load ~8.5. HTTP/3 is not
       the cause.** See `01-phase2-disable-http3-execution.md` T+1 h section.
-- [ ] Observe the following day (2026-05-05) to confirm no delayed effect.
-- [ ] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
+- [x] Observe the following day (2026-05-05) to confirm no delayed effect.
+      **Result: no improvement. CPU2 still ~98% softirq; Caddy ~309%; load ~8.5. No delayed
+      effect.** See `01-phase2-disable-http3-execution.md` T+next-day section.
+- [x] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
+      **Decision: keep HTTP/3 disabled (hygiene). The change caused no regression and removes
+      an unused port mapping, but it did not reduce CPU load.**
 
 Execution and immediate post-change checks are recorded in
 `docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`.
@@ -140,7 +144,8 @@ application stack unchanged.
       request rates.
 - [ ] The first production change is isolated to a single variable and its effect is documented.
 - [ ] No follow-up production change is applied before the previous change has been observed.
-- [ ] A documented decision exists on whether `443:443/udp` should remain enabled for HTTP/3.
+- [x] A documented decision exists on whether `443:443/udp` should remain enabled for HTTP/3.
+      **Decision: keep HTTP/3 disabled. See T+next-day section in `01-phase2-disable-http3-execution.md`.**
 - [ ] A documented decision exists on whether RPS/RFS should be deployed permanently.
 - [ ] The final issue conclusion states whether the current single-host design still has enough
       CPU headroom.

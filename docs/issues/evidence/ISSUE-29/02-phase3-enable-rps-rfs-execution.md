@@ -1,4 +1,4 @@
-<!-- cspell:ignore CPUPerc ksoftirqd rps_cpus rps_flow_cnt -->
+<!-- cspell:ignore CPUPerc ksoftirqd rps_cpus rps_flow_cnt urlencode -->
 
 # ISSUE-29 Phase 3 Execution - Enable RPS/RFS
 
@@ -116,3 +116,135 @@ Agreed observation windows for Phase 3:
 
 Capture the same metrics at each checkpoint: `mpstat`, `docker stats`,
 Prometheus HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
+
+## Operator Handoff Guide (Self-Contained)
+
+This section is intentionally explicit so another operator can continue Phase 3
+without prior context from chat history.
+
+### What this investigation is trying to prove
+
+Phase 3 hypothesis:
+
+- Enabling RPS/RFS reduces the single-core softirq hotspot (previously CPU2 at
+  about 100% softirq) by distributing packet processing across CPUs.
+
+Success condition for follow-up checkpoints:
+
+- CPU2 `%soft` remains materially below pre-change saturation.
+- `%soft` is distributed across multiple CPUs, not pinned to one core.
+- HTTP1/UDP1 external status remains `Working`.
+- No obvious regression in request rates relative to normal load.
+
+### Current known-good live settings
+
+The live host and this repository should both contain:
+
+- `net.core.rps_sock_flow_entries = 32768`
+- `/sys/class/net/eth0/queues/rx-0/rps_cpus = ff`
+- `/sys/class/net/eth0/queues/rx-0/rps_flow_cnt = 4096`
+
+Persistent files expected:
+
+- Live host: `/etc/sysctl.d/98-rps-rfs.conf`, `/etc/cron.d/rps-rfs`
+- Repository mirror:
+  - `server/etc/sysctl.d/98-rps-rfs.conf`
+  - `server/etc/cron.d/rps-rfs`
+
+### Required access and tools
+
+- SSH alias `demotracker` must work from local machine.
+- Prometheus endpoint must be reachable on host at `http://127.0.0.1:9090`.
+- `mpstat` must be available on host.
+
+### Checkpoint command bundle (copy/paste)
+
+Run these commands from local workstation at each checkpoint.
+
+1. Capture host/runtime metrics:
+
+```bash
+ssh demotracker 'set -e
+echo "=== capture_utc ==="; date -u +%Y-%m-%dT%H:%M:%SZ
+echo "=== uptime ==="; uptime
+echo "=== rps_state ==="
+cat /proc/sys/net/core/rps_sock_flow_entries
+cat /sys/class/net/eth0/queues/rx-0/rps_cpus
+cat /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
+echo "=== mpstat ==="; mpstat -P ALL 1 1
+echo "=== top_cpu ==="; ps -eo pid,comm,%cpu,%mem,stat --sort=-%cpu | head -20
+echo "=== docker_stats ==="
+cd /opt/torrust && docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"'
+```
+
+1. Capture Prometheus rates (numeric values):
+
+```bash
+ssh demotracker 'curl -sG "http://127.0.0.1:9090/api/v1/query" --data-urlencode "query=sum(rate(http_tracker_core_requests_received_total[5m]))"' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"]["result"][0]["value"][1])'
+ssh demotracker 'curl -sG "http://127.0.0.1:9090/api/v1/query" --data-urlencode "query=sum(rate(udp_tracker_server_requests_received_total[5m]))"' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"]["result"][0]["value"][1])'
+```
+
+1. Capture external probe sample:
+
+```bash
+curl -s https://newtrackon.com/raw | grep -E 'https://http1.torrust-tracker-demo.com:443/announce|udp://udp1.torrust-tracker-demo.com:6969/announce' | head -10
+```
+
+### What to add to this file at each checkpoint
+
+For each checkpoint (`T+1 h`, `T+next day`), append a new section:
+
+- `## T+1 h Observation (<timestamp>)` or
+  `## T+next-day Observation (<timestamp>)`
+- Include:
+  - capture timestamp
+  - host load average
+  - `mpstat` all-CPU summary
+  - `mpstat` CPU2 `%soft` and `%idle`
+  - whether `%soft` is distributed across CPUs
+  - container CPU snapshot for `caddy`, `tracker`, `mysql`, `grafana`, `prometheus`
+  - Prometheus HTTP1 and UDP1 rates
+  - newtrackon status for HTTP1 and UDP1
+- Add a short assessment paragraph: improved/stable/regressed.
+
+Then update table status in this file:
+
+- mark checkpoint `complete`
+- replace generic time with actual capture time where appropriate
+
+### Required updates outside this file
+
+After each checkpoint, also update issue tracker doc:
+
+- `docs/issues/ISSUE-29-research-high-cpu-load-after-udp-fix.md`
+
+Update Phase 3 checklist items as evidence is completed.
+
+### Commit workflow after each checkpoint
+
+1. Run validations:
+
+```bash
+./scripts/lint.sh
+```
+
+1. Commit with signed Conventional Commit, for example:
+
+```text
+docs(issue-29): record phase 3 T+1h observation
+```
+
+1. Push:
+
+```bash
+git push origin main
+```
+
+### Guardrails
+
+- Keep Phase 3 as one variable: do not change unrelated server settings during
+  observation windows.
+- If any live server config is changed, mirror the exact same file content under
+  `server/` in this repository.
+- If metrics look contradictory, capture raw command output first and defer
+  conclusions until evidence is recorded.

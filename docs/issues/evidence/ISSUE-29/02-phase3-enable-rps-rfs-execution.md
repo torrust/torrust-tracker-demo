@@ -109,10 +109,10 @@ Open questions for follow-up observation:
 
 Agreed observation windows for Phase 3:
 
-| Checkpoint | Target time (UTC)        | Status  |
-| ---------- | ------------------------ | ------- |
-| T+1 h      | 2026-05-05 07:55         | pending |
-| T+next day | 2026-05-06 (any morning) | pending |
+| Checkpoint | Target time (UTC)        | Status   |
+| ---------- | ------------------------ | -------- |
+| T+1 h      | 2026-05-05 09:13         | complete |
+| T+next day | 2026-05-06 (any morning) | pending  |
 
 Capture the same metrics at each checkpoint: `mpstat`, `docker stats`,
 Prometheus HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
@@ -248,3 +248,60 @@ git push origin main
   `server/` in this repository.
 - If metrics look contradictory, capture raw command output first and defer
   conclusions until evidence is recorded.
+
+## T+1h Observation (2026-05-05T09:13:52Z)
+
+Capture timestamp (UTC): `2026-05-05T09:13:52Z`
+
+Note: capture was taken at approximately T+2h18m after the Phase 3 change
+(`2026-05-05T06:55:19Z`), slightly later than the T+1h target.
+
+### RPS/RFS state (confirmed active)
+
+- `net.core.rps_sock_flow_entries = 32768`
+- `/sys/class/net/eth0/queues/rx-0/rps_cpus = ff`
+- `/sys/class/net/eth0/queues/rx-0/rps_flow_cnt = 4096`
+
+### Host metrics
+
+- Host load average: `9.60 / 10.04 / 10.25`
+- `mpstat` all CPUs: `%usr=38.68`, `%sys=14.36`, `%soft=32.47`, `%idle=14.36`
+- `mpstat` CPU2: `%soft=49.48`, `%idle=8.25` (no longer pinned at 100%)
+- `mpstat` other CPUs: `%soft` distributed across all cores (`26%` to `41%`)
+
+### Container CPU snapshot
+
+| Container   | CPU %   |
+| ----------- | ------- |
+| `caddy`     | 455.65% |
+| `tracker`   | 133.08% |
+| `mysql`     | 10.16%  |
+| `grafana`   | 0.55%   |
+| `prometheus`| 0.05%   |
+
+### Prometheus request rates
+
+- HTTP1 request rate: `1979.53 req/s`
+- UDP1 request rate: `2264.42 req/s`
+
+### External probe sample
+
+From `https://newtrackon.com/raw` during this window:
+
+- `https://http1.torrust-tracker-demo.com:443/announce` -> `Working`
+- `udp://udp1.torrust-tracker-demo.com:6969/announce` -> `Working`
+
+### Assessment
+
+The T+1h distribution pattern holds stable:
+
+- CPU2 `%soft` remains at `~49%` (versus `100%` before Phase 3), consistent
+  with the immediate post-change reading of `48.51%`.
+- Softirq work is spread across all 8 CPUs (`26%`–`41%`), with no single-core
+  saturation.
+- Request rates are in the normal operating range (HTTP1 ~1980 req/s, UDP1
+  ~2264 req/s), comparable to pre-change levels.
+- Both external endpoints remain `Working`.
+
+No regression detected. The improvement seen at the immediate post-change
+snapshot is sustained at T+1h.

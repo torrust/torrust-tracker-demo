@@ -123,6 +123,9 @@ change normal HTTPS or the tracker's UDP listener on port 6969.
       and softirq work spread across all 8 CPUs. See
       `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`.
 - [ ] Observe for an agreed window before taking further action.
+      **T+1h (2026-05-05T09:13Z): distribution pattern stable. CPU2 %soft=49.48%,
+      no single-core saturation, both endpoints Working. See
+      `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`.**
 
 Rationale: this directly targets the observed one-core softirq saturation while leaving the
 application stack unchanged.

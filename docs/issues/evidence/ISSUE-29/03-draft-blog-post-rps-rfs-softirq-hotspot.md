@@ -18,11 +18,15 @@ We tested two isolated changes:
 1. Disable HTTP/3 (QUIC) on Caddy by removing UDP 443.
 2. Enable RPS/RFS to distribute packet processing across CPUs.
 
-Result so far:
+Final result:
 
 - Disabling HTTP/3 did **not** improve the bottleneck.
 - Enabling RPS/RFS immediately reduced CPU2 softirq from `100%` to `48.51%`
   and spread packet work across all 8 CPUs.
+- At T+next-day, distribution remained stable (`CPU2 %soft=49.49%`), and both
+  public endpoints were still `Working`.
+- However, global host load remained high (`11.83 / 11.59 / 10.82`), so this
+  fix improved balance but did not create enough long-term capacity headroom.
 
 ## What Problem We Detected
 
@@ -217,14 +221,22 @@ https://http1.torrust-tracker-demo.com:443/announce -> Working
 udp://udp1.torrust-tracker-demo.com:6969/announce -> Working
 ```
 
-### Phase 3 interim conclusion
+### Phase 3 conclusion after T+1h and T+next-day checkpoints
 
-The specific bottleneck we targeted improved immediately:
+The specific bottleneck we targeted improved and stayed improved:
 
-- CPU2 stopped being hard-pinned at 100% softirq.
-- Softirq work spread across all cores.
+- Immediate: CPU2 stopped being hard-pinned at 100% softirq.
+- T+1h: CPU2 stayed around `49.48%`, with distributed softirq across all cores.
+- T+next-day: CPU2 stayed around `49.49%`, still distributed.
 
 This is strong evidence that receive-side steering imbalance was a major cause.
+
+But there is an important second-order learning:
+
+- Fixing a one-core packet-processing hotspot does not automatically reduce
+  total system load enough for comfortable operation.
+- Even with better CPU distribution, the host can remain near saturation under
+  current traffic.
 
 ## What We Changed in Configuration Files
 
@@ -290,13 +302,21 @@ Operational rule we followed:
 
 This keeps production reproducible and reviewable.
 
-## Remaining Work Before Publishing Final Results
+## Final Operational Decision and Follow-Up
 
-At this draft stage, we still need:
+Decisions taken after completing the full observation window:
 
-1. Phase 3 T+next-day checkpoint.
-2. Final decision: keep RPS/RFS permanently (likely) or adjust values.
-3. Final conclusion on long-term headroom under sustained load.
+1. Keep RPS/RFS enabled permanently on the current host.
+2. Close ISSUE-29 as completed for the tuning scope.
+3. Track capacity follow-up in ISSUE-30 (server scale-up planning).
+
+Interpretation:
+
+- ISSUE-29 succeeded technically for its target (remove single-core softirq
+  saturation).
+- ISSUE-29 did not eliminate overall capacity risk at current traffic.
+- The next lever is capacity (scale-up), not another immediate packet-path
+  tuning change.
 
 ## Suggested Blog Structure (for torrust.com/blog)
 
@@ -310,11 +330,13 @@ At this draft stage, we still need:
 ## References
 
 - Issue plan: `docs/issues/ISSUE-29-research-high-cpu-load-after-udp-fix.md`
+- Follow-up scaling issue: `docs/issues/ISSUE-30-scale-up-server-for-sustained-load.md`
 - Phase 2 evidence: `docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`
 - Phase 3 evidence: `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`
 - Htop snapshots:
   - `docs/issues/evidence/ISSUE-29/2026-05-04-htop-snapshot.png`
   - `docs/issues/evidence/ISSUE-29/2026-05-05-htop-snapshot.png`
+  - `docs/issues/evidence/ISSUE-29/2026-05-06-htop-snapshot.png`
 - Background runbook: `docs/udp-conntrack-runbook.md`
 - Previous related blog post:
   - https://torrust.com/blog/nf-conntrack-overflow-docker-udp-tracker

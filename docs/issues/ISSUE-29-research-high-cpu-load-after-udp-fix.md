@@ -122,9 +122,12 @@ change normal HTTPS or the tracker's UDP listener on port 6969.
       **Immediate result: improved.** CPU2 `%soft` dropped from `100%` to `48.51%`
       and softirq work spread across all 8 CPUs. See
       `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`.
-- [ ] Observe for an agreed window before taking further action.
+- [x] Observe for an agreed window before taking further action.
       **T+1h (2026-05-05T09:13Z): distribution pattern stable. CPU2 %soft=49.48%,
-      no single-core saturation, both endpoints Working. See
+      no single-core saturation, both endpoints Working. T+next-day
+      (2026-05-06T09:24Z): distribution remains stable, both endpoints still
+      Working, but host load remains high (~11.83), indicating limited
+      headroom. See
       `docs/issues/evidence/ISSUE-29/02-phase3-enable-rps-rfs-execution.md`.**
 
 Rationale: this directly targets the observed one-core softirq saturation while leaving the
@@ -152,6 +155,8 @@ application stack unchanged.
 - [ ] No follow-up production change is applied before the previous change has been observed.
 - [x] A documented decision exists on whether `443:443/udp` should remain enabled for HTTP/3.
       **Decision: keep HTTP/3 disabled. See T+next-day section in `01-phase2-disable-http3-execution.md`.**
-- [ ] A documented decision exists on whether RPS/RFS should be deployed permanently.
+- [x] A documented decision exists on whether RPS/RFS should be deployed permanently.
+      **Decision: keep RPS/RFS enabled. It consistently removed the one-core
+      softirq hotspot at immediate, T+1h, and T+next-day checkpoints.**
 - [ ] The final issue conclusion states whether the current single-host design still has enough
       CPU headroom.

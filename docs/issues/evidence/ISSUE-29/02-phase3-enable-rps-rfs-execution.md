@@ -109,10 +109,10 @@ Open questions for follow-up observation:
 
 Agreed observation windows for Phase 3:
 
-| Checkpoint | Target time (UTC)        | Status   |
-| ---------- | ------------------------ | -------- |
-| T+1 h      | 2026-05-05 09:13         | complete |
-| T+next day | 2026-05-06 (any morning) | pending  |
+| Checkpoint | Target time (UTC) | Status   |
+| ---------- | ----------------- | -------- |
+| T+1 h      | 2026-05-05 09:13  | complete |
+| T+next day | 2026-05-06 09:24  | complete |
 
 Capture the same metrics at each checkpoint: `mpstat`, `docker stats`,
 Prometheus HTTP1/UDP1 rates, and a `newtrackon.com/raw` sample.
@@ -305,3 +305,54 @@ The T+1h distribution pattern holds stable:
 
 No regression detected. The improvement seen at the immediate post-change
 snapshot is sustained at T+1h.
+
+## T+next-day Observation (2026-05-06T09:24:24Z)
+
+Capture timestamp (UTC): `2026-05-06T09:24:24Z`
+
+### RPS/RFS state (confirmed active)
+
+- `net.core.rps_sock_flow_entries = 32768`
+- `/sys/class/net/eth0/queues/rx-0/rps_cpus = ff`
+- `/sys/class/net/eth0/queues/rx-0/rps_flow_cnt = 4096`
+
+### Host metrics
+
+- Host load average: `11.83 / 11.59 / 10.82`
+- `mpstat` all CPUs: `%usr=34.65`, `%sys=15.41`, `%soft=31.08`, `%idle=18.73`
+- `mpstat` CPU2: `%soft=49.49`, `%idle=11.11` (still far below pre-change 100%)
+- `mpstat` other CPUs: `%soft` distributed across all cores (`26.80%` to `33.33%`)
+
+### Container CPU snapshot
+
+| Container    | CPU %   |
+| ------------ | ------- |
+| `caddy`      | 436.17% |
+| `tracker`    | 117.37% |
+| `mysql`      | 10.02%  |
+| `grafana`    | 4.01%   |
+| `prometheus` | 0.01%   |
+
+### Prometheus request rates
+
+- HTTP1 request rate: `1937.70 req/s`
+- UDP1 request rate: `2208.68 req/s`
+
+### External probe sample
+
+From `https://newtrackon.com/raw` during this window:
+
+- `https://http1.torrust-tracker-demo.com:443/announce` -> `Working` (`09:25:49 UTC`)
+- `udp://udp1.torrust-tracker-demo.com:6969/announce` -> `Working` (`09:24:22 UTC`)
+
+### Assessment
+
+The T+next-day checkpoint confirms the same pattern seen at T+1h:
+
+- CPU2 `%soft` remains stable at `~49.5%` (not re-pinned to 100%).
+- Softirq work stays distributed across all 8 CPUs.
+- Both external endpoints remain `Working`.
+
+However, total host load remains high (`11.83` on an 8-vCPU machine), which
+confirms that while RPS/RFS mitigated the single-core hotspot, overall capacity
+headroom is still limited at current traffic levels.

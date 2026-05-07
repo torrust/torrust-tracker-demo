@@ -75,6 +75,7 @@ demux
 HSTS
 nosniff
 parseable
+pipefail
 qdisc
 qlen
 repomix
@@ -103,5 +104,6 @@ runqueue
 overcommitted
 cutover
 Mbit
+CPUPerc
 Celano
 urlencode

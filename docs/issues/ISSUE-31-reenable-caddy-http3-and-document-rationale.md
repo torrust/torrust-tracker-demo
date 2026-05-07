@@ -71,16 +71,21 @@ the rollback in evidence:
 
 - Repository config change completed: Caddy UDP 443 mapping has been re-added in
   `server/opt/torrust/docker-compose.yml`.
-- Live-server apply, post-change observations, and rollback evaluation are still pending.
+- Live-server Caddy recreate completed and UDP 443 listener validation completed.
+- Immediate post-change evidence captured in
+  `docs/issues/evidence/ISSUE-31/00-immediate-post-change-snapshot.md`.
+- T+1h checkpoint captured in
+  `docs/issues/evidence/ISSUE-31/01-t1h-snapshot.md`.
+- T+next-day checkpoint and 24h rollback-trigger evaluation are still pending.
 
 ## Implementation Plan
 
 - [x] Re-add `"443:443/udp"` for Caddy in `server/opt/torrust/docker-compose.yml`.
-- [ ] Apply only that change on the live server and recreate only Caddy.
-- [ ] Validate Caddy health and confirm host UDP 443 listener exists after deploy.
-- [ ] Capture immediate post-change metrics: `mpstat`, `docker stats`, Prometheus HTTP1/UDP1
+- [x] Apply only that change on the live server and recreate only Caddy.
+- [x] Validate Caddy health and confirm host UDP 443 listener exists after deploy.
+- [x] Capture immediate post-change metrics: `mpstat`, `docker stats`, Prometheus HTTP1/UDP1
       rates, and `newtrackon.com/raw` sample.
-- [ ] Capture T+1h and T+next-day checkpoints with the same metrics.
+- [ ] Capture T+next-day checkpoint with the same metrics.
 - [ ] Evaluate rollback triggers; if triggered, revert and record evidence.
 - [ ] Update ISSUE-29 text to explain why the earlier disablement is being reversed now.
 - [ ] Ensure ISSUE-29 states backend services do not need native HTTP/3 for edge HTTP/3 support.

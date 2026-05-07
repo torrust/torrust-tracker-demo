@@ -63,7 +63,8 @@ services:
       - "80:80"
       # HTTPS
       - "443:443"
-      # HTTP/3 (QUIC) intentionally disabled during ISSUE-29 Phase 2 experiment
+      # HTTP/3 (QUIC) re-enabled in ISSUE-31
+      - "443:443/udp"
     volumes:
       - ./storage/caddy/etc/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./storage/caddy/data:/data     # TLS certificates (MUST persist!)

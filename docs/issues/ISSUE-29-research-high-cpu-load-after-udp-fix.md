@@ -104,8 +104,10 @@ step.
       **Result: no improvement. CPU2 still ~98% softirq; Caddy ~309%; load ~8.5. No delayed
       effect.** See `01-phase2-disable-http3-execution.md` T+next-day section.
 - [x] Decide whether Caddy CPU dropped materially enough to keep HTTP/3 disabled.
-      **Decision: keep HTTP/3 disabled (hygiene). The change caused no regression and removes
-      an unused port mapping, but it did not reduce CPU load.**
+      **Historical decision (2026-05-05): keep HTTP/3 disabled (hygiene). The change caused no
+      regression and removed an unused port mapping, but it did not reduce CPU load.**
+      **Update (2026-05-07): superseded by [#31](https://github.com/torrust/torrust-tracker-demo/issues/31),
+      which re-enables edge HTTP/3 as a product-capability choice with rollback triggers.**
 
 Execution and immediate post-change checks are recorded in
 `docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`.
@@ -154,7 +156,8 @@ application stack unchanged.
 - [ ] The first production change is isolated to a single variable and its effect is documented.
 - [ ] No follow-up production change is applied before the previous change has been observed.
 - [x] A documented decision exists on whether `443:443/udp` should remain enabled for HTTP/3.
-      **Decision: keep HTTP/3 disabled. See T+next-day section in `01-phase2-disable-http3-execution.md`.**
+      **Historical decision: keep HTTP/3 disabled. Superseded by [#31](https://github.com/torrust/torrust-tracker-demo/issues/31)
+      (re-enable with controlled observation and rollback criteria).**
 - [x] A documented decision exists on whether RPS/RFS should be deployed permanently.
       **Decision: keep RPS/RFS enabled. It consistently removed the one-core
       softirq hotspot at immediate, T+1h, and T+next-day checkpoints.**

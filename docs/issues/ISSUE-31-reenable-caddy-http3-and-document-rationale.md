@@ -67,9 +67,15 @@ the rollback in evidence:
   - capability/product decision,
   - rollback criteria and operational safeguards.
 
+## Execution Status
+
+- Repository config change completed: Caddy UDP 443 mapping has been re-added in
+  `server/opt/torrust/docker-compose.yml`.
+- Live-server apply, post-change observations, and rollback evaluation are still pending.
+
 ## Implementation Plan
 
-- [ ] Re-add `"443:443/udp"` for Caddy in `server/opt/torrust/docker-compose.yml`.
+- [x] Re-add `"443:443/udp"` for Caddy in `server/opt/torrust/docker-compose.yml`.
 - [ ] Apply only that change on the live server and recreate only Caddy.
 - [ ] Validate Caddy health and confirm host UDP 443 listener exists after deploy.
 - [ ] Capture immediate post-change metrics: `mpstat`, `docker stats`, Prometheus HTTP1/UDP1

@@ -76,7 +76,10 @@ the rollback in evidence:
   `docs/issues/evidence/ISSUE-31/00-immediate-post-change-snapshot.md`.
 - T+1h checkpoint captured in
   `docs/issues/evidence/ISSUE-31/01-t1h-snapshot.md`.
-- T+next-day checkpoint and 24h rollback-trigger evaluation are still pending.
+- T+next-day checkpoint captured in
+  `docs/issues/evidence/ISSUE-31/02-next-day-snapshot.md`.
+- Strict sustained-24h CPU/load trigger evaluation is currently inconclusive due
+  to host restart between checkpoints (new uptime window).
 
 ## Implementation Plan
 
@@ -85,7 +88,7 @@ the rollback in evidence:
 - [x] Validate Caddy health and confirm host UDP 443 listener exists after deploy.
 - [x] Capture immediate post-change metrics: `mpstat`, `docker stats`, Prometheus HTTP1/UDP1
       rates, and `newtrackon.com/raw` sample.
-- [ ] Capture T+next-day checkpoint with the same metrics.
+- [x] Capture T+next-day checkpoint with the same metrics.
 - [ ] Evaluate rollback triggers; if triggered, revert and record evidence.
 - [ ] Update ISSUE-29 text to explain why the earlier disablement is being reversed now.
 - [ ] Ensure ISSUE-29 states backend services do not need native HTTP/3 for edge HTTP/3 support.
@@ -93,12 +96,12 @@ the rollback in evidence:
 
 ## Acceptance Criteria
 
-- [ ] Caddy HTTP/3 edge capability is re-enabled via `443:443/udp` mapping.
-- [ ] Immediate, T+1h, and T+next-day evidence snapshots are recorded.
+- [x] Caddy HTTP/3 edge capability is re-enabled via `443:443/udp` mapping.
+- [x] Immediate, T+1h, and T+next-day evidence snapshots are recorded.
 - [ ] No rollback trigger is met during the observation window, or rollback is executed and
       documented if a trigger is met.
 - [ ] ISSUE-29 explicitly states that disabling HTTP/3 did not reduce CPU in prior observations.
 - [ ] ISSUE-29 explicitly states why HTTP/3 was re-enabled and under which conditions it may be
       disabled again.
 - [ ] Documentation clearly states edge HTTP/3 is independent from backend native HTTP/3 support.
-- [ ] All changed files pass `./scripts/lint.sh`.
+- [x] All changed files pass `./scripts/lint.sh`.

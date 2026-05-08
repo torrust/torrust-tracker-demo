@@ -147,7 +147,7 @@ this single-point reading is not meaningful.
 ### 4.2 CPU usage snapshot (`mpstat -P ALL 1 1`)
 
 | Metric | Value |
-|--------|-------|
+| ------ | ----- |
 | %usr   | 3.25  |
 | %sys   | 90.88 |
 | %soft  | 5.75  |
@@ -160,7 +160,7 @@ across all CPUs (2–13% each), confirming RPS/RFS is still operating correctly
 ### 4.3 Docker container resource usage (T+0)
 
 | Container  | CPU%   | MEM       |
-|------------|--------|-----------|
+| ---------- | ------ | --------- |
 | caddy      | 717%   | 763.2 MiB |
 | tracker    | 58.73% | 826.5 MiB |
 | mysql      | 6.27%  | —         |
@@ -185,10 +185,10 @@ ssh demotracker \
     --data-urlencode 'query=sum(rate(udp_tracker_server_requests_received_total[5m]))'"
 ```
 
-| Metric          | Value (req/s) |
-|-----------------|---------------|
-| HTTP1 req rate  | 2116.38       |
-| UDP1 req rate   | 2238.84       |
+| Metric         | Value (req/s) |
+| -------------- | ------------- |
+| HTTP1 req rate | 2116.38       |
+| UDP1 req rate  | 2238.84       |
 
 Both values are in normal operating range. ✅
 
@@ -196,11 +196,11 @@ Both values are in normal operating range. ✅
 
 ## 5. Observation Schedule
 
-| Checkpoint    | Target Time (UTC)  | Status     | File                               |
-|---------------|--------------------|------------|------------------------------------|
-| T+0 (this)    | 2026-05-07 ~13:17  | ✅ Done    | `00-immediate-post-change-snapshot.md` |
-| T+1h          | 2026-05-07 ~14:17  | ⏳ Pending | `01-t1h-snapshot.md`               |
-| T+next-day    | 2026-05-08 ~13:17  | ⏳ Pending | `02-next-day-snapshot.md`          |
+| Checkpoint | Target Time (UTC) | Status  | File                                   |
+| ---------- | ----------------- | ------- | -------------------------------------- |
+| T+0 (this) | 2026-05-07 ~13:17 | ✅ Done | `00-immediate-post-change-snapshot.md` |
+| T+1h       | 2026-05-07 ~14:17 | ✅ Done | `01-t1h-snapshot.md`                   |
+| T+next-day | 2026-05-08 ~13:17 | ✅ Done | `02-next-day-snapshot.md`              |
 
 ---
 
@@ -212,8 +212,16 @@ From ISSUE-31 implementation plan:
 2. Host load average sustained > baseline × 1.15 over a 24 h window
 3. HTTP1 or UDP1 availability regression reported on newtrackon.com
 
-T+0 snapshot is not sufficient to evaluate any of these. Assessment deferred
-to T+1h and T+next-day checkpoints.
+T+0 snapshot is not sufficient to evaluate any of these in isolation. Follow-up
+checkpoints were captured in `01-t1h-snapshot.md` and
+`02-next-day-snapshot.md`.
+
+Current status after later checkpoints:
+
+- External availability regression was not observed.
+- Strict sustained-24h CPU/load evaluation became inconclusive because the host
+  restarted between checkpoints, interrupting the continuous 24h comparison
+  window.
 
 ---
 
@@ -224,4 +232,7 @@ to T+1h and T+next-day checkpoints.
   Prometheus) are unaffected.
 - HTTP1 and UDP1 tracker request rates are in normal operating range.
 - T+0 CPU/load figures are transient restart artifacts — not a signal.
-- No rollback action required at this checkpoint.
+- T+1h and T+next-day checkpoints were later recorded and confirmed stable edge
+  HTTP/3 operation.
+- No rollback action was indicated by the later checkpoints, although strict
+  sustained-24h CPU/load comparison was interrupted by a host restart.

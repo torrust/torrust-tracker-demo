@@ -80,6 +80,8 @@ the rollback in evidence:
   `docs/issues/evidence/ISSUE-31/02-next-day-snapshot.md`.
 - Strict sustained-24h CPU/load trigger evaluation is currently inconclusive due
   to host restart between checkpoints (new uptime window).
+- ISSUE-29 has been updated to record the re-enable rationale and clarify that
+  edge HTTP/3 does not require backend native HTTP/3 support.
 
 ## Implementation Plan
 
@@ -89,19 +91,31 @@ the rollback in evidence:
 - [x] Capture immediate post-change metrics: `mpstat`, `docker stats`, Prometheus HTTP1/UDP1
       rates, and `newtrackon.com/raw` sample.
 - [x] Capture T+next-day checkpoint with the same metrics.
-- [ ] Evaluate rollback triggers; if triggered, revert and record evidence.
-- [ ] Update ISSUE-29 text to explain why the earlier disablement is being reversed now.
-- [ ] Ensure ISSUE-29 states backend services do not need native HTTP/3 for edge HTTP/3 support.
-- [ ] Run `./scripts/lint.sh` and fix any markdown/cspell issues.
+- [x] Evaluate rollback triggers; if triggered, revert and record evidence.
+- [x] Update ISSUE-29 text to explain why the earlier disablement is being reversed now.
+- [x] Ensure ISSUE-29 states backend services do not need native HTTP/3 for edge HTTP/3 support.
+- [x] Run `./scripts/lint.sh` and fix any markdown/cspell issues.
 
 ## Acceptance Criteria
 
 - [x] Caddy HTTP/3 edge capability is re-enabled via `443:443/udp` mapping.
 - [x] Immediate, T+1h, and T+next-day evidence snapshots are recorded.
-- [ ] No rollback trigger is met during the observation window, or rollback is executed and
+- [x] No rollback trigger is met during the observation window, or rollback is executed and
       documented if a trigger is met.
-- [ ] ISSUE-29 explicitly states that disabling HTTP/3 did not reduce CPU in prior observations.
-- [ ] ISSUE-29 explicitly states why HTTP/3 was re-enabled and under which conditions it may be
+- [x] ISSUE-29 explicitly states that disabling HTTP/3 did not reduce CPU in prior observations.
+- [x] ISSUE-29 explicitly states why HTTP/3 was re-enabled and under which conditions it may be
       disabled again.
-- [ ] Documentation clearly states edge HTTP/3 is independent from backend native HTTP/3 support.
+- [x] Documentation clearly states edge HTTP/3 is independent from backend native HTTP/3 support.
 - [x] All changed files pass `./scripts/lint.sh`.
+
+## Conclusion
+
+ISSUE-31 can be closed.
+
+- Edge HTTP/3 support has been restored by re-enabling `443:443/udp` on Caddy.
+- Immediate, T+1h, and T+next-day evidence shows stable service health and no
+  observed availability regression.
+- A strict sustained-24h CPU/load comparison was interrupted by a host restart,
+  so that specific continuity requirement is inconclusive rather than failed.
+- No rollback trigger was met in the observed checkpoints, so rollback is not
+  indicated.

@@ -109,6 +109,14 @@ step.
       **Update (2026-05-07): superseded by [#31](https://github.com/torrust/torrust-tracker-demo/issues/31),
       which re-enables edge HTTP/3 as a product-capability choice with rollback triggers.**
 
+Clarification after [#31](https://github.com/torrust/torrust-tracker-demo/issues/31):
+
+- Disabling HTTP/3 did **not** reduce host CPU load or remove the softirq hotspot.
+- Re-enabling `443:443/udp` was done to restore edge HTTP/3 capability for present and future
+  clients, not as a CPU-tuning change.
+- Edge HTTP/3 on Caddy does **not** require native HTTP/3 support in backend services; Caddy can
+  terminate QUIC at the edge while continuing to proxy HTTP traffic to tracker and Grafana.
+
 Execution and immediate post-change checks are recorded in
 `docs/issues/evidence/ISSUE-29/01-phase2-disable-http3-execution.md`.
 
@@ -158,6 +166,13 @@ application stack unchanged.
 - [x] A documented decision exists on whether `443:443/udp` should remain enabled for HTTP/3.
       **Historical decision: keep HTTP/3 disabled. Superseded by [#31](https://github.com/torrust/torrust-tracker-demo/issues/31)
       (re-enable with controlled observation and rollback criteria).**
+- [x] The issue records that disabling HTTP/3 did not materially reduce CPU load.
+      **Result: no meaningful CPU improvement was observed at T+1h or T+next-day checkpoints.**
+- [x] The issue records why HTTP/3 was re-enabled.
+      **Reason: restore edge capability/future compatibility, with rollback triggers if resource
+      cost or availability regresses.**
+- [x] The issue records that edge HTTP/3 is independent from backend native HTTP/3 support.
+      **Caddy terminates HTTP/3 at the edge and continues proxying HTTP to backend services.**
 - [x] A documented decision exists on whether RPS/RFS should be deployed permanently.
       **Decision: keep RPS/RFS enabled. It consistently removed the one-core
       softirq hotspot at immediate, T+1h, and T+next-day checkpoints.**
